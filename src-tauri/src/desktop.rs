@@ -17,7 +17,7 @@ fn pick_directory(app: tauri::AppHandle) -> Result<Option<std::path::PathBuf>> {
         .blocking_pick_folder()
         .map(|p| {
             p.into_path()
-                .map_err(|e| FileError::new("path", e.to_string()))
+                .map_err(|e| FileError::detail("path", "无法读取所选路径：{detail}", e.to_string()))
         })
         .transpose()
 }
@@ -30,11 +30,11 @@ async fn access<T: Send + 'static>(
     tauri::async_runtime::spawn_blocking(move || {
         let mut guard = files
             .lock()
-            .map_err(|_| FileError::new("state", "文件服务不可用"))?;
+            .map_err(|_| FileError::localized("state", "文件服务不可用"))?;
         f(&mut guard)
     })
     .await
-    .map_err(|e| FileError::new("task", e.to_string()))?
+    .map_err(|e| FileError::detail("task", "原生文件任务失败：{detail}", e.to_string()))?
 }
 #[tauri::command]
 async fn choose_project(
@@ -47,11 +47,17 @@ async fn choose_project(
             .blocking_pick_file()
     })
     .await
-    .map_err(|e| FileError::new("dialog", e.to_string()))?;
+    .map_err(|e| {
+        FileError::detail(
+            "dialog",
+            "无法完成原生文件对话框操作：{detail}",
+            e.to_string(),
+        )
+    })?;
     if let Some(path) = path {
         let path = path
             .into_path()
-            .map_err(|e| FileError::new("path", e.to_string()))?;
+            .map_err(|e| FileError::detail("path", "无法读取所选路径：{detail}", e.to_string()))?;
         access(&state, move |f| f.grant(&path, true, None).map(Some)).await
     } else {
         Ok(None)
@@ -71,11 +77,17 @@ async fn choose_target(
         file_dialog(&app).set_file_name(name).blocking_save_file()
     })
     .await
-    .map_err(|e| FileError::new("dialog", e.to_string()))?;
+    .map_err(|e| {
+        FileError::detail(
+            "dialog",
+            "无法完成原生文件对话框操作：{detail}",
+            e.to_string(),
+        )
+    })?;
     if let Some(path) = path {
         let path = path
             .into_path()
-            .map_err(|e| FileError::new("path", e.to_string()))?;
+            .map_err(|e| FileError::detail("path", "无法读取所选路径：{detail}", e.to_string()))?;
         access(&state, move |f| {
             let h = f.grant(&path, true, None)?;
             for exclude in exclude_token
@@ -103,7 +115,13 @@ async fn choose_import(
     if directory {
         let path = tauri::async_runtime::spawn_blocking(move || pick_directory(app))
             .await
-            .map_err(|e| FileError::new("dialog", e.to_string()))??;
+            .map_err(|e| {
+                FileError::detail(
+                    "dialog",
+                    "无法完成原生文件对话框操作：{detail}",
+                    e.to_string(),
+                )
+            })??;
         if let Some(path) = path {
             access(&state, move |f| f.directory(&path).map(Some)).await
         } else {
@@ -113,14 +131,22 @@ async fn choose_import(
         let paths =
             tauri::async_runtime::spawn_blocking(move || file_dialog(&app).blocking_pick_files())
                 .await
-                .map_err(|e| FileError::new("dialog", e.to_string()))?;
+                .map_err(|e| {
+                    FileError::detail(
+                        "dialog",
+                        "无法完成原生文件对话框操作：{detail}",
+                        e.to_string(),
+                    )
+                })?;
         if let Some(paths) = paths {
             access(&state, move |f| {
                 let mut handles = Vec::new();
                 for path in paths {
                     let h = path
                         .into_path()
-                        .map_err(|e| FileError::new("path", e.to_string()))
+                        .map_err(|e| {
+                            FileError::detail("path", "无法读取所选路径：{detail}", e.to_string())
+                        })
                         .and_then(|path| f.grant(&path, false, None));
                     match h {
                         Ok(h) => handles.push(h),
@@ -180,23 +206,23 @@ async fn write_chunk(
     request: tauri::ipc::Request<'_>,
 ) -> Result<()> {
     let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else {
-        return Err(FileError::new("body", "保存需要二进制数据"));
+        return Err(FileError::localized("body", "保存需要二进制数据"));
     };
     if bytes.len() > crate::files::CHUNK {
-        return Err(FileError::new("limit", "保存分块超过限额"));
+        return Err(FileError::localized("limit", "保存分块超过限额"));
     }
     let token = request
         .headers()
         .get("x-transfer-id")
         .and_then(|v| v.to_str().ok())
-        .ok_or_else(|| FileError::new("transfer", "缺少保存任务"))?
+        .ok_or_else(|| FileError::localized("transfer", "缺少保存任务"))?
         .to_owned();
     let offset = request
         .headers()
         .get("x-offset")
         .and_then(|v| v.to_str().ok())
         .and_then(|v| v.parse::<u64>().ok())
-        .ok_or_else(|| FileError::new("range", "缺少有效偏移"))?;
+        .ok_or_else(|| FileError::localized("range", "缺少有效偏移"))?;
     let bytes = bytes.clone();
     access(&state, move |f| f.append(&token, offset, &bytes)).await
 }
@@ -222,11 +248,11 @@ async fn directory_access<T: Send + 'static>(
     tauri::async_runtime::spawn_blocking(move || {
         let mut guard = directories
             .lock()
-            .map_err(|_| FileError::new("state", "目录服务不可用"))?;
+            .map_err(|_| FileError::localized("state", "目录服务不可用"))?;
         work(&mut guard)
     })
     .await
-    .map_err(|e| FileError::new("task", e.to_string()))?
+    .map_err(|e| FileError::detail("task", "原生文件任务失败：{detail}", e.to_string()))?
 }
 #[tauri::command]
 async fn choose_directory_export(
@@ -238,7 +264,13 @@ async fn choose_directory_export(
     validate_entries(&entries)?;
     let parent = tauri::async_runtime::spawn_blocking(move || pick_directory(app))
         .await
-        .map_err(|e| FileError::new("dialog", e.to_string()))??;
+        .map_err(|e| {
+            FileError::detail(
+                "dialog",
+                "无法完成原生文件对话框操作：{detail}",
+                e.to_string(),
+            )
+        })??;
     match parent {
         Some(parent) => {
             directory_access(&state, move |d| d.begin(&parent, &name, entries).map(Some)).await
@@ -252,25 +284,25 @@ async fn write_directory_chunk(
     request: tauri::ipc::Request<'_>,
 ) -> Result<()> {
     let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else {
-        return Err(FileError::new("body", "导出需要二进制数据"));
+        return Err(FileError::localized("body", "导出需要二进制数据"));
     };
     if bytes.len() > crate::files::CHUNK {
-        return Err(FileError::new("limit", "导出分块超过限额"));
+        return Err(FileError::localized("limit", "导出分块超过限额"));
     }
     let header = |key| {
         request
             .headers()
             .get(key)
             .and_then(|v| v.to_str().ok())
-            .ok_or_else(|| FileError::new("transfer", "缺少目录导出参数"))
+            .ok_or_else(|| FileError::localized("transfer", "缺少目录导出参数"))
     };
     let token = header("x-transfer-id")?.to_owned();
     let index = header("x-file-index")?
         .parse::<usize>()
-        .map_err(|_| FileError::new("range", "文件序号无效"))?;
+        .map_err(|_| FileError::localized("range", "文件序号无效"))?;
     let offset = header("x-offset")?
         .parse::<u64>()
-        .map_err(|_| FileError::new("range", "偏移无效"))?;
+        .map_err(|_| FileError::localized("range", "偏移无效"))?;
     let bytes = bytes.clone();
     directory_access(&state, move |d| d.append(&token, index, offset, &bytes)).await
 }
@@ -292,7 +324,7 @@ async fn cancel_directory_export(
 fn close_confirmed(window: tauri::WebviewWindow) -> Result<()> {
     window
         .destroy()
-        .map_err(|e| FileError::new("window", e.to_string()))
+        .map_err(|e| FileError::detail("window", "无法关闭窗口：{detail}", e.to_string()))
 }
 pub fn run() {
     tauri::Builder::default()

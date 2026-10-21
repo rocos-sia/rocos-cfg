@@ -2,6 +2,7 @@
 //! until every file is verified and the receipt is marked complete. Existing
 //! directories are never merged, replaced or treated as our recovery staging.
 use crate::files::{FileError, Result, CHUNK, MAX_FILE};
+use crate::messages::{Message, MessageTemplate};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{
@@ -42,9 +43,11 @@ pub struct DirectoryWritten {
     pub display_path: String,
     pub files: usize,
     pub warning: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub warning_text: Option<MessageTemplate>,
 }
-fn invalid(message: &str) -> FileError {
-    FileError::new("directory-export", message)
+fn invalid(message: &'static str) -> FileError {
+    FileError::localized("directory-export", message)
 }
 fn components(path: &str) -> Result<Vec<&str>> {
     if path.len() > 4096
@@ -145,7 +148,13 @@ fn receipt(root: &Path, entries: &[Entry], status: &'static str) -> Result<()> {
             files: entries,
         },
     )
-    .map_err(|e| invalid(&e.to_string()))?;
+    .map_err(|e| {
+        FileError::detail(
+            "directory-export",
+            "无法写入导出清单：{detail}",
+            e.to_string(),
+        )
+    })?;
     file.write_all(b"\n")?;
     file.as_file().sync_all()?;
     file.persist(root.join(RECEIPT))
@@ -284,16 +293,17 @@ impl RuntimeDirectories {
             Ok(())
         })()
         .err()
-        .map(|e| format!("文件已校验，但目录同步失败：{}", e));
+        .map(|e| Message::detail("文件已校验，但目录同步失败：{detail}", e.to_string()));
         #[cfg(not(unix))]
-        let warning = None;
+        let warning: Option<Message> = None;
         let t = self.transfers.remove(token).unwrap();
         let files = t.entries.len();
         let path = t.directory.keep();
         Ok(DirectoryWritten {
             display_path: path.to_string_lossy().into_owned(),
             files,
-            warning,
+            warning: warning.as_ref().map(|m| m.message.clone()),
+            warning_text: warning.map(|m| m.text),
         })
     }
 }

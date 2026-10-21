@@ -1,5 +1,7 @@
 # 桌面离线版
 
+最近一次内部版本的产物哈希、执行结果与边界见 [本地产物验证记录](BUILD-VERIFICATION.md)。
+
 桌面壳使用 Tauri 2，内嵌与网页相同的生产构建。解析、编辑、校验、工程归档和运行配置导出仍使用 TypeScript 核心；Rust 只提供用户通过原生对话框选定的文件访问能力。桌面不注册 Service Worker，也不需要启动本机 HTTP 服务。
 
 ## 构建与启动
@@ -48,6 +50,8 @@ Ctrl+S 保存，Ctrl+Shift+S 另存为。原生文件操作期间关闭应用会
 
 ## 覆盖、备份与失败恢复
 
+原生文件服务返回稳定错误码、原中文 `message` 和可选显示模板；前端按当前语言渲染。操作系统错误、中文文件名与路径作为原始数据保留，不通过字符串替换猜测翻译。磁盘冲突弹窗的原因与差异表可即时切换语言，切换不更新文件授权、保存目标或哈希基线。写入完成后的目录同步警告同样携带模板，并保持“已写入但同步确认不足”的结果，不把成功替换误报为取消或未保存。
+
 打开或上次保存时记录目标哈希。保存开始及替换前重新核对；检测到外部修改或删除时停止覆盖，允许比较磁盘工程的文件哈希与工作区，或另存为。查看差异不更新原保存基线。
 
 文件分块写入目标同目录的临时文件，完成后同步并重新读取校验。替换已有文件前生成并验证上一版备份，命名为 `<原文件名>-backup-<唯一标识>.<扩展名>`。备份作为普通文件保留，由用户决定留存周期。取消、分块失败、内容不完整或校验失败时不替换原文件。
@@ -64,7 +68,7 @@ Ctrl+S 保存，Ctrl+Shift+S 另存为。原生文件操作期间关闭应用会
 
 `npm run desktop:test:files` 不启动 GUI，验证真实临时文件上的覆盖备份、外部变化、取消、校验失败、分块顺序、并发写入、目录相对路径与授权边界。Windows 会跳过仅适用 Unix 的符号链接测试。
 
-Linux 界面测试使用 WebKitWebDriver、tauri-driver 2.1.0、Xvfb、Openbox、xdotool 和 Playwright Chromium；ImageMagick 可提供原生对话框故障截图。测试使用独立显示与临时用户数据目录，不操作日常桌面：
+Linux 界面测试使用 WebKitWebDriver、tauri-driver 2.1.0、Xvfb、Openbox、xdotool、ImageMagick（`import` 窗口截图）和 Playwright Chromium。测试使用独立显示与临时用户数据目录，不操作日常桌面：
 
 ```sh
 cargo install tauri-driver --version 2.1.0 --locked
@@ -72,8 +76,8 @@ npx playwright install chromium
 PLAYWRIGHT_CHANNEL=chromium npm run desktop:test:ui
 ```
 
-默认测试 `src-tauri/target/debug/rocos-configurator`，可通过 `ROCOS_DESKTOP_BINARY` 指定 release 或从 deb 中解出的程序。`WEBKIT_WEBDRIVER`、`TAURI_DRIVER`、`XVFB`、`WINDOW_MANAGER`、`XDOTOOL` 可指定工具路径。日志和截图写入 `test-results/desktop/`。
+默认测试 `src-tauri/target/debug/rocos-configurator`，可通过 `ROCOS_DESKTOP_BINARY` 指定 release 或从 deb 中解出的程序。`WEBKIT_WEBDRIVER`、`TAURI_DRIVER`、`XVFB`、`WINDOW_MANAGER`、`XDOTOOL` 可指定工具路径。日志和截图写入 `test-results/desktop/`。测试会核对程序显示的版本与保存归档中的版本等于仓库 `VERSION`，避免使用旧二进制作为当前版本的验证证据。若测试依赖安装在独立 sysroot，还需设置相应 `LD_LIBRARY_PATH`、`XDG_DATA_DIRS` 和 `XDG_CONFIG_DIRS`，让 WebKitGTK、Openbox 主题及配置可被找到。
 
-本地已在 Ubuntu 22.04 上构建 deb，并对包内解出的 release 程序通过以下测试：首次保存、覆盖备份字节一致、外部修改后拒绝覆盖、差异查看、另存为、原生目录导入、同 UUID 副本及新 UUID 工程复制均不改变原保存目标、桌面与浏览器工程往返、超过 256 KiB 的 URDF 后台解析、WebGL 视口初始化、取消未保存关闭提示，以及损坏包恢复、拒绝覆盖受保护原包、恢复工程另存与后续保存。原生文件与目录服务的 13 项测试也已通过。目录导出的原生界面测试覆盖取消父目录选择、清单完成状态及每项文件哈希、已有文件不变、与 ZIP 输出逐字节一致，以及导出后仍保存到原工程目标。界面测试会检查实际归档内容和备份字节，不只检查提示文案；基本 WebGL 视口测试不代表复杂模型全部渲染正确。
+本地已在 Ubuntu 22.04 上构建 deb，并对包内解出的 release 程序通过以下测试：首次保存、覆盖备份字节一致、外部修改后拒绝覆盖、差异查看、另存为、原生目录导入、同 UUID 副本及新 UUID 工程复制均不改变原保存目标、桌面与浏览器工程往返、超过 256 KiB 的 URDF 后台解析、WebGL 视口初始化、取消未保存关闭提示，以及损坏包恢复、拒绝覆盖受保护原包、恢复工程另存与后续保存。原生文件与目录服务的 14 项测试也已通过，包含错误/警告序列化字段与中文路径保真。目录导出的原生界面测试覆盖取消父目录选择、清单完成状态及每项文件哈希、已有文件不变、与 ZIP 输出逐字节一致，以及导出后仍保存到原工程目标。界面测试会检查实际归档内容和备份字节，不只检查提示文案；基本 WebGL 视口测试不代表复杂模型全部渲染正确。
 
 桌面验证仍不等于全项目验收：Windows 断网首次安装、Linux 缺依赖环境交付、磁盘满/崩溃恢复、全部复杂模型的 WebView 渲染需要继续覆盖。远端工作流尚未执行，不能把本地构建结果视为 Windows 或 CI 验收结果。

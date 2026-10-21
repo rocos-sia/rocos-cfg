@@ -1,4 +1,4 @@
-import { errorMessage, messageFields, type MessageInput } from '../core/project/messages';
+import { m as msg, errorMessage, messageFields, type MessageInput } from '../core/project/messages';
 import { diagnosticText, errorText, t } from '../i18n';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, App, Button, Modal, Progress, Space, Table } from 'antd';
@@ -82,7 +82,7 @@ export function useProjectFiles(onLoaded:()=>void) {
       if(saved.current&&same&&!retainsSaveTarget(mode)){setDestination(saved.result.handle.displayPath);useProject.getState().markSaved(snapshot.revision,saved.result.handle.displayPath);}
       message.success(mode==='fork'?t("新工程已写入磁盘，可打开后独立编辑"):mode==='copy'?t("工程副本已写入磁盘"):t("工程已写入磁盘"));
       if(saved.result.backupPath)message.info(t('上一版备份：{path}',{path:saved.result.backupPath}),6);
-      if(saved.result.warning)message.warning(saved.result.warning,8);
+      if(saved.result.warning)message.warning(diagnosticText({message:saved.result.warning,text:saved.result.warningText}),8);
     }else{if(same&&!retainsSaveTarget(mode))useProject.getState().markDownloaded(snapshot.revision);message.success(mode==='fork'?t("已生成新工程下载，可打开后独立编辑"):t("已生成工程下载，请保留下载文件"));}
   });
   const inspectDisk=()=>run(async c=>{
@@ -92,8 +92,8 @@ export function useProjectFiles(onLoaded:()=>void) {
     if(!current)return;
     const currentFiles=new Map(await Promise.all(current.files.map(async f=>[f.path,await digest(f.bytes)] as const)));
     const diskFiles=new Map(await Promise.all(result.project.files.map(async f=>[f.path,await digest(f.bytes)] as const)));
-    const rows=[...new Set([...currentFiles.keys(),...diskFiles.keys()])].sort().map(path=>({path,current:currentFiles.get(path)||t("无"),disk:diskFiles.get(path)||t("无"),change:currentFiles.has(path)?diskFiles.has(path)?currentFiles.get(path)===diskFiles.get(path)?t("相同"):t("内容不同"):t("仅工作区"):t("仅磁盘")}));
-    setConflict({...base,disk:opened,rows,reason:t('磁盘工程：{disk}；工作区：{workspace}。下表比较文件内容哈希；工程元数据、资源映射和编辑草稿也可能不同。当前工作区与保存基线保持不变。',{disk:result.project.name,workspace:current.name})});
+    const rows=[...new Set([...currentFiles.keys(),...diskFiles.keys()])].sort().map(path=>({path,current:currentFiles.get(path)||'',disk:diskFiles.get(path)||'',change:currentFiles.has(path)?diskFiles.has(path)?currentFiles.get(path)===diskFiles.get(path)?"相同":"内容不同":"仅工作区":"仅磁盘"}));
+    setConflict({...base,disk:opened,rows,reason:msg('磁盘工程：{disk}；工作区：{workspace}。下表比较文件内容哈希；工程元数据、资源映射和编辑草稿也可能不同。当前工作区与保存基线保持不变。',{disk:result.project.name,workspace:current.name})});
   });
   const closeHandler=useRef<()=>void>(()=>{});
   closeHandler.current=()=>{
@@ -116,10 +116,10 @@ export function useProjectFiles(onLoaded:()=>void) {
       <ArchiveMigration pending={migration} busy={busy} onClose={closeMigration} onAccept={()=>void acceptMigration()} onCopy={()=>void copyMigration()}/>
       <ArchiveRecovery archive={failed} busy={busy} onClose={closeFailed} onInspect={()=>void inspectFailed()} onRecover={()=>void restoreFailed()} onCopy={()=>void copyFailed()}/>
       {busy&&<div className="file-transfer" role="status"><Space><strong>{t("正在处理工程快照")}</strong><Button size="small" onClick={()=>operation.current?.abort()}>{t("取消操作")}</Button></Space><Progress percent={progress===undefined?undefined:Math.round(progress)} status="active"/><small>{t("可以继续编辑；保存只标记本次捕获的版本。")}</small></div>}
-      <Modal title={t("磁盘文件已变化")} open={!!conflict} width={850} onCancel={()=>setConflict(undefined)} footer={<Space><Button onClick={()=>setConflict(undefined)}>{t("保留工作区")}</Button><Button onClick={()=>void inspectDisk()}>{t("查看磁盘版本差异")}</Button><Button type="primary" onClick={()=>{setConflict(undefined);void save('saveAs');}}>{t("另存为")}</Button></Space>}>
+      <Modal title={t("磁盘文件已变化")} open={!!conflict} width={850} styles={{body:{overflowWrap:'anywhere'}}} onCancel={()=>setConflict(undefined)} footer={<Space wrap><Button onClick={()=>setConflict(undefined)}>{t("保留工作区")}</Button><Button onClick={()=>void inspectDisk()}>{t("查看磁盘版本差异")}</Button><Button type="primary" onClick={()=>{setConflict(undefined);void save('saveAs');}}>{t("另存为")}</Button></Space>}>
         {conflict&&<><Alert type="warning" message={errorText(conflict.error)}/><p style={{overflowWrap:'anywhere'}}>{conflict.handle.displayPath}<br/>{t("打开/上次保存哈希：")}{conflict.handle.sha256}<br/>{t("检测到的磁盘哈希：")}{conflict.error.currentHash||t("文件不存在")}</p>
           {conflict.reason&&<p>{diagnosticText(messageFields(conflict.reason))}</p>}
-          {conflict.rows&&<Table size="small" rowKey="path" dataSource={conflict.rows} columns={[{title:t("路径"),dataIndex:'path'},{title:t("差异"),dataIndex:'change'},{title:t("工作区 SHA-256"),dataIndex:'current',ellipsis:true},{title:t("磁盘 SHA-256"),dataIndex:'disk',ellipsis:true}]} pagination={{pageSize:6}}/>}
+          {conflict.rows&&<Table size="small" rowKey="path" scroll={{x:700}} dataSource={conflict.rows} columns={[{title:t("路径"),dataIndex:'path'},{title:t("差异"),dataIndex:'change',render:value=>t(value)},{title:t("工作区 SHA-256"),dataIndex:'current',ellipsis:true,render:value=>value||t('无')},{title:t("磁盘 SHA-256"),dataIndex:'disk',ellipsis:true,render:value=>value||t('无')}]} pagination={{pageSize:6}}/>}
           {conflict.disk&&<Button onClick={()=>void download(conflict.disk!.bytes,conflict.disk!.name).catch(e=>message.error(errorText(e,true)))}>{t("导出磁盘版本副本")}</Button>}
         </>}
       </Modal>

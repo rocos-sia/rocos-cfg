@@ -56,7 +56,7 @@ function Workspace({dark,toggle}:{dark:boolean;toggle:()=>void}) {
       return files.compute(async options=>{
         const access=fileAccess();if(!access.writeDirectory)throw new Error(t("当前环境不支持目录导出，请使用 ZIP"));
         const written=await access.writeDirectory(prepared.plan.files,snapshot.name,options);
-        if(written)modal.success({title:t("运行目录已导出"),content:<div><p>{written.displayPath}</p><p>{t('{count} 个文件已写入并校验。当前工程与保存目标保持不变。',{count:written.files})}</p>{written.warning&&<Alert type="warning" message={written.warning}/>}</div>});
+        if(written)modal.success({title:t("运行目录已导出"),content:<div><p>{written.displayPath}</p><p>{t('{count} 个文件已写入并校验。当前工程与保存目标保持不变。',{count:written.files})}</p>{written.warning&&<Alert type="warning" message={diagnosticText({message:written.warning,text:written.warningText})}/>}</div>});
       });}});
   });
   const analysis=useProjectAnalysis(p,state.workspaceEpoch),catalog=analysis.data?.catalog;

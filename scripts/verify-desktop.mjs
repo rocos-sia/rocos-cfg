@@ -12,6 +12,7 @@ import { unzipSync, zipSync } from 'fflate';
 import { chromium } from '@playwright/test';
 import assert from 'node:assert/strict';
 const binary=resolve(process.env.ROCOS_DESKTOP_BINARY||'src-tauri/target/debug/rocos-configurator');
+const expectedVersion=(await readFile('VERSION','utf8')).trim();
 const artifacts=resolve('test-results/desktop');await rm(artifacts,{recursive:true,force:true});await mkdir(artifacts,{recursive:true});
 const temp=await mkdtemp(join(tmpdir(),'rocos-desktop-ui-'));
 const children=[];let session,driverUrl,browser;
@@ -27,12 +28,26 @@ function executable(name){
 const pause=ms=>new Promise(r=>setTimeout(r,ms));
 async function wait(fn,label,timeout=30000){const end=Date.now()+timeout;let error;while(Date.now()<end){try{const value=await fn();if(value)return value;}catch(e){error=e;}await pause(150);}throw new Error(`Timed out: ${label}${error?' ('+error.message+')':''}`);}
 async function freePort(){const s=createServer();await new Promise(r=>s.listen(0,'127.0.0.1',r));const port=s.address().port;await new Promise(r=>s.close(r));return port;}
-async function request(method,path,body){const r=await fetch(driverUrl+path,{method,headers:{'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(45000)});const v=await r.json();if(!r.ok||v.value?.error)throw new Error(JSON.stringify(v));return v.value;}
+async function request(method,path,body){
+  try {
+    const r=await fetch(driverUrl+path,{method,headers:{'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(45000)});
+    const v=await r.json();if(!r.ok||v.value?.error)throw new Error(JSON.stringify(v));return v.value;
+  } catch(error) {
+    throw new Error(`WebDriver ${method} ${path}${body?.script?' ['+body.script.slice(0,180)+']':''}: ${error.message}`,{cause:error});
+  }
+}
 const script=(code,args=[])=>request('POST',`/session/${session}/execute/sync`,{script:code,args});
 const text=()=>script('return document.body.innerText');
 const visibleText=target=>wait(async()=>(await text()).includes(target),target);
 const click=async(label)=>{await wait(()=>script(`const el=[...document.querySelectorAll('button')].find(e=>e.offsetParent&&e.textContent.replace(/\\s/g,'')===arguments[0].replace(/\\s/g,''));if(!el||el.disabled)return false;el.click();return true;`,[label]),'click '+label);};
 const menu=label=>script(`const el=[...document.querySelectorAll('[role=menuitem]')].find(e=>e.textContent.trim()===arguments[0]);if(!el)throw Error('menu missing');el.click();`,[label]);
+async function language(value){
+  // Dispatch the real language control while a controlled modal is open; no
+  // application state or test-only native command is injected.
+  await script(`document.querySelector('button[aria-label="切换语言"],button[aria-label="Change language"]').click();`);
+  await wait(()=>script(`const e=[...document.querySelectorAll('[role=menuitem]')].find(e=>e.textContent.trim()===arguments[0]);if(!e)return false;e.click();return true;`,[value==='en-US'?'English':'简体中文']),'language menu');
+  await wait(()=>script('return document.documentElement.lang===arguments[0]',[value]),'language '+value);
+}
 async function rename(value){await menu('工程总览');await wait(()=>script(`const e=document.querySelector('.overview-grid input');if(!e)return false;const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;setter.call(e,arguments[0]);e.dispatchEvent(new Event('input',{bubbles:true}));e.focus();e.blur();return true;`,[value]),'rename');await visibleText(value);}
 const xdotool=(...args)=>execFileSync(process.env.XDOTOOL||'xdotool',args,{env,encoding:'utf8',stdio:['ignore','pipe','pipe'],timeout:5000}).trim();
 async function picker(path,title,replaceExisting=false){
@@ -64,20 +79,30 @@ try {
   await wait(async()=>{try{const r=await fetch(driverUrl+'/status');return r.ok;}catch{return false;}},'tauri-driver');
   const created=await request('POST','/session',{capabilities:{alwaysMatch:{'tauri:options':{application:binary}}}});session=created.sessionId;
   await visibleText('新建工程');assert.equal(await script('return window.isSecureContext && !!window.crypto.subtle'),true);
+  assert.equal(await script("return document.querySelector('.sidebar-bottom small').textContent"),expectedVersion);
   await visibleText('桌面离线版');await click('新建工程');await click('创建工程');await visibleText('工程总览');await rename('desktop-original');
   const original=join(temp,'original.rcproj'),savedAs=join(temp,'saved-as.rcproj'),copy=join(temp,'copy.rcproj');
   await click('保存工程');await picker(original,'Save File');await visibleText('已保存工程文件');
   assert.equal((await manifest(original)).project.name,'desktop-original');const first=await readFile(original);
+  assert.equal((await manifest(original)).lastSavedWith.version,expectedVersion);
   console.log('Desktop: initial native save passed.');
   await rename('desktop-edited');await click('保存工程');await visibleText('已保存工程文件');
   const backups=(await readdir(temp)).filter(x=>x.startsWith('original-backup-'));assert.equal(backups.length,1);assert.deepEqual(await readFile(join(temp,backups[0])),first);
   const external=unzipSync(await readFile(original)),m=JSON.parse(new TextDecoder().decode(external['rocos-project.json']));m.project.name='external-edit';external['rocos-project.json']=new TextEncoder().encode(JSON.stringify(m));await writeFile(original,zipSync(external));const externalBytes=await readFile(original);
   await rename('local-edits');await click('保存工程');await visibleText('磁盘文件已变化');assert.deepEqual(await readFile(original),externalBytes);
-  await click('查看磁盘版本差异');await visibleText('磁盘工程：external-edit');
+  await language('en-US');await visibleText('The file was changed or deleted externally');
+  await click('Compare disk version');await visibleText('Disk project: external-edit');await visibleText('Identical');
+  await wait(()=>script("return !document.querySelector('.ant-message-notice');"),'prior save notifications dismissed',10000);
+  // WebKitWebDriver may stall taking a screenshot after the view becomes idle.
+  // Capture the actual X11 application window; retain all DOM assertions above.
+  const conflictWindow=xdotool('search','--onlyvisible','--name','^ROCOS Configurator$').split('\n')[0];
+  execFileSync('import',['-window',conflictWindow,join(artifacts,'desktop-conflict-en.png')],{env,stdio:'pipe',timeout:10000});
+  await language('zh-CN');await visibleText('磁盘工程：external-edit');await visibleText('文件已被外部修改或删除');
+  assert.deepEqual(await readFile(original),externalBytes);
   // Select the modal Save As, not the toolbar button with the same label.
   await script(`const d=[...document.querySelectorAll('[role=dialog]')].find(e=>e.textContent.includes('磁盘文件已变化'));[...d.querySelectorAll('button')].find(e=>e.textContent.trim()==='另存为').click();`);
   await picker(savedAs,'Save File');await visibleText('已保存工程文件');assert.equal((await manifest(savedAs)).project.name,'local-edits');assert.deepEqual(await readFile(original),externalBytes);
-  console.log('Desktop: overwrite backup, external conflict, difference view and Save As passed.');
+  console.log('Desktop: overwrite backup, bilingual external conflict/difference view and Save As passed.');
   const resources=join(temp,'resources');await mkdir(join(resources,'nested'),{recursive:true});await writeFile(join(resources,'nested','notes.txt'),'native directory bytes');
   await menu('APP 配置');await visibleText('导入资源目录');await click('导入资源目录');await picker(resources,'Select Folder');await visibleText('导入预览');await click('确认导入');await click('保存工程');await visibleText('已保存工程文件');
   assert.ok((await manifest(savedAs)).files.some(f=>f.path==='nested/notes.txt'));
@@ -122,7 +147,7 @@ try {
   const damagedBytes=zipSync(damagedEntries);await writeFile(damagedPath,damagedBytes);
   await click('打开工程');await picker(damagedPath,'Open File');await visibleText('工程完整性检查失败');
   await click('检查可恢复文件');await visibleText('创建恢复工程');await click('创建恢复工程');await visibleText('切换工程');await click('打开新工程');await visibleText('browser-return（恢复）');
-  await click('保存工程');await picker(damagedPath,'Save File',true);await visibleText('请选择其他路径');assert.deepEqual(await readFile(damagedPath),Buffer.from(damagedBytes));
+  await language('en-US');await click('Save project');await picker(damagedPath,'Save File',true);await visibleText('Choose another path; the current project or protected original archive cannot be overwritten');assert.deepEqual(await readFile(damagedPath),Buffer.from(damagedBytes));await language('zh-CN');
   const recoveredPath=join(temp,'recovered.rcproj');await click('保存工程');await picker(recoveredPath,'Save File');await visibleText('已保存工程文件');
   const recoveredManifest=await manifest(recoveredPath);assert.notEqual(recoveredManifest.project.id,damagedManifest.project.id);assert.equal(recoveredManifest.entrypoints.app,null);
   assert.ok(recoveredManifest.files.some(f=>f.path.endsWith('/report.json')));
@@ -157,6 +182,13 @@ try {
   for(const [path,bytes] of Object.entries(runtimeEntries))assert.deepEqual(await readFile(join(runtimeDir,path)),Buffer.from(bytes));
   await rename('after-directory-export');await click('保存工程');await visibleText('已保存工程文件');assert.equal((await manifest(runtimeProject)).project.name,'after-directory-export');
   console.log('Desktop: cancelled directory picker, verified new directory, unchanged existing files, ZIP byte parity and retained project save target passed.');
+  await writeFile(join(artifacts,'report.json'),JSON.stringify({
+    status:'passed',applicationVersion:expectedVersion,platform:process.platform,architecture:process.arch,node:process.version,
+    binary:{path:binary,sha256:createHash('sha256').update(await readFile(binary)).digest('hex')},
+    scope:'Actual Linux WebKit application, native GTK dialogs and temporary files in an isolated display.',
+    checks:['displayed and archived application version','initial save and verified backup','external conflict with bilingual reason and difference view','save as','native directory import','same-ID copy and new-ID fork','browser and desktop archive roundtrip','background URDF analysis and WebGL viewport','cancelled unsaved close','damaged archive recovery and protected source','directory picker cancellation','directory receipt and file hashes','ZIP and directory byte parity','retained project save target'],
+    notExecuted:['Windows installation','independent offline computer','power loss or full disk','controller SDK or physical devices'],
+  },null,2)+'\n');
 } catch(e) {
   console.error(e);
   await writeFile(join(artifacts,'failure.txt'),String(e.stack||e));
