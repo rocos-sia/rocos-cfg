@@ -1,4 +1,5 @@
-import { errorText, t } from '../i18n';
+import { errorMessage, messageFields, type MessageInput } from '../core/project/messages';
+import { diagnosticText, errorText, t } from '../i18n';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, App, Button, Modal, Progress, Space, Table } from 'antd';
 import { fileAccess, FileAccessError, type FileHandle, type OpenedFile, type TransferOptions } from '../adapters/file-access';
@@ -19,7 +20,7 @@ export function useProjectFiles(onLoaded:()=>void) {
   const [readonly,setReadonly]=useState<ReadonlyArchive>();
   const [failed,setFailed]=useState<FailedArchive>();
   const [migration,setMigration]=useState<PendingMigration>();
-  const [conflict,setConflict]=useState<{handle:FileHandle;error:FileAccessError;disk?:OpenedFile;reason?:string;rows?:{path:string;change:string;current:string;disk:string}[]}>();
+  const [conflict,setConflict]=useState<{handle:FileHandle;error:FileAccessError;disk?:OpenedFile;reason?:MessageInput;rows?:{path:string;change:string;current:string;disk:string}[]}>();
   const {message,modal}=App.useApp();const afterLoad=useRef(onLoaded);afterLoad.current=onLoaded;
   const run=async<T,>(work:(controller:AbortController)=>Promise<T>):Promise<T|undefined>=>{
     if(operation.current){message.info(t("已有文件操作，请等待完成或取消"));return;}
@@ -50,7 +51,7 @@ export function useProjectFiles(onLoaded:()=>void) {
     if(failed?.opened.handle)await access.release(failed.opened.handle);setFailed(undefined);
     if(migration?.opened.handle)await access.release(migration.opened.handle);setMigration(undefined);
     try{const result=await inspectArchive(opened.bytes,{signal:controller.signal,progress:(n,t)=>setProgress(t?n/t*100:undefined)});if(result.mode==='editable'){if(result.migration)setMigration({opened,project:result.project,report:result.migration});else await replace(result.project,opened,undefined,controller.signal);}else{setReadonly({...result,filename:opened.name});if(opened.handle)await access.release(opened.handle);}}
-    catch(e){if(e instanceof DOMException&&e.name==='AbortError'){if(opened.handle)await access.release(opened.handle);throw e;}setFailed({opened,error:e instanceof Error?e.message:String(e)});}
+    catch(e){if(e instanceof DOMException&&e.name==='AbortError'){if(opened.handle)await access.release(opened.handle);throw e;}setFailed({opened,error:errorMessage(e)});}
   };
   const closeMigration=()=>{const old=migration;setMigration(undefined);if(old?.opened.handle)void access.release(old.opened.handle).catch(e=>message.error(errorText(e,true)));};
   const acceptMigration=()=>run(async c=>{if(!migration)return;const pending=migration;setMigration(undefined);await replace(pending.project,undefined,pending.opened.handle,c.signal);});
@@ -62,7 +63,7 @@ export function useProjectFiles(onLoaded:()=>void) {
   const inspectFailed=()=>run(async c=>{
     if(!failed)return;const current=failed;
     try{const recovery=await recoverArchive(current.opened.bytes,__APP_VERSION__,{signal:c.signal,progress:(n,t)=>setProgress(t?n/t*100:undefined)});setFailed(previous=>previous===current?{...current,recovery,recoveryError:undefined}:previous);}
-    catch(e){if(e instanceof DOMException&&e.name==='AbortError')throw e;setFailed(previous=>previous===current?{...current,recoveryError:e instanceof Error?e.message:String(e)}:previous);}
+    catch(e){if(e instanceof DOMException&&e.name==='AbortError')throw e;setFailed(previous=>previous===current?{...current,recoveryError:errorMessage(e)}:previous);}
   });
   const restoreFailed=()=>run(async()=>{if(!failed?.recovery)return;const current=failed;setFailed(undefined);await replace(current.recovery!.project,undefined,current.opened.handle);});
   const copyFailed=()=>run(async c=>{
@@ -86,7 +87,7 @@ export function useProjectFiles(onLoaded:()=>void) {
   });
   const inspectDisk=()=>run(async c=>{
     if(!conflict)return;const base=conflict,opened=await access.refresh(base.handle,{signal:c.signal});const result=await inspectArchive(opened.bytes,{signal:c.signal,progress:(n,t)=>setProgress(t?n/t*100:undefined)});
-    if(result.mode!=='editable'){setConflict({...base,disk:opened,reason:result.reason});return;}
+    if(result.mode!=='editable'){setConflict({...base,disk:opened,reason:{message:result.reason,text:result.reasonText}});return;}
     const current=useProject.getState().project;
     if(!current)return;
     const currentFiles=new Map(await Promise.all(current.files.map(async f=>[f.path,await digest(f.bytes)] as const)));
@@ -116,8 +117,8 @@ export function useProjectFiles(onLoaded:()=>void) {
       <ArchiveRecovery archive={failed} busy={busy} onClose={closeFailed} onInspect={()=>void inspectFailed()} onRecover={()=>void restoreFailed()} onCopy={()=>void copyFailed()}/>
       {busy&&<div className="file-transfer" role="status"><Space><strong>{t("正在处理工程快照")}</strong><Button size="small" onClick={()=>operation.current?.abort()}>{t("取消操作")}</Button></Space><Progress percent={progress===undefined?undefined:Math.round(progress)} status="active"/><small>{t("可以继续编辑；保存只标记本次捕获的版本。")}</small></div>}
       <Modal title={t("磁盘文件已变化")} open={!!conflict} width={850} onCancel={()=>setConflict(undefined)} footer={<Space><Button onClick={()=>setConflict(undefined)}>{t("保留工作区")}</Button><Button onClick={()=>void inspectDisk()}>{t("查看磁盘版本差异")}</Button><Button type="primary" onClick={()=>{setConflict(undefined);void save('saveAs');}}>{t("另存为")}</Button></Space>}>
-        {conflict&&<><Alert type="warning" message={conflict.error.message}/><p style={{overflowWrap:'anywhere'}}>{conflict.handle.displayPath}<br/>{t("打开/上次保存哈希：")}{conflict.handle.sha256}<br/>{t("检测到的磁盘哈希：")}{conflict.error.currentHash||t("文件不存在")}</p>
-          {conflict.reason&&<p>{conflict.reason}</p>}
+        {conflict&&<><Alert type="warning" message={errorText(conflict.error)}/><p style={{overflowWrap:'anywhere'}}>{conflict.handle.displayPath}<br/>{t("打开/上次保存哈希：")}{conflict.handle.sha256}<br/>{t("检测到的磁盘哈希：")}{conflict.error.currentHash||t("文件不存在")}</p>
+          {conflict.reason&&<p>{diagnosticText(messageFields(conflict.reason))}</p>}
           {conflict.rows&&<Table size="small" rowKey="path" dataSource={conflict.rows} columns={[{title:t("路径"),dataIndex:'path'},{title:t("差异"),dataIndex:'change'},{title:t("工作区 SHA-256"),dataIndex:'current',ellipsis:true},{title:t("磁盘 SHA-256"),dataIndex:'disk',ellipsis:true}]} pagination={{pageSize:6}}/>}
           {conflict.disk&&<Button onClick={()=>void download(conflict.disk!.bytes,conflict.disk!.name).catch(e=>message.error(errorText(e,true)))}>{t("导出磁盘版本副本")}</Button>}
         </>}

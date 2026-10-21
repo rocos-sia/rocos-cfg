@@ -4,7 +4,7 @@ import type { ArchiveRequest, ArchiveResponse } from './archive-protocol';
 import { analyzeProject } from '../core/project/analysis';
 import { validateProject } from '../core/validation';
 import { planRuntime, prepareRuntime } from '../core/export';
-import { errorMessage, messageFields } from '../core/project/messages';
+import { errorMessage, messageFields, MessageError, m as msg } from '../core/project/messages';
 
 // One job per worker. Termination can interrupt even synchronous ZIP/XML work.
 const send=(message:ArchiveResponse)=>self.postMessage(message);
@@ -31,7 +31,7 @@ self.onmessage=async(event:MessageEvent<ArchiveRequest>)=>{
         const prepared=output?{bytes:output.bytes,plan:{...output.plan,files:output.plan.files.map(file=>({path:file.path}))}}:undefined;
         result={type:'result',result:{diagnostics,prepared}};progress(100);break;
       }
-      default:throw new Error('不受支持的工程处理任务');
+      default:throw new MessageError(msg('不受支持的工程处理任务'));
     }
     send(result);
   }catch(error){send({type:'error',...messageFields(errorMessage(error))});}

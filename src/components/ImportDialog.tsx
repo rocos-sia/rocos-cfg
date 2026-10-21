@@ -1,4 +1,4 @@
-import { errorText, t } from '../i18n';
+import { diagnosticText, errorText, t } from '../i18n';
 import { useRef, useState } from 'react';
 import { Alert, App, Modal, Select, Space, Table, Tag } from 'antd';
 import { prepareImport } from '../adapters/files';
@@ -11,20 +11,20 @@ import { flushBuffers, useProject } from '../store';
 const labels: Record<ImportSlot, string> = { master: '主站', eni: 'ENI', app: 'APP', urdf: 'URDF', hardware: 'Hardware', binding: 'Binding' };
 export function useImportDialog() {
   const { message } = App.useApp(), generation = useRef(0);
-  const [session, setSession] = useState<{ base: Project; plan: ImportPlan; selection: ImportSelection; hashes: Record<string, string> }>();
+  const [session, setSession] = useState<{ base: Project; workspaceEpoch:number; plan: ImportPlan; selection: ImportSelection; hashes: Record<string, string> }>();
   const selectFiles = async (files: File[]) => {
     const ticket = ++generation.current;
     try {
       await flushBuffers();
-      const project = useProject.getState().project; if (!project || !files.length) return;
+      const {project,workspaceEpoch} = useProject.getState(); if (!project || !files.length) return;
       const base = structuredClone(project), plan = await prepareImport(base, files);
       const eniFiles = [...base.files.filter(f => f.id === base.entrypoints.master.eniFileId), ...plan.files.filter(f => f.role === 'eni')];
       const hashes = Object.fromEntries(await Promise.all(eniFiles.map(async f => [f.id, await digest(f.bytes)])));
-      if (generation.current === ticket) setSession({ base, plan, selection: defaultImportSelection(plan), hashes });
+      if (generation.current === ticket && useProject.getState().workspaceEpoch===workspaceEpoch) setSession({ base, workspaceEpoch, plan, selection: defaultImportSelection(plan), hashes });
     } catch (error) { message.error(errorText(error,true)); }
   };
   let preview: Project | undefined, error = '';
-  if (session) try { preview = applyImport(session.base, session.plan, session.selection); } catch (e) { error = (e as Error).message; }
+  if (session) try { preview = applyImport(session.base, session.plan, session.selection); } catch (e) { error = errorText(e); }
   const changes = preview && session ? preview.files.filter(f => {
     const old = session.base.files.find(v => v.id === f.id);
     return !old || old.path !== f.path || old.bytes.length !== f.bytes.length || old.bytes.some((v, i) => v !== f.bytes[i]);
@@ -38,6 +38,7 @@ export function useImportDialog() {
     onCancel={() => { generation.current++; setSession(undefined); }} onOk={() => {
       if (!session || !preview) return;
       try {
+        if(useProject.getState().workspaceEpoch!==session.workspaceEpoch)throw new Error(t('导入期间工程已变化，请重新选择文件'));
         useProject.getState().change(current => Object.assign(current, applyImport(current, session.plan, session.selection)));
         setSession(undefined); message.success(t("文件已导入，请检查引用与绑定；可撤销本次操作"));
       } catch (e) { message.error(errorText(e,true)); }
@@ -59,10 +60,10 @@ export function useImportDialog() {
           <p>{t("按运行时 ID 和信号名称比较，不表示已识别同一物理设备。原 Hardware 引用保留，必须复核；不会按序号自动重绑。")}</p>
           {session.selection.eni && session.selection.eni !== 'keep' && <p style={{ overflowWrap: 'anywhere' }}>ENI SHA-256<br />{t("原：")}{session.hashes[session.base.entrypoints.master.eniFileId || ''] || t("无")}<br />{t("新：")}{session.hashes[session.selection.eni]}</p>}
           <Table size="small" rowKey="key" dataSource={busChanges} pagination={{ pageSize: 5 }} scroll={{ x: 650 }} columns={[
-            { title: t("对象"), dataIndex: 'object', width: 180 }, { title: t("变更"), dataIndex: 'change', width: 60 },
-            { title: t("原配置"), dataIndex: 'before' }, { title: t("导入后"), dataIndex: 'after' },
+            { title: t("对象"), dataIndex: 'object', width: 180, render:(_,row)=>diagnosticText({message:row.object,text:row.objectText}) }, { title: t("变更"), dataIndex: 'change', width: 60, render:value=>t(value) },
+            { title: t("原配置"), dataIndex: 'before', render:(_,row)=>diagnosticText({message:row.before,text:row.beforeText}) }, { title: t("导入后"), dataIndex: 'after', render:(_,row)=>diagnosticText({message:row.after,text:row.afterText}) },
           ]} />
-          {!!newBus?.diagnostics.length && <Alert type="warning" message={t('新主站有 {count} 项静态诊断，导入后需继续修复或复核',{count:newBus.diagnostics.length})} description={<ul>{newBus.diagnostics.slice(0, 5).map((d, i) => <li key={i}>{d.message}</li>)}</ul>} />}
+          {!!newBus?.diagnostics.length && <Alert type="warning" message={t('新主站有 {count} 项静态诊断，导入后需继续修复或复核',{count:newBus.diagnostics.length})} description={<ul>{newBus.diagnostics.slice(0, 5).map((d, i) => <li key={i}>{diagnosticText(d)}</li>)}</ul>} />}
         </details>}
         <Table size="small" rowKey="id" dataSource={changes} pagination={{ pageSize: 5 }} columns={[
           { title: t("工程内路径"), dataIndex: 'path' }, { title: t("用途"), dataIndex: 'role', render: role => <>{role}{role === 'eni' && <Tag>{t("只读")}</Tag>}</> },

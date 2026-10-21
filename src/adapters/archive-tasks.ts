@@ -1,7 +1,7 @@
 import type { Project } from '../core/project/types';
 import type { TransferOptions } from './file-access';
 import type { ArchiveTasks, ArchiveResponse } from './archive-protocol';
-import { MessageError } from '../core/project/messages';
+import { MessageError, m as msg } from '../core/project/messages';
 
 type JobWorker=Pick<Worker,'postMessage'|'terminate'|'addEventListener'|'removeEventListener'>;
 export type WorkerFactory=()=>JobWorker;
@@ -23,8 +23,8 @@ export function runArchiveTask<K extends keyof ArchiveTasks>(
     };
     const fail=(reason:unknown)=>{if(ended)return;dispose();reject(reason);};
     const abort=()=>fail(cancelled());
-    const error=(event:Event)=>fail(new Error((event as ErrorEvent).message||'工程处理 Worker 无法运行，请保留当前草稿并重试'));
-    const decodeError=()=>fail(new Error('无法接收工程处理结果，当前工作区保持不变'));
+    const error=(event:Event)=>fail(new MessageError((event as ErrorEvent).message||msg('工程处理 Worker 无法运行，请保留当前草稿并重试')));
+    const decodeError=()=>fail(new MessageError(msg('无法接收工程处理结果，当前工作区保持不变')));
     const message=(event:Event)=>{
       if(ended)return;
       const data=(event as MessageEvent<ArchiveResponse>).data;

@@ -1,3 +1,4 @@
+import { m as msg, MessageError } from './messages';
 import { type Project, type ProjectFile, type FileRole, type TargetProfile, uid } from './types';
 import { modules } from '../modules';
 import type { ModuleRegistry } from '../modules/registry';
@@ -21,7 +22,7 @@ export function inspectImport(p: Project, entries: Map<string, Uint8Array>, sing
   checkPaths([...entries.keys()]);
   const files: ProjectFile[] = [];
   for (const [path, bytes] of entries) {
-    if (path === 'rocos-project.json' || path.startsWith('project-data/')) throw new Error('此文件包含工程元数据，请使用“打开工程”');
+    if (path === 'rocos-project.json' || path.startsWith('project-data/')) throw new MessageError(msg("此文件包含工程元数据，请使用“打开工程”"));
     let role: FileRole = 'resource', text = '', encoding: string | undefined, readable = true;
     try {
       if (/\.(xml|urdf|dae)$/i.test(path)) ({ text, encoding } = decodeXml(bytes));
@@ -30,7 +31,7 @@ export function inspectImport(p: Project, entries: Map<string, Uint8Array>, sing
     } catch { role = 'attachment'; readable = false; }
     const file = { id: uid(), path, role, owner: role, bytes, encoding };
     const candidates = readable ? registry.detect(file) : [];
-    if (candidates.length > 1) throw new Error(`文件用途不唯一：${path}（${candidates.map(m => m.id).join('、')}）`);
+    if (candidates.length > 1) throw new MessageError(msg("文件用途不唯一：{v0}（{v1}）", {v0:String(path), v1:String(candidates.map(m => m.id).join('、'))}));
     if (candidates.length === 1) { file.role = candidates[0].role; file.owner = candidates[0].id; }
     files.push(file);
   }
@@ -45,12 +46,12 @@ export function defaultImportSelection(plan: ImportPlan): ImportSelection {
   return Object.fromEntries([...importCandidates(plan)].filter(([, files]) => files.length === 1).map(([slot, files]) => [slot, files[0].id]));
 }
 export function applyImport(p: Project, plan: ImportPlan, selection = defaultImportSelection(plan), registry: ModuleRegistry = modules): Project {
-  if (p.id !== plan.projectId || p.revision !== plan.revision) throw new Error('导入期间工程已变化，请重新选择文件');
+  if (p.id !== plan.projectId || p.revision !== plan.revision) throw new MessageError(msg("导入期间工程已变化，请重新选择文件"));
   const next = structuredClone(p), ids = new Map<string, string>();
   const groups = importCandidates(plan);
   for (const [slot, files] of groups) {
     const chosen = selection[slot];
-    if (!chosen || chosen !== 'keep' && !files.some(f => f.id === chosen)) throw new Error(`请选择 ${slot} 的活动配置；其他候选文件仍会保留`);
+    if (!chosen || chosen !== 'keep' && !files.some(f => f.id === chosen)) throw new MessageError(msg("请选择 {v0} 的活动配置；其他候选文件仍会保留", {v0:String(slot)}));
   }
   const replaced = new Set<string>();
   for (const incoming of plan.files) {
@@ -62,10 +63,10 @@ export function applyImport(p: Project, plan: ImportPlan, selection = defaultImp
     const old = next.files.find(f => f.path === file.path);
     if (old) {
       const oldModule = fileModule(next, old, registry);
-      if (!oldModule || next.modules?.some(m => m.stateFileIds?.includes(old.id))) throw new Error(`不能覆盖未知模块或工具状态文件：${old.path}`);
+      if (!oldModule || next.modules?.some(m => m.stateFileIds?.includes(old.id))) throw new MessageError(msg("不能覆盖未知模块或工具状态文件：{v0}", {v0:String(old.path)}));
       if (oldModule.id !== file.owner && next.modules) next.modules = next.modules.map(m => ({ ...m, fileIds: m.fileIds.filter(id => id !== old.id), runtimeFileIds: m.runtimeFileIds?.filter(id => id !== old.id) })).filter(m => m.fileIds.length || m.stateFileIds?.length);
-      if (old.role !== file.role && importSlot(old.role)) throw new Error(`导入用途与现有配置冲突：${file.path}（${old.role} → ${file.role}）`);
-      if (slot && selection[slot] === 'keep' && active?.id === old.id) throw new Error(`保留当前配置时不能覆盖同一路径：${file.path}`);
+      if (old.role !== file.role && importSlot(old.role)) throw new MessageError(msg("导入用途与现有配置冲突：{v0}（{v1} → {v2}）", {v0:String(file.path), v1:String(old.role), v2:String(file.role)}));
+      if (slot && selection[slot] === 'keep' && active?.id === old.id) throw new MessageError(msg("保留当前配置时不能覆盖同一路径：{v0}", {v0:String(file.path)}));
       file.id = old.id; replaced.add(old.id);
       next.files = next.files.filter(f => f.id !== old.id);
       // Retain source drafts and their original baseHash. Applying them after a

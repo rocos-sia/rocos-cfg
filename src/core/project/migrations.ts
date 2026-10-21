@@ -1,3 +1,4 @@
+import { m as msg, MessageError, messageFields, errorMessage } from './messages';
 /** Compiled, pure-data schema migrations. Archives never supply executable steps. */
 export const FORMAT_VERSION = 1;
 export const PROJECT_SCHEMA_VERSION = 1;
@@ -38,15 +39,15 @@ export class MigrationRegistry {
   private readonly schemas = new Map<number, MigrationSchema>();
   private readonly steps = new Map<number, MigrationStep>();
   constructor(readonly current: number, schemas: readonly MigrationSchema[], steps: readonly MigrationStep[]) {
-    if (!version(current)) throw new Error('迁移目标版本无效');
+    if (!version(current)) throw new MessageError(msg("迁移目标版本无效"));
     for (const schema of schemas) {
-      if (!version(schema.version) || schema.version > current || this.schemas.has(schema.version)) throw new Error('迁移 Schema 版本重复或无效');
+      if (!version(schema.version) || schema.version > current || this.schemas.has(schema.version)) throw new MessageError(msg("迁移 Schema 版本重复或无效"));
       this.schemas.set(schema.version, { ...schema });
     }
-    if (!this.schemas.has(current)) throw new Error('缺少当前版本校验器');
+    if (!this.schemas.has(current)) throw new MessageError(msg("缺少当前版本校验器"));
     const ids = new Set<string>();
     for (const step of steps) {
-      if (!step.id || ids.has(step.id) || !version(step.from) || step.to !== step.from + 1 || step.to > current || this.steps.has(step.from) || !this.schemas.has(step.from) || !this.schemas.has(step.to)) throw new Error('迁移必须具有唯一 ID、相邻版本和完整校验器');
+      if (!step.id || ids.has(step.id) || !version(step.from) || step.to !== step.from + 1 || step.to > current || this.steps.has(step.from) || !this.schemas.has(step.from) || !this.schemas.has(step.to)) throw new MessageError(msg("迁移必须具有唯一 ID、相邻版本和完整校验器"));
       ids.add(step.id); this.steps.set(step.from, { ...step });
     }
   }
@@ -57,11 +58,11 @@ export class MigrationRegistry {
   }
   async prepare(input: MigrationData): Promise<{ data: MigrationData; report?: MigrationReport }> {
     const source = input.manifest.projectSchemaVersion;
-    if (!this.supports(source)) throw new Error('没有完整且受支持的工程迁移链');
+    if (!this.supports(source)) throw new MessageError(msg("没有完整且受支持的工程迁移链"));
     // Neither validators nor transforms ever receive caller-owned data.
     let data = structuredClone(input);
     const check = async (candidate: MigrationData, expected: number) => {
-      if (candidate.manifest.projectSchemaVersion !== expected || candidate.manifest.format !== input.manifest.format || candidate.manifest.formatVersion !== input.manifest.formatVersion) throw new Error('迁移改变了容器契约或产生错误的工程版本');
+      if (candidate.manifest.projectSchemaVersion !== expected || candidate.manifest.format !== input.manifest.format || candidate.manifest.formatVersion !== input.manifest.formatVersion) throw new MessageError(msg("迁移改变了容器契约或产生错误的工程版本"));
       await this.schemas.get(expected)!.validate(structuredClone(candidate));
     };
     await check(data, source);
@@ -81,16 +82,17 @@ export class MigrationRegistry {
         for (const file of preserved) {
           const entry = next.manifest.files?.find((candidate: any) => candidate.id === file.id);
           const {path: nextPath, ...metadata} = entry || {};
-          if (!entry || !equalBytes(file.bytes, next.files.get(nextPath)) || !equalJson(file.metadata, metadata)) throw new Error(`工程迁移不能删除或改写原配置及资源：${file.path}`);
+          if (!entry || !equalBytes(file.bytes, next.files.get(nextPath)) || !equalJson(file.metadata, metadata)) throw new MessageError(msg("工程迁移不能删除或改写原配置及资源：{v0}", {v0:String(file.path)}));
         }
-        for (const module of preservedModules) if (!next.manifest.modules?.some((candidate: any) => equalJson(candidate, module))) throw new Error(`工程迁移不能丢失或改写模块契约：${module.instanceId || module.id}`);
+        for (const module of preservedModules) if (!next.manifest.modules?.some((candidate: any) => equalJson(candidate, module))) throw new MessageError(msg("工程迁移不能丢失或改写模块契约：{v0}", {v0:String(module.instanceId || module.id)}));
         report.steps.push({ id: step.id, from: step.from, to: step.to, description: step.description,
           changedPaths: [...new Set([...data.files.keys(), ...next.files.keys()])].filter(path => !equalBytes(data.files.get(path), next.files.get(path))).sort(),
           manifestChanged: JSON.stringify(data.manifest) !== JSON.stringify(next.manifest),
         });
         data = next;
       } catch (error) {
-        throw new Error(`工程迁移 ${step.id}（${step.from} → ${step.to}）失败：${error instanceof Error ? error.message : String(error)}`);
+        const detail=messageFields(errorMessage(error));
+        throw new MessageError(msg("工程迁移 {v0}（{v1} → {v2}）失败：{v3}", {v0:String(step.id), v1:String(step.from), v2:String(step.to), v3:detail.text||detail.message}));
       }
     }
     return { data, ...(report.steps.length ? { report } : {}) };

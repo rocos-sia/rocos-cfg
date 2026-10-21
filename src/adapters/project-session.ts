@@ -1,3 +1,4 @@
+import { m as msg, MessageError } from '../core/project/messages';
 import type { Project } from '../core/project/types';
 import { saveProject } from '../core/project/archive';
 import { copyAsNewProject } from '../core/project/create';
@@ -21,7 +22,7 @@ export class ProjectSession {
     for(const prior of new Map(old.filter((h):h is FileHandle=>!!h).map(h=>[h.token,h])).values())if(!retained.has(prior.token))await this.access.release(prior);
   }
   async save(snapshot:Project,mode:SaveMode,version:string,options:TransferOptions={}):Promise<{result:WriteResult;current:boolean;revision:number}|undefined>{
-    if(this.writing)throw new Error('已有工程保存任务，请等待完成');
+    if(this.writing)throw new MessageError(msg("已有工程保存任务，请等待完成"));
     this.writing=true;const generation=this.generation;
     const same=this.projectId===snapshot.id,target=same?this.target:undefined,protectedSource=same?this.protectedSource:undefined;
     try{

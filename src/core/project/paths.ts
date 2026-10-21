@@ -1,15 +1,16 @@
+import { m as msg, MessageError } from './messages';
 export function safePath(path: string): string {
-  if (!path || path.startsWith('/') || /[\\:\x00-\x1f]/.test(path)) throw new Error(`非法工程路径：${path}`);
-  if (path.split('/').some(part => !part || part === '.' || part === '..')) throw new Error(`非法工程路径：${path}`);
+  if (!path || path.startsWith('/') || /[\\:\x00-\x1f]/.test(path)) throw new MessageError(msg("非法工程路径：{v0}", {v0:String(path)}));
+  if (path.split('/').some(part => !part || part === '.' || part === '..')) throw new MessageError(msg("非法工程路径：{v0}", {v0:String(path)}));
   return path;
 }
 export function checkPaths(paths: string[]) {
   const seen = new Set<string>();
   for (const path of paths) {
     const key = safePath(path).normalize('NFC').toLowerCase();
-    if (seen.has(key)) throw new Error(`重复或大小写冲突的文件：${path}`);
+    if (seen.has(key)) throw new MessageError(msg("重复或大小写冲突的文件：{v0}", {v0:String(path)}));
     // A regular file cannot also be an ancestor directory.
-    if ([...seen].some(p => p.startsWith(key + '/') || key.startsWith(p + '/'))) throw new Error(`文件与目录冲突：${path}`);
+    if ([...seen].some(p => p.startsWith(key + '/') || key.startsWith(p + '/'))) throw new MessageError(msg("文件与目录冲突：{v0}", {v0:String(path)}));
     seen.add(key);
   }
 }
