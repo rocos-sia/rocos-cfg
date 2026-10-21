@@ -1,3 +1,4 @@
+import { createExample } from '../../src/core/project/examples';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
@@ -51,5 +52,9 @@ describe.skipIf(!source)('APP 7093bcd original startup loader (no Robot construc
     const emitted=files.find(out=>out.fileId===f.id)!;
     const native=spawnSync(executable,[resolve(location,emitted.path)],{encoding:'utf8',timeout:5000,cwd:'/tmp'});
     expect(native.status,native.stderr).toBe(0);expect(JSON.parse(native.stdout)).toMatchObject({http_host:'010',http_port:8,scripts:resolve(location,'scripts'),web_root:resolve(location,'web'),robot:{urdf:resolve(location,'models/robot.urdf'),hardware_config:resolve(location,'app/hardware_config.yaml')}});
+  });
+  it.each(['igh','ecm'] as const)('loads the %s teaching APP startup configuration',kind=>{
+    const p=createExample(kind),result=run(textOf(fileById(p,p.entrypoints.app)!));expect(result.status,result.stderr).toBe(0);
+    expect(JSON.parse(result.stdout).robot).toMatchObject({base_link:'base_link',tip_link:'tool_link',ecat_id:0});
   });
 });

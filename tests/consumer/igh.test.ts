@@ -1,3 +1,4 @@
+import { createExample } from '../../src/core/project/examples';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -69,5 +70,9 @@ describe.skipIf(!source)('IgH 3c92f2a native loader contract (no hardware)', () 
     const file = resolve(source!, 'config/talon_pdo.yaml');
     expect(spawnSync(executable, [file]).status).toBe(0);
     expect(buildIghCatalog(makeFile('igh.yaml', 'igh', readFileSync(file, 'utf8'))).diagnostics.filter(d => d.severity === 'error')).toEqual([]);
+  });
+  it('loads the bundled IgH teaching configuration with explicit PDO entries',()=>{
+    const p=createExample('igh'),file=resolve(temporary,'teaching.yaml');writeFileSync(file,textOf(fileById(p,p.entrypoints.master.fileId)!));
+    const result=spawnSync(executable,[file],{encoding:'utf8'});expect(result.status,result.stderr).toBe(0);
   });
 });

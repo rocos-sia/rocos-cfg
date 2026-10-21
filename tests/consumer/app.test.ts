@@ -1,3 +1,4 @@
+import { createExample } from '../../src/core/project/examples';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -6,7 +7,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { readYaml } from '../../src/core/documents/yaml';
 import { editProjectYaml } from '../../src/core/bus/igh-edit';
 import { hardwareDocument } from '../../src/core/hardware/schema';
-import { fileById, utf8 } from '../../src/core/project/types';
+import { fileById, textOf, utf8 } from '../../src/core/project/types';
 import { resourceProject } from '../fixtures/resources';
 import { planRuntime } from '../../src/core/export';
 const source=process.env.ROCOS_APP_SOURCE;
@@ -80,5 +81,9 @@ describe.skipIf(!source)('APP 7093bcd original Hardware/JointBinding parsing (no
     const result=run(hw,binding,['j1','j2']);expect(result.status,result.stderr).toBe(0);expect(readYaml(result.stdout).bindings).toEqual([1n,4n]);
     expect(run(hw,binding.replace('drive_id: 1','drive_id: 4'),['j1','j2']).status).toBe(3);
     expect(run(hw,binding.replace('explicit','ordered'),['j1','j2']).status).toBe(3);
+  });
+  it.each(['igh','ecm'] as const)('loads the %s teaching hardware and explicit binding',kind=>{
+    const p=createExample(kind),result=run(textOf(fileById(p,p.entrypoints.hardware)!),textOf(fileById(p,p.entrypoints.binding)!),['joint_1']);
+    expect(result.status,result.stderr).toBe(0);expect(readYaml(result.stdout).drives[0].id).toBe(0n);
   });
 });

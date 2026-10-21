@@ -1071,5 +1071,13 @@
   "源文件已变化，源码草稿基线冲突；请保留工程副本并核对差异": "The source file has changed and conflicts with the draft baseline. Keep a project copy and review the differences.",
   "应用期间文件或草稿已变化，请重试": "The file or draft changed while applying. Try again.",
   "ENI 始终只读": "ENI is always read-only",
-  "模块不受支持或文件只读，请保留原文件": "The module is unsupported or the file is read-only. Keep the original file."
+  "模块不受支持或文件只读，请保留原文件": "The module is unsupported or the file is read-only. Keep the original file.",
+  "打开示例": "Open example",
+  "打开教学示例": "Open a teaching example",
+  "教学示例": "Teaching example",
+  "打开 IgH 示例": "Open IgH example",
+  "打开 EC-Master 示例": "Open EC-Master example",
+  "包含显式 PDO 条目和硬件映射。": "Includes explicit PDO entries and hardware mappings.",
+  "包含启动 YAML 和只读 ENI 过程映像。": "Includes startup YAML and a read-only ENI process image.",
+  "示例包含主站、单轴模型、Hardware、绑定、APP 和附件，可离线编辑与保存。机械参数为教学值，需手动确认；示例 ENI 仅用于解析演示，未经过 SDK 或实机验证。": "Examples include a master, one-axis model, hardware, bindings, APP configuration and attachments for offline editing and saving. Mechanical values are illustrative and require manual confirmation. The example ENI illustrates parsing and has not been verified with an SDK or physical devices."
 }

@@ -6,6 +6,7 @@
 
 | 定义 | 使用入口 | 参数及边界 |
 | --- | --- | --- |
+| `projects/teaching.v1.json` | 打开示例 → IgH / EC-Master | 一套单轴、显式 PDO/ENI、Hardware/Binding 与 APP 的完整教学工程；默认待人工确认，详见 [示例说明](../docs/EXAMPLES.md) |
 | `projects/starter.v1.json` | 新建 IgH / EC-Master 工程 | 初始化主站、APP、硬件与绑定配置；ENI 必须另行导入 |
 | `robots/two-axis.v1.json` | 新建工程 → 双关节演示模型 | 名称前缀与连杆长度；生成两个旋转关节及盒体外观，设置 APP 控制链端点 |
 | `devices/igh-discovery.v1.json` | 主站配置 → 新增从站 | 从站名称及待发现的空 PDO 条目；不推断驱动器机械参数或绑定 |

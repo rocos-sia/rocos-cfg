@@ -188,11 +188,29 @@ try {
   for(const [path,bytes] of Object.entries(runtimeEntries))assert.deepEqual(await readFile(join(runtimeDir,path)),Buffer.from(bytes));
   await rename('after-directory-export');await click('保存工程');await visibleText('已保存工程文件');assert.equal((await manifest(runtimeProject)).project.name,'after-directory-export');
   console.log('Desktop: cancelled directory picker, verified new directory, unchanged existing files, ZIP byte parity and retained project save target passed.');
+  for(const kind of ['igh','ecm']){
+    await menu('工程总览');await click('打开示例');await click(kind==='igh'?'打开 IgH 示例':'打开 EC-Master 示例');
+    await visibleText('切换工程');await click('打开新工程');await visibleText('教学示例');
+    await menu('硬件与绑定');
+    await wait(()=>script(`const label=[...document.querySelectorAll('label')].find(e=>e.textContent.includes('已人工核对换算、零点与限位'));const input=label?.querySelector('input');if(!input)return false;if(!input.checked)input.click();return true;`),'review teaching mechanics');
+    const exampleArchive=join(temp,kind+'-example.rcproj');await click('保存工程');await picker(exampleArchive,'Save File');await visibleText('已保存工程文件');
+    const example=await manifest(exampleArchive);assert.equal(example.entrypoints.master.kind,kind);
+    const sourceEntries=unzipSync(await readFile(exampleArchive));
+    await menu('校验与导出');await click('检查并导出配置');await visibleText('运行包导出计划');await click('下载运行包');
+    const exampleRuntime=join(temp,kind+'-example-runtime.zip');await picker(exampleRuntime,'Save File');
+    await wait(()=>{accessSync(exampleRuntime);return true;},'teaching runtime');const files=unzipSync(await readFile(exampleRuntime));
+    assert.ok(files['master/'+kind+'.yaml']);assert.ok(files['app/hardware_config.yaml']);assert.ok(files['models/robot.urdf']);
+    assert.equal(Object.keys(files).some(path=>path.startsWith('project-data/')),false);
+    if(kind==='ecm')assert.deepEqual(files['master/eni.xml'],sourceEntries['master/eni.xml']);
+    await writeFile(join(artifacts,kind+'-example.rcproj'),await readFile(exampleArchive));
+    await writeFile(join(artifacts,kind+'-example-runtime.zip'),await readFile(exampleRuntime));
+  }
+  console.log('Desktop: both teaching examples saved and runtime-exported with ENI byte parity.');
   await writeFile(join(artifacts,'report.json'),JSON.stringify({
     status:'passed',applicationVersion:expectedVersion,platform:process.platform,architecture:process.arch,node:process.version,
     binary:{path:binary,sha256:createHash('sha256').update(await readFile(binary)).digest('hex')},
     scope:'Actual Linux WebKit application, native GTK dialogs and temporary files in an isolated display.',
-    checks:['displayed and archived application version','initial save and verified backup','bilingual overwrite-backup notification','external conflict with bilingual reason and difference view','save as','native directory import','same-ID copy and new-ID fork','browser and desktop archive roundtrip','background URDF analysis and WebGL viewport','bilingual unsaved-close confirmation and cancellation','damaged archive recovery and protected source','directory picker cancellation','bilingual directory-export success dialog','directory receipt and file hashes','ZIP and directory byte parity','retained project save target'],
+    checks:['displayed and archived application version','initial save and verified backup','bilingual overwrite-backup notification','external conflict with bilingual reason and difference view','save as','native directory import','same-ID copy and new-ID fork','browser and desktop archive roundtrip','background URDF analysis and WebGL viewport','bilingual unsaved-close confirmation and cancellation','damaged archive recovery and protected source','directory picker cancellation','bilingual directory-export success dialog','directory receipt and file hashes','ZIP and directory byte parity','retained project save target','both teaching examples archived and runtime-exported'],
     notExecuted:['Windows installation','independent offline computer','power loss or full disk','controller SDK or physical devices'],
   },null,2)+'\n');
 } catch(e) {

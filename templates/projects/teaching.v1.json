@@ -1,0 +1,164 @@
+{
+  "format": "rocos-structured-template",
+  "id": "project.teaching",
+  "version": 1,
+  "name": "双主站单轴教学示例",
+  "kind": "project",
+  "profiles": [
+    "rocos.igh@1",
+    "rocos.ecm@1",
+    "rocos.app@1"
+  ],
+  "source": "ROCOS Configurator authored teaching data; ENI is an offline parser illustration, not an SDK-generated or device-tested network.",
+  "defaults": {},
+  "data": {
+    "igh": {
+      "version": 1,
+      "master": {
+        "master_id": 0,
+        "period_us": 1000,
+        "cpu": null,
+        "dc": "off",
+        "preop_timeout_ms": 10000,
+        "op_timeout_ms": 60000,
+        "pdo_config_attempts": 5
+      },
+      "slaves": [
+        {
+          "id": 0,
+          "name": "Teaching Drive",
+          "rx_pdos": [
+            {
+              "index": 5632,
+              "entries": [
+                {
+                  "name": "control_word",
+                  "index": 24640,
+                  "sub_index": 0,
+                  "bit_length": 16
+                },
+                {
+                  "name": "mode_of_operation",
+                  "index": 24672,
+                  "sub_index": 0,
+                  "bit_length": 8
+                },
+                {
+                  "name": "target_position",
+                  "index": 24698,
+                  "sub_index": 0,
+                  "bit_length": 32
+                }
+              ]
+            }
+          ],
+          "tx_pdos": [
+            {
+              "index": 6656,
+              "entries": [
+                {
+                  "name": "status_word",
+                  "index": 24641,
+                  "sub_index": 0,
+                  "bit_length": 16
+                },
+                {
+                  "name": "position_actual_value",
+                  "index": 24676,
+                  "sub_index": 0,
+                  "bit_length": 32
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "ecm": {
+      "id": 0,
+      "eni": "eni.xml",
+      "cycle": 1000,
+      "duration": 0,
+      "cpuidx": 0,
+      "auxclk": 0,
+      "link": 2,
+      "instance": 1,
+      "mode": 1,
+      "dcmmode": 1,
+      "ctloff": false,
+      "state": "op",
+      "verbose": 3,
+      "perf": 1,
+      "log": "",
+      "sp": null,
+      "mbxsrv": null,
+      "flash": null,
+      "license": "",
+      "maxbusslaves": 256
+    },
+    "urdf": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<robot name=\"teaching_arm\"><link name=\"base_link\"><visual><geometry><box size=\"0.2 0.2 0.05\"/></geometry></visual></link><link name=\"tool_link\"><visual><origin xyz=\"0.2 0 0\"/><geometry><box size=\"0.4 0.06 0.06\"/></geometry><material name=\"blue\"><color rgba=\"0.1 0.3 0.8 1\"/></material></visual></link><joint name=\"joint_1\" type=\"revolute\"><parent link=\"base_link\"/><child link=\"tool_link\"/><origin xyz=\"0 0 0.05\"/><axis xyz=\"0 0 1\"/><limit lower=\"-1\" upper=\"1\" velocity=\"1\" effort=\"10\"/></joint></robot>\n",
+    "eni": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!-- ROCOS Configurator teaching data. Not an SDK-generated bus configuration. -->\n<EtherCATConfig Version=\"1.3\"><Config><Slave><Info><Name>Teaching Drive</Name><PhysAddr>1001</PhysAddr><VendorId>0</VendorId><ProductCode>0</ProductCode></Info><ProcessData><Recv><BitStart>0</BitStart><BitLength>48</BitLength></Recv><Send><BitStart>0</BitStart><BitLength>56</BitLength></Send></ProcessData></Slave><ProcessImage><Inputs><ByteSize>6</ByteSize><Variable><Name>Teaching Drive.Inputs.status_word</Name><DataType>UINT</DataType><BitSize>16</BitSize><BitOffs>0</BitOffs></Variable><Variable><Name>Teaching Drive.Inputs.position_actual_value</Name><DataType>DINT</DataType><BitSize>32</BitSize><BitOffs>16</BitOffs></Variable></Inputs><Outputs><ByteSize>7</ByteSize><Variable><Name>Teaching Drive.Outputs.control_word</Name><DataType>UINT</DataType><BitSize>16</BitSize><BitOffs>0</BitOffs></Variable><Variable><Name>Teaching Drive.Outputs.mode_of_operation</Name><DataType>SINT</DataType><BitSize>8</BitSize><BitOffs>16</BitOffs></Variable><Variable><Name>Teaching Drive.Outputs.target_position</Name><DataType>DINT</DataType><BitSize>32</BitSize><BitOffs>24</BitOffs></Variable></Outputs></ProcessImage></Config></EtherCATConfig>\n",
+    "hardware": {
+      "hardware": [
+        {
+          "id": 0,
+          "type": "driver",
+          "joint_name": "joint_1",
+          "transform": {
+            "ratio": 1,
+            "cnt_per_unit": 10000,
+            "torque_per_unit": 1,
+            "offset_pos_cnt": 0
+          },
+          "limit": {
+            "lower": -1,
+            "upper": 1,
+            "vel": 1,
+            "acc": 2,
+            "jerk": 10,
+            "effort": 10
+          },
+          "inputs": {
+            "status_word": "status_word",
+            "position_actual_value": "position_actual_value"
+          },
+          "outputs": {
+            "control_word": "control_word",
+            "mode_of_operation": "mode_of_operation",
+            "target_position": "target_position"
+          }
+        }
+      ]
+    },
+    "binding": {
+      "binding_policy": "explicit",
+      "joint_bindings": [
+        {
+          "joint_name": "joint_1",
+          "drive_id": 0
+        }
+      ]
+    },
+    "app": {
+      "http_host": "0.0.0.0",
+      "http_port": 8080,
+      "http_control_ttl_seconds": 300,
+      "robot": {
+        "hardware_config": "hardware_config.yaml",
+        "ecat_id": 0,
+        "urdf": "../models/robot.urdf",
+        "base_link": "base_link",
+        "tip_link": "tool_link",
+        "joint_binding": "joint_binding.yaml",
+        "payload": "payload.yaml"
+      },
+      "scripts": "../scripts",
+      "web_root": "../web"
+    },
+    "resources": {
+      "scripts/example.lua": "-- Teaching attachment; no motion or hardware operations.\nreturn true\n",
+      "web/index.html": "<!doctype html><html lang=\"en\"><meta charset=\"utf-8\"><title>Teaching project</title><p>Offline ROCOS configuration example.</p></html>\n",
+      "app/payload.yaml": "# Teaching payload: no attached load\nmass: 0\ncom: [0, 0, 0]\n"
+    }
+  }
+}

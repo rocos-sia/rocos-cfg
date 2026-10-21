@@ -87,3 +87,27 @@ test('cache completeness is rechecked instead of claiming offline readiness afte
   await page.getByRole('button', { name: '修复缓存', exact: true }).click();
   await expect(page.getByRole('status').filter({ hasText: '已可离线使用' })).toBeVisible();
 });
+
+test('both bundled teaching examples remain editable and exportable after a cached restart offline',async({page,context},info)=>{
+  await page.goto('./');await expect(page.getByRole('status').filter({hasText:'已可离线使用'})).toBeVisible();
+  await context.setOffline(true);await page.reload();
+  for(const [index,kind] of (['igh','ecm'] as const).entries()){
+    await page.getByRole('button',{name:'打开示例',exact:true}).click();
+    await page.getByRole('button',{name:kind==='igh'?'打开 IgH 示例':'打开 EC-Master 示例',exact:true}).click();
+    if(index)await page.getByRole('button',{name:'打开新工程',exact:true}).click();
+    await expect(page.getByText('教学示例',{exact:true})).toBeVisible();
+    await page.getByRole('menuitem',{name:'APP 配置',exact:true}).click();
+    await page.getByRole('spinbutton',{name:'HTTP 端口',exact:true}).fill(String(8090+index));await page.getByRole('spinbutton',{name:'HTTP 端口',exact:true}).blur();
+    await page.getByRole('menuitem',{name:'硬件与绑定',exact:true}).click();
+    await page.getByRole('checkbox',{name:'已人工核对换算、零点与限位',exact:true}).check();
+    const saving=page.waitForEvent('download');await page.getByRole('button',{name:'下载工程',exact:true}).click();
+    const archivePath=info.outputPath(`${kind}-offline.rcproj`);await(await saving).saveAs(archivePath);
+    const restored=await openProject(await readFile(archivePath));expect(restored.entrypoints.master.kind).toBe(kind);
+    await page.getByRole('menuitem',{name:'校验与导出',exact:true}).click();await page.getByRole('button',{name:'检查并导出配置',exact:true}).click();
+    const exporting=page.waitForEvent('download');await page.getByRole('button',{name:'下载运行包',exact:true}).click();
+    const runtimePath=info.outputPath(`${kind}-offline-runtime.zip`);await(await exporting).saveAs(runtimePath);
+    const runtime=unpackZip(await readFile(runtimePath));expect(runtime.has(`master/${kind}.yaml`)).toBe(true);
+    if(kind==='ecm')expect(runtime.get('master/eni.xml')).toEqual(fileById(restored,restored.entrypoints.master.eniFileId)!.bytes);
+    await page.getByRole('menuitem',{name:'工程总览',exact:true}).click();
+  }
+});

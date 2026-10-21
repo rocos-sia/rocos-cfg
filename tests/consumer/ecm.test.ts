@@ -1,3 +1,4 @@
+import { createExample } from '../../src/core/project/examples';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -7,7 +8,7 @@ import { createProject, makeFile } from '../../src/core/project/create';
 import { ecmDocument } from '../../src/core/bus/ecm';
 import { editProjectYaml } from '../../src/core/bus/igh-edit';
 import { readYaml } from '../../src/core/documents/yaml';
-import { textOf, utf8 } from '../../src/core/project/types';
+import { fileById, textOf, utf8 } from '../../src/core/project/types';
 import { modules } from '../../src/core/modules';
 const source=process.env.ROCOS_ECM_SOURCE;
 describe.skipIf(!source)('ECM e0e5e32 original startup loader (no SDK or hardware)',()=>{
@@ -51,5 +52,9 @@ describe.skipIf(!source)('ECM e0e5e32 original startup loader (no SDK or hardwar
     const outputs=adapter.export(adapter.parse(f),{project:p,file:f,path:'ecm.yaml',rewrites:[{field:'eni',value:'eni.xml'}]});
     const result=run(new TextDecoder().decode(outputs[0].bytes));expect(result.status,result.stderr).toBe(0);
     expect(readYaml(result.stdout)).toMatchObject({id:'8',license:'010',eni:resolve(temporary,'eni.xml')});
+  });
+  it('loads the bundled ECM teaching startup YAML without claiming SDK ENI validation',()=>{
+    const p=createExample('ecm');writeFileSync(resolve(temporary,'eni.xml'),textOf(fileById(p,p.entrypoints.master.eniFileId)!));
+    const result=run(textOf(fileById(p,p.entrypoints.master.fileId)!));expect(result.status,result.stderr).toBe(0);
   });
 });

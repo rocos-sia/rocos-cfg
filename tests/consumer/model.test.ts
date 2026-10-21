@@ -1,3 +1,5 @@
+import { fileById, textOf } from '../../src/core/project/types';
+import { createExample } from '../../src/core/project/examples';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { mkdtempSync, rmSync, writeFileSync, existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -72,5 +74,9 @@ describe.skipIf(!source)('APP 7093bcd original Model, URDF and KDL chain (no har
     const complete=input.replace('</robot>',joint('other','revolute','branch','end')+'</robot>'),result=run(complete);
     expect(result.status,result.stderr).toBe(0);expect(result.joints.map((j:any)=>j.name)).toEqual(['second']);
     expect(()=>controlChain(complete,'base','tip')).toThrow('mimic');
+  });
+  it.each(['igh','ecm'] as const)('loads the %s teaching model and control chain',kind=>{
+    const p=createExample(kind),result=run(textOf(fileById(p,p.entrypoints.urdf)!),'base_link','tool_link');
+    expect(result.status,result.stderr).toBe(0);expect(result.joints).toEqual([{name:'joint_1',lower:-1,upper:1,velocity:1,effort:10}]);
   });
 });
