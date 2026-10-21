@@ -1,4 +1,4 @@
-import { t } from '../i18n';
+import { diagnosticText, errorText, t } from '../i18n';
 import { LinkProperties } from '../components/LinkProperties';
 import { useState } from 'react';
 import { Alert, App, Button, Card, Input, Modal, Select, Space, Tree } from 'antd';
@@ -20,7 +20,7 @@ export function Robot({ p, analysis, onImport }: { p: Project; analysis?:Project
   if(!analysis)return null;
   if (!file) return <Button onClick={onImport}>{t("导入 URDF")}</Button>;
   const robot=analysis.robot;
-  if(!robot)return <><Alert message={analysis.robotError||t("URDF 无法解析")} type="error" /><SourceEditor file={file} /></>;
+  if(!robot)return <><Alert message={analysis.robotError?diagnosticText({message:analysis.robotError,text:analysis.robotErrorText}):t("URDF 无法解析")} type="error" /><SourceEditor file={file} /></>;
   const selectedKind = selected.startsWith('link:') ? 'link' : 'joint';
   const selectedName = selected.slice(selected.indexOf(':') + 1);
   const joint = selectedKind === 'joint' ? robot.joints.find(j => j.name === selectedName) : undefined;
@@ -52,12 +52,12 @@ export function Robot({ p, analysis, onImport }: { p: Project; analysis?:Project
         },
       });
       return true;
-    } catch (error) { message.error(String(error)); return false; }
+    } catch (error) { message.error(errorText(error,true)); return false; }
   };
   const edit = (field: keyof RobotJointParameters, value: string) => {
     if (!joint) return;
     try { useProject.getState().change(next => changeJointParameter(next, joint.name, field, value)); }
-    catch (error) { message.error(String(error)); }
+    catch (error) { message.error(errorText(error,true)); }
   };
   const deleteNode = () => {
     if (!link && !joint) return;
@@ -70,7 +70,7 @@ export function Robot({ p, analysis, onImport }: { p: Project; analysis?:Project
   return <>
     <div className="page-heading"><div><h1>{t("机器人模型")}</h1><p>{t("编辑结构与属性，预览模型；预览不会驱动真实设备。")}</p></div><Button onClick={onImport}>{t("导入 URDF / Mesh")}</Button></div>
     {(p.editor.notices || []).filter(n => n.fileId === file.id).map((n, i) => <Alert key={`notice-${i}`} message={n.message} type="warning" className="space-top" action={<Button size="small" onClick={() => useProject.getState().change(next => { next.editor.notices = next.editor.notices?.filter(item => item.fileId !== n.fileId || item.message !== n.message); })}>{t("已核对")}</Button>} />)}
-    {robot.errors.map((e, i) => <Alert key={i} message={e} type="error" className="space-top" />)}
+    {robot.issues.map((e, i) => <Alert key={i} message={diagnosticText(e)} type="error" className="space-top" />)}
     <Space wrap className="section-tools space-top">
       <Button onClick={() => setForm({ kind: 'add', node: 'joint', name: '', value: '', link: '', parent: selectedParent })}>{t("新增关节与 Link")}</Button>
       <Button disabled={!joint && !link} onClick={() => setForm({ kind: 'rename', node: selectedKind, name: selectedName, value: selectedName, link: '', parent: '' })}>{t("重命名节点")}</Button>

@@ -1,4 +1,4 @@
-import { t, useLocale } from '../i18n';
+import { errorText, t, useLocale } from '../i18n';
 import { editorPhrases } from '../i18n/editor';
 import { closeSearchPanel, openSearchPanel, searchPanelOpen } from '@codemirror/search';
 import { useEffect, useRef } from 'react';
@@ -44,7 +44,7 @@ function DecodedSourceEditor({ file, source }: { file: ProjectFile; source: stri
           EditorView.updateListener.of(update => {
             if (update.docChanged && !readonly && !syncing.current) {
               void useProject.getState().buffer(file.id, update.state.doc.toString())
-                .catch(error => message.error(String(error)));
+                .catch(error => message.error(errorText(error,true)));
             }
           }),
         ],
@@ -83,11 +83,11 @@ function DecodedSourceEditor({ file, source }: { file: ProjectFile; source: stri
       {readonly ? <Tag color="gold">{file.role === 'eni' ? t("ENI 原文 · 只读") : t("模块原文 · 只读")}</Tag> : <>
         <Button onClick={async () => {
           try { await flushBuffers(); message.success(t("源码草稿已保留，可随工程保存")); }
-          catch (error) { message.error(String(error)); }
+          catch (error) { message.error(errorText(error,true)); }
         }}>{t("保留源码草稿")}</Button>
         <Button type="primary" onClick={async () => {
           try { await useProject.getState().apply(file.id); message.success(t("修改已应用")); }
-          catch (error) { message.error(String(error)); }
+          catch (error) { message.error(errorText(error,true)); }
         }}>{t("应用修改")}</Button>
         {draft && <Button onClick={() => useProject.getState().discard(file.id)}>{t("放弃草稿")}</Button>}
       </>}

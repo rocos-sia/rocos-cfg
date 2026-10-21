@@ -1,4 +1,4 @@
-import { t } from '../i18n';
+import { errorText, t } from '../i18n';
 import { useRef, useState } from 'react';
 import { Alert, App, Modal, Select, Space, Table, Tag } from 'antd';
 import { prepareImport } from '../adapters/files';
@@ -21,7 +21,7 @@ export function useImportDialog() {
       const eniFiles = [...base.files.filter(f => f.id === base.entrypoints.master.eniFileId), ...plan.files.filter(f => f.role === 'eni')];
       const hashes = Object.fromEntries(await Promise.all(eniFiles.map(async f => [f.id, await digest(f.bytes)])));
       if (generation.current === ticket) setSession({ base, plan, selection: defaultImportSelection(plan), hashes });
-    } catch (error) { message.error(String(error)); }
+    } catch (error) { message.error(errorText(error,true)); }
   };
   let preview: Project | undefined, error = '';
   if (session) try { preview = applyImport(session.base, session.plan, session.selection); } catch (e) { error = (e as Error).message; }
@@ -40,7 +40,7 @@ export function useImportDialog() {
       try {
         useProject.getState().change(current => Object.assign(current, applyImport(current, session.plan, session.selection)));
         setSession(undefined); message.success(t("文件已导入，请检查引用与绑定；可撤销本次操作"));
-      } catch (e) { message.error(String(e)); }
+      } catch (e) { message.error(errorText(e,true)); }
     }}>
     {session && <Space direction="vertical" style={{ width: '100%' }}>
       <p>{t('本次包含 {count} 个文件。选择活动配置，其他候选仍保留在工程中。普通配置导入不代表已通过工程完整性或消费端验证。',{count:session.plan.files.length})}</p>

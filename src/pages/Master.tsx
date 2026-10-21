@@ -1,4 +1,4 @@
-import { t } from '../i18n';
+import { errorText, diagnosticText, t } from '../i18n';
 import { IghEditor } from '../components/IghEditor';
 import { planSlaveChange } from '../core/bus/igh-edit';
 import { download } from '../adapters/files';
@@ -22,8 +22,8 @@ export function Master({p,analysis,onImport}:{p:Project;analysis?:ProjectAnalysi
   const catalog=analysis.catalog;
   if(!file)return <Alert type="warning" message={t("请导入主站配置")}/>;
   const status=targetStatus(p,'master');
-  if(!status.supported)return <><h1>{t("主站配置")}</h1><Alert type="error" message={status.message} description={t("可查看和保留原文；请在工程总览核对目标规则。")}/><SourceEditor file={file}/>{eni&&<SourceEditor file={eni}/>}</>;
-  const addSlave=()=>{try{useProject.getState().change(next=>Object.assign(next,planSlaveChange(next,{kind:'add'}).project));}catch(e){message.error(String(e));}};
+  if(!status.supported)return <><h1>{t("主站配置")}</h1><Alert type="error" message={diagnosticText(status)} description={t("可查看和保留原文；请在工程总览核对目标规则。")}/><SourceEditor file={file}/>{eni&&<SourceEditor file={eni}/>}</>;
+  const addSlave=()=>{try{useProject.getState().change(next=>Object.assign(next,planSlaveChange(next,{kind:'add'}).project));}catch(e){message.error(errorText(e,true));}};
   return <><div className="page-heading"><div><h1>{t("主站配置")}</h1><p>{t("先定义总线，再关联机器人硬件。")}</p></div><Space><Tag color="blue">{p.entrypoints.master.kind==='igh'?'IgH EtherCAT':'Acontis EC-Master'}</Tag><Button onClick={onImport}>{t("导入配置 / ENI")}</Button>{p.entrypoints.master.kind==='igh'&&<Button onClick={()=>{if(p.editor.buffers[file.id]){message.error(t("请先应用源码草稿"));return;}if(catalog.diagnostics.some(d=>d.severity==='error')){message.error(t("请先修复主站配置错误"));return;}download(file.bytes,'igh.yaml');message.success(t("已生成主站文件下载；空 PDO 条目仍需在目标设备运行时发现"));}}>{t("导出 IgH 主站文件")}</Button>}</Space></div>
     <Card title={t("启动参数")} extra={<Tag>{t("目标")}{p.targets.master.version}</Tag>}><Fields file={file} fields={p.entrypoints.master.kind==='igh'?igh.map(field=>({...field,defaultValue:ighDefaults[field.path.split('.')[1]]})):ecm}/></Card>
     <Card title={t("总线配置视图")} className="space-top" extra={p.entrypoints.master.kind==='igh'?<Button icon={<PlusOutlined aria-hidden />} onClick={addSlave}>{t("新增从站")}</Button>:<Tag color="gold">{t("来自 ENI · 只读")}</Tag>}>
@@ -34,7 +34,7 @@ export function Master({p,analysis,onImport}:{p:Project;analysis?:ProjectAnalysi
         {key:'source',label:t("源文件"),children:<SourceEditor file={file}/>},
         ...(eni?[{key:'eni',label:t("ENI 原文 · 只读"),children:<SourceEditor file={eni}/>}]:[])
       ]}/>
-      {catalog.diagnostics.map((d,i)=><Alert className="space-top" key={i} type={d.severity==='error'?'error':'warning'} showIcon message={d.message}/>)}
+      {catalog.diagnostics.map((d,i)=><Alert className="space-top" key={i} type={d.severity==='error'?'error':'warning'} showIcon message={diagnosticText(d)}/>)}
     </Card>
   </>;
 }

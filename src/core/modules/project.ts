@@ -1,3 +1,4 @@
+import { m as msg, messageFields, errorMessage, type MessageInput } from '../project/messages';
 import { modules } from './index';
 import type { ModuleRegistry } from './registry';
 import type { Project, ProjectFile, ModuleSnapshot, Diagnostic } from '../project/types';
@@ -43,31 +44,31 @@ export function moduleDependencies(p: Project, id: string, registry: ModuleRegis
 }
 export function validateModules(p: Project, active: Set<string>, registry: ModuleRegistry = modules): Diagnostic[] {
   const diagnostics: Diagnostic[] = [], all = moduleSnapshots(p, registry), visiting = new Set<string>(), visited = new Set<string>();
-  const add = (code: string, message: string, fileId?: string, severity: Diagnostic['severity'] = 'error') => diagnostics.push({ code, message, fileId, severity });
+  const add = (code: string, message: MessageInput, fileId?: string, severity: Diagnostic['severity'] = 'error') => diagnostics.push({ code, ...messageFields(message), fileId, severity });
   const walk = (m: ModuleSnapshot) => {
     const key = moduleInstanceKey(m);
-    if (visiting.has(key)) { add('module.cycle', `模块依赖出现环：${key}`, m.fileIds[0]); return; }
+    if (visiting.has(key)) { add('module.cycle', msg("模块依赖出现环：{v0}", {v0:String(key)}), m.fileIds[0]); return; }
     if (visited.has(key)) return;
     visiting.add(key);
     for (const dep of m.dependsOn || []) {
       const target = all.find(x => moduleInstanceKey(x) === dep);
-      if (!target) add('module.dependency', `模块 ${key} 缺少依赖：${dep}`, m.fileIds[0]); else walk(target);
+      if (!target) add('module.dependency', msg("模块 {v0} 缺少依赖：{v1}", {v0:String(key), v1:String(dep)}), m.fileIds[0]); else walk(target);
     }
     visiting.delete(key); visited.add(key);
   };
   for (const m of all) {
     const inUse = m.requiredForRuntime || m.fileIds.some(id => active.has(id));
-    if (!registry.get(m.id, m.version)) add('module.unsupported', `模块 ${m.id} v${m.version} 不受支持；文件和元数据仅保留`, m.fileIds[0], inUse ? 'error' : 'warning');
+    if (!registry.get(m.id, m.version)) add('module.unsupported', msg("模块 {v0} v{v1} 不受支持；文件和元数据仅保留", {v0:String(m.id), v1:String(m.version)}), m.fileIds[0], inUse ? 'error' : 'warning');
     if (inUse) walk(m);
   }
-  for (const id of active) if (!p.files.some(f => f.id === id)) add('module.file', `模块运行依赖文件缺失或指向工程编辑状态：${id}`, id);
+  for (const id of active) if (!p.files.some(f => f.id === id)) add('module.file', msg("模块运行依赖文件缺失或指向工程编辑状态：{v0}", {v0:String(id)}), id);
   for (const file of p.files.filter(f => active.has(f.id))) {
-    if (all.some(m => m.stateFileIds?.includes(file.id)) || ['editor-state', 'profile', 'template'].includes(file.role) || file.path.startsWith('project-data/')) { add('module.state', `运行依赖不能包含模块工具状态：${file.path}`, file.id); continue; }
+    if (all.some(m => m.stateFileIds?.includes(file.id)) || ['editor-state', 'profile', 'template'].includes(file.role) || file.path.startsWith('project-data/')) { add('module.state', msg("运行依赖不能包含模块工具状态：{v0}", {v0:String(file.path)}), file.id); continue; }
     const adapter = fileModule(p, file, registry); if (!adapter) continue;
-    if (adapter.role !== file.role) { add('module.role', `模块 ${adapter.id} 与文件角色 ${file.role} 不一致`, file.id); continue; }
-    if (adapter.capabilities.desktop && registry.platform !== 'desktop') { add('module.desktop', `模块 ${adapter.id} 需要桌面能力`, file.id); continue; }
+    if (adapter.role !== file.role) { add('module.role', msg("模块 {v0} 与文件角色 {v1} 不一致", {v0:String(adapter.id), v1:String(file.role)}), file.id); continue; }
+    if (adapter.capabilities.desktop && registry.platform !== 'desktop') { add('module.desktop', msg("模块 {v0} 需要桌面能力", {v0:String(adapter.id)}), file.id); continue; }
     try { diagnostics.push(...adapter.validate(adapter.parse(file), { project: p, file })); }
-    catch (error) { add('module.parse', `${file.path}：${String(error)}`, file.id); }
+    catch (error) { const detail=messageFields(errorMessage(error,true)); add('module.parse', msg('{path}：{detail}', {path:file.path,detail:detail.text||detail.message}), file.id); }
   }
   return diagnostics;
 }

@@ -1,7 +1,7 @@
 import type { ConfigModule, ModuleExportContext, ModuleReference } from './contracts';
 import { textOf, utf8 } from '../project/types';
 import { readYaml, yamlDocument } from '../documents/yaml';
-import { xmlDocument, serializeXml, elements } from '../documents/xml';
+import { xmlDocument, serializeXml, elements, isLegacyHardware } from '../documents/xml';
 import { appDocument, preserveAppScalars } from '../documents/app-config';
 import { ecmDocument, preserveEcmScalars } from '../bus/ecm';
 import { readRobot } from '../documents/urdf';
@@ -21,11 +21,7 @@ const yaml = (id: string, detect: (v: any) => boolean): ConfigModule => ({ id, v
 });
 const has = (v: any, key: string) => v && typeof v === 'object' && !Array.isArray(v) && key in v;
 // Legacy hardware subtrees are opaque, including any mesh/texture-like fields.
-const urdfResources = (doc: Document, tag: string) => elements(doc, tag).filter(node => {
-  for (let parent = node.parentNode; parent; parent = parent.parentNode)
-    if (parent.nodeType === 1 && (parent as Element).localName === 'hardware') return false;
-  return true;
-});
+const urdfResources = (doc: Document, tag: string) => elements(doc, tag).filter(node => !isLegacyHardware(node));
 export const nativeModules: ConfigModule[] = [
   yaml('igh', v => has(v, 'slaves') && has(v, 'version')),
   { ...yaml('ecm', v => has(v, 'eni')), parse:file=>ecmDocument(file).data, references: v => refs([['eni', v?.eni]]) },
@@ -43,7 +39,7 @@ export const nativeModules: ConfigModule[] = [
   },
   { id: 'urdf', version: 1, role: 'urdf', syntax: 'xml', capabilities,
     detect: f => /\.(xml|urdf)$/i.test(f.path) && xmlDocument(textOf(f)).documentElement.localName === 'robot', parse: f => xmlDocument(textOf(f)),
-    validate: (_, ctx) => readRobot(textOf(ctx.file)).errors.map(message => ({ code: 'urdf.structure', severity: 'error', message, fileId: ctx.file.id })),
+    validate: (_, ctx) => readRobot(textOf(ctx.file)).issues.map(issue => ({ code: 'urdf.structure', severity: 'error', ...issue, fileId: ctx.file.id })),
     references: doc => ['mesh', 'texture'].flatMap(tag => urdfResources(doc, tag).map((n, i) => ({ field: `${tag}[${i}].filename`, original: n.getAttribute('filename') || '', uri: true }))),
     export: (doc, ctx) => xmlExport(doc, ctx),
   },

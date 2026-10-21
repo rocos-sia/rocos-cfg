@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import english from './en.json';
+import { formatMessage, errorMessage, messageFields, type MessageTemplate } from '../core/project/messages';
 export type Locale = 'zh-CN' | 'en-US';
 const messages:Record<string,string>=english;
 const listeners=new Set<()=>void>();
@@ -24,3 +25,8 @@ export function persistenceText(status:string){
   const suffix='；草稿缓存失败';
   return status.endsWith(suffix)?t(status.slice(0,-suffix.length))+t(suffix):t(status);
 }
+/** Re-render worker results in the chosen language without rerunning validation. */
+export function diagnosticText(diagnostic:{message:string;text?:MessageTemplate}){
+  return diagnostic.text ? formatMessage(diagnostic.text,key=>locale==='en-US'&&Object.hasOwn(messages,key)?messages[key]:key) : diagnostic.message;
+}
+export const errorText=(error:unknown,includeName=false)=>diagnosticText(messageFields(errorMessage(error,includeName)));

@@ -22,4 +22,4 @@ export type ArchiveRequest = {[K in keyof ArchiveTasks]:{kind:K}&ArchiveTasks[K]
 export type ArchiveResponse =
   | {type:'progress';percent:number}
   | {type:'result';result:ArchiveTasks[keyof ArchiveTasks]['output']}
-  | {type:'error';message:string};
+  | {type:'error';message:string;text?:import('../core/project/messages').MessageTemplate};

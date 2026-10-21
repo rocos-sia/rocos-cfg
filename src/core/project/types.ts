@@ -35,6 +35,7 @@ export interface Project {
 }
 export interface Diagnostic {
   code: string; severity: 'error' | 'warning' | 'info'; message: string; fileId?: string; field?: string;
+  text?: import('./messages').MessageTemplate;
 }
 export interface BusSignal {
   uid: string; slaveId: number; direction: 'input' | 'output'; sourceName: string; runtimeName: string;

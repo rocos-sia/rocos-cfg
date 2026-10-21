@@ -1,4 +1,4 @@
-import { t } from '../i18n';
+import { errorText, t } from '../i18n';
 import { Alert, App, Descriptions, Input, Tabs } from 'antd';
 import { linkProperties, type GeometryView } from '../core/documents/urdf-geometry';
 import { changeLinkGeometry } from '../core/documents/robot-edit';
@@ -15,7 +15,7 @@ export function LinkProperties({ text, name }: { text: string; name: string }) {
           <Input id={`${group}-${g.index}-${field}`} key={`${name}:${g[field]}`} defaultValue={String(g[field])} onBlur={event => {
             if (event.target.value === g[field]) return;
             try { useProject.getState().change(p => changeLinkGeometry(p, name, group, g.index, field, event.target.value)); }
-            catch (error) { message.error(String(error)); }
+            catch (error) { message.error(errorText(error,true)); }
           }} />
         </div>)}
       </div>)}

@@ -1,3 +1,4 @@
+import { m as msg, messageFields, MessageError, type MessageInput, type MessageTemplate } from '../project/messages';
 import { isMap, isScalar, type Document } from 'yaml';
 import { yamlDocument } from '../documents/yaml';
 import { nativeInt, nativeNode } from '../hardware/schema';
@@ -22,31 +23,31 @@ function boolean(raw:string|undefined):boolean|undefined {
 }
 export function ecmDocument(file:ProjectFile) {
   const doc=yamlDocument(textOf(file));
-  if(!isMap(doc.contents)||!doc.contents.items.length)throw new Error('ECM 启动配置必须为非空映射');
+  if(!isMap(doc.contents)||!doc.contents.items.length)throw new MessageError(msg("ECM 启动配置必须为非空映射"));
   const raw=doc.toJS({maxAliasCount:100}),data:Record<string,any>={...ecmDefaults};
-  const diagnostics:{field:string;message:string}[]=[];
-  const report=(field:string,message:string)=>diagnostics.push({field,message});
-  for(const key of Object.keys(raw))if(!Object.hasOwn(ecmDefaults,key))report(key,`ECM 不支持字段：${key}`);
+  const diagnostics:{field:string;message:string;text?:MessageTemplate}[]=[];
+  const report=(field:string,message:MessageInput)=>diagnostics.push({field,...messageFields(message)});
+  for(const key of Object.keys(raw))if(!Object.hasOwn(ecmDefaults,key))report(key,msg("ECM 不支持字段：{v0}", {v0:String(key)}));
   for(const [key,[min,max]] of Object.entries(ranges)) {
     if(optional.has(key)&&(raw[key]===undefined||raw[key]===null)){data[key]=null;continue;}
     const fallback=key==='cpuidx'?data.id:data[key];
     data[key]=nativeInt(doc,[key],fallback);
-    if(!Number.isInteger(data[key])||data[key]<min||data[key]>max)report(key,`${key} 必须为 ${min}–${max} 范围内的原生整数`);
+    if(!Number.isInteger(data[key])||data[key]<min||data[key]>max)report(key,msg("{v0} 必须为 {v1}–{v2} 范围内的原生整数", {v0:String(key), v1:String(min), v2:String(max)}));
   }
   for(const key of ['eni','log','state','license'])if(Object.hasOwn(raw,key)) {
     data[key]=scalar(doc,key);
-    if(data[key]===undefined)report(key,`${key} 必须为非 null 标量`);
+    if(data[key]===undefined)report(key,msg("{v0} 必须为非 null 标量", {v0:String(key)}));
   }
   if(Object.hasOwn(raw,'ctloff')) {
     data.ctloff=boolean(scalar(doc,'ctloff'));
-    if(data.ctloff===undefined)report('ctloff','ctloff 必须为原生布尔值');
+    if(data.ctloff===undefined)report('ctloff',msg("ctloff 必须为原生布尔值"));
   }
   if(typeof data.state==='string'){
     data.state=data.state.toLowerCase();
-    if(!['init','preop','safeop','op'].includes(data.state))report('state','state 必须为 init、preop、safeop 或 op');
+    if(!['init','preop','safeop','op'].includes(data.state))report('state',msg("state 必须为 init、preop、safeop 或 op"));
   }
-  if(data.eni==='')report('eni','eni 不能为空');
-  for(const [key,max] of [['eni',255],['log',63],['license',63]] as const)if(typeof data[key]==='string'&&(data[key].includes('\0')||new TextEncoder().encode(data[key]).length>max))report(key,`${key} 不能包含 NUL，且不得超过 ${max} 字节；相对路径还需计入部署目录长度`);
+  if(data.eni==='')report('eni',msg("eni 不能为空"));
+  for(const [key,max] of [['eni',255],['log',63],['license',63]] as const)if(typeof data[key]==='string'&&(data[key].includes('\0')||new TextEncoder().encode(data[key]).length>max))report(key,msg("{v0} 不能包含 NUL，且不得超过 {v1} 字节；相对路径还需计入部署目录长度", {v0:String(key), v1:String(max)}));
   return {doc,data,diagnostics};
 }
 

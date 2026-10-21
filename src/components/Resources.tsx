@@ -1,4 +1,4 @@
-import { t } from '../i18n';
+import { errorText, t } from '../i18n';
 import { fileAccess } from '../adapters/file-access';
 import { useRef, useState } from 'react';
 import { Alert, App, Button, Card, Input, Modal, Select, Space, Table, Tag } from 'antd';
@@ -15,10 +15,10 @@ export function Resources({ p }: { p: Project }) {
   const fileInput = useRef<HTMLInputElement>(null), folderInput = useRef<HTMLInputElement>(null);
   const refs = collectReferences(p), active = activeFileIds(p, refs);
   const directories = [...new Set(p.files.flatMap(f => { const parts = f.path.split('/'); return parts.slice(0, -1).map((_, i) => parts.slice(0, i + 1).join('/')); }))].sort();
-  const run = (fn: () => void) => { try { fn(); } catch (error) { message.error(String(error)); } };
+  const run = (fn: () => void) => { try { fn(); } catch (error) { message.error(errorText(error,true)); } };
   const pick=async(directory:boolean)=>{
     if(fileAccess().kind==='browser'){(directory?folderInput:fileInput).current?.click();return;}
-    try{const files=await fileAccess().import(directory);if(files?.length)await selectFiles(files);}catch(e){message.error(String(e));}
+    try{const files=await fileAccess().import(directory);if(files?.length)await selectFiles(files);}catch(e){message.error(errorText(e,true));}
   };
   const update = (ref: FileReference, target: Parameters<typeof mapReference>[2]) => run(() => useProject.getState().change(next => mapReference(next, ref, target)));
   return <>

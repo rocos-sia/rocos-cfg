@@ -1,4 +1,4 @@
-import { t } from '../i18n';
+import { errorText, diagnosticText, t } from '../i18n';
 import { useState } from 'react';
 import { Alert, App, Button, Card, Checkbox, Modal, Select, Space, Table, Tabs, Tag } from 'antd';
 import { type Project, fileById } from '../core/project/types';
@@ -18,13 +18,13 @@ export function Hardware({p,analysis}:{p:Project;analysis?:ProjectAnalysis}) {
   if(!analysis)return null;
   if(!file)return <Alert type="warning" message={t("请先导入或创建 Hardware 文件，再配置设备。")}/>;
   let devices:Record<string,any>[]=[],binds:Record<string,any>[]=[],parseError='';
-  try{const hw=hardwareDocument(file);if(!Array.isArray(hw.data?.hardware)||hw.devices.some(d=>!isRecord(d)))throw new Error(t("hardware 必须为设备映射列表"));devices=hw.devices;}catch(e){parseError=String(e);}
-  try{if(binding)binds=bindingDocument(binding).bindings.filter(isRecord);}catch(e){parseError+=String(e);}
-  const bus=analysis.catalog,d=devices[selected],chain=analysis.chain,chainError=analysis.chainError||'';
+  try{const hw=hardwareDocument(file);if(!Array.isArray(hw.data?.hardware)||hw.devices.some(d=>!isRecord(d)))throw new Error(t("hardware 必须为设备映射列表"));devices=hw.devices;}catch(e){parseError=errorText(e,true);}
+  try{if(binding)binds=bindingDocument(binding).bindings.filter(isRecord);}catch(e){parseError+=errorText(e,true);}
+  const bus=analysis.catalog,d=devices[selected],chain=analysis.chain,chainError=analysis.chainError?diagnosticText({message:analysis.chainError,text:analysis.chainErrorText}):'';
   let legacy:ReturnType<typeof legacyBindingSuggestion>=[],legacyError='';
-  if(!binding)try{legacy=legacyBindingSuggestion(p);}catch(e){legacyError=String(e);}
+  if(!binding)try{legacy=legacyBindingSuggestion(p);}catch(e){legacyError=errorText(e,true);}
   const diagnostics=validateHardware(p,bus,chainError?undefined:chain);
-  const run=(fn:()=>void)=>{try{fn();}catch(e){message.error(String(e));}};
+  const run=(fn:()=>void)=>{try{fn();}catch(e){message.error(errorText(e,true));}};
   const stage=(action:Parameters<typeof planHardware>[1],selection=selected)=>run(()=>{const plan=planHardware(p,action);setPending({...plan,revision:p.revision,selected:selection});setAddType(undefined);});
   const update=(path:(string|number)[],value:unknown)=>run(()=>useProject.getState().yaml(file.id,path,value));
   const freeSlaves=bus.slaves.filter(s=>!devices.some(d=>d.id===s.id));
@@ -48,7 +48,7 @@ export function Hardware({p,analysis}:{p:Project;analysis?:ProjectAnalysis}) {
           {d.type==='ft_sensor'&&<><Alert type="info" message={t("六路 int16 输入；APP 读取原始值并加上各轴偏置，没有独立缩放系数。")}/><Fields file={file} fields={axes.map(k=>field('offset.'+k,t('{axis} 偏置',{axis:k}),'number',{defaultValue:0}))}/></>}
           {d.type==='io'&&<><Alert type="info" message={t("数字量按 32 bit 位掩码访问；数字输出需要输入反馈。当前 APP 的模拟量仅支持一个独立 int16 值。")}/><Fields file={file} fields={channels.map(k=>field(k,k,'number',{min:0,max:k.startsWith('analog')?1:32,defaultValue:0}))}/></>}
           {hardwareTypes.includes(d.type)&&<div className="signal-fields">{(['inputs','outputs'] as const).filter(g=>signals[d.type as HardwareType][g].length).map(group=><div key={group}><h3>{group==='inputs'?t("输入 · TxPDO"):t("输出 · RxPDO")}</h3>{signals[d.type as HardwareType][group].map(spec=><div className="field" key={spec.key}><label htmlFor={`signal-${group}-${spec.key}`}>{spec.key}{spec.required?' *':''} · {spec.bytes*8} bit</label><Select id={`signal-${group}-${spec.key}`} allowClear showSearch optionFilterProp="label" value={typeof d[group]?.[spec.key]==='string'?d[group][spec.key]:undefined} options={bus.signals.filter(s=>s.slaveId===d.id&&s.direction===(group==='inputs'?'input':'output')).map(s=>({label:`${s.runtimeName} · ${s.bitLength} bit / ${s.storageBytes} B · ${s.dataType||t("类型待核对")}${s.resolution==='resolved'?'':t(" · 无法唯一定位")}`,value:s.runtimeName,disabled:s.resolution!=='resolved'}))} onChange={v=>update(['hardware',selected,group,spec.key],v??'')}/></div>)}</div>)}</div>}
-          {deviceDiagnostics.length>0&&<div className="space-top"><Alert type={deviceDiagnostics.some(x=>x.severity==='error')?'error':'warning'} message={t("设备检查")} description={<ul>{deviceDiagnostics.map((x,i)=><li key={i}>{x.message}</li>)}</ul>}/></div>}
+          {deviceDiagnostics.length>0&&<div className="space-top"><Alert type={deviceDiagnostics.some(x=>x.severity==='error')?'error':'warning'} message={t("设备检查")} description={<ul>{deviceDiagnostics.map((x,i)=><li key={i}>{diagnosticText(x)}</li>)}</ul>}/></div>}
         </>}
       </Card>
     </div>
@@ -56,7 +56,7 @@ export function Hardware({p,analysis}:{p:Project;analysis?:ProjectAnalysis}) {
       {!binding&&<Alert type="warning" message={t("缺少显式绑定文件")} description={legacyError||t("APP 将按模型关节顺序对应 Hardware YAML 中 Driver 的顺序；下表仅为推导建议。")} action={<Button disabled={!legacy.length} onClick={()=>run(()=>setPending({...planLegacyBinding(p),revision:p.revision,selected}))}>{t("预览并生成显式绑定")}</Button>}/>}
       {chainError&&<Alert type="error" message={chainError}/>}
       <Table pagination={false} rowKey="name" dataSource={chain} columns={[{title:t("链序号"),render:(_,__,i)=>i+1},{title:'URDF Joint',dataIndex:'name'},{title:'Hardware Drive ID / Slave',render:(_,j)=><Select aria-label={t('{joint} 驱动器绑定',{joint:j.name})} disabled={!binding} allowClear placeholder={t("选择驱动器")} style={{minWidth:210}} value={(binding?binds:legacy).find(b=>b.joint_name===j.name)?.drive_id} options={devices.filter(d=>d.type==='driver').map(d=>({value:d.id,label:`Drive ${d.id} → Slave ${d.id}`,disabled:binds.some(b=>b.drive_id===d.id&&b.joint_name!==j.name)}))} onChange={id=>run(()=>useProject.getState().change(n=>bindJoint(n,j.name,id)))}/>}]} />
-      {diagnostics.filter(d=>binding&&d.fileId===binding.id).map((x,i)=><p key={i}><Tag color={x.severity==='error'?'red':'orange'}>{x.severity==='error'?t("错误"):t("待核对")}</Tag>{x.message}</p>)}
+      {diagnostics.filter(d=>binding&&d.fileId===binding.id).map((x,i)=><p key={i}><Tag color={x.severity==='error'?'red':'orange'}>{x.severity==='error'?t("错误"):t("待核对")}</Tag>{diagnosticText(x)}</p>)}
     </Card>
     <Card className="space-top"><Tabs items={[{key:'hw',label:t("Hardware 源文件"),children:<SourceEditor file={file}/>},{key:'binding',label:t("Binding 源文件"),children:binding?<SourceEditor file={binding}/>:<p>{t("尚未生成显式绑定文件。")}</p>}]} /></Card>
     <Modal title={t('新增 {type}',{type:addType||''})} open={!!addType} onCancel={()=>setAddType(undefined)} okText={t("预览配置草稿")} okButtonProps={{disabled:slave===undefined}} onOk={()=>{if(addType&&slave!==undefined)stage({kind:'add',type:addType,id:slave,joint},devices.length);}}>

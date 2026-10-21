@@ -1,4 +1,4 @@
-import { t } from '../i18n';
+import { errorText, diagnosticText, t } from '../i18n';
 import { useState } from 'react';
 import { Alert, App, Button, Card, Input, Modal, Select, Space, Table, Tag } from 'antd';
 import type { Project } from '../core/project/types';
@@ -17,7 +17,7 @@ export function Modules({ p }: { p: Project }) {
   const file = p.files.find(f => f.id === selected), adapter = file && fileModule(p, file);
   const ui = adapter && moduleUI.find(u => u.id === adapter.id && u.version === adapter.version), Editor = ui?.Editor;
   let issues: string[] = [];
-  if (adapter && file) try { issues = adapter.validate(adapter.parse(file), { project: p, file }).map(d => d.message); } catch (e) { issues = [String(e)]; }
+  if (adapter && file) try { issues = adapter.validate(adapter.parse(file), { project: p, file }).map(d => diagnosticText(d)); } catch (e) { issues = [errorText(e,true)]; }
   return <>
     <Card title={t("附加配置模块")} className="space-top" extra={<Button onClick={() => setCreating(true)}>{t("新建附加配置")}</Button>}>
       <p>{t("附加配置按文件实例保存。未知可选模块原样保留；参与运行依赖时须安装支持该模块的应用版本后再导出。")}</p>
@@ -44,7 +44,7 @@ export function Modules({ p }: { p: Project }) {
           next.files.push(created); definition.attach?.(next, created); next.references = collectReferences(next);
         });
         setCreating(false); setSelected(createdId);
-      } catch (e) { message.error(String(e)); }
+      } catch (e) { message.error(errorText(e,true)); }
     }}>
       <label>{t("配置类型")}<Select aria-label={t("附加配置类型")} style={{ width: '100%' }} value={kind} options={moduleUI.filter(u => u.create).map(u => ({ value: u.id, label: t(u.title) }))} onChange={setKind} /></label>
       <label>{t("工程内路径")}<Input aria-label={t("附加配置路径")} value={path} onChange={e => setPath(e.target.value)} /></label>

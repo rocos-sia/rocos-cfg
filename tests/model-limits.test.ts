@@ -8,6 +8,7 @@ import { validateProject } from '../src/core/validation';
 import { openProject, saveProject } from '../src/core/project/archive';
 import { planRuntime } from '../src/core/export';
 import { resourceProject } from './fixtures/resources';
+import { planRobotChange } from '../src/core/documents/robot-edit';
 const extension='<hardware><limit lower="-0.5" upper="0.75" vel="2" effort="5"/></hardware>';
 const model=`<robot name="r"><link name="base"/><link name="tip"/><joint name="j" type="revolute"><parent link="base"/><child link="tip"/><limit lower="-1" upper="1" velocity="3" effort="10"/>${extension}</joint></robot>`;
 it('edits standard limits while preserving opaque legacy hardware XML',()=>{
@@ -28,6 +29,18 @@ it('keeps missing continuous limits empty even when legacy hardware provides lim
   expect(readRobot(input).errors).toEqual([]);
   expect(controlChain(input,'base','tip')[0]).toMatchObject({lower:'',upper:'',velocity:'',effort:''});
   expect(readRobot(input.replace('name="r"','')).errors).toContain('URDF robot 缺少 name');
+});
+it('does not interpret legacy hardware attributes as references during joint rename or deletion',()=>{
+  const p=resourceProject(),urdf=fileById(p,p.entrypoints.urdf)!;
+  const legacy='<hardware target="joint"><nested><joint name="joint"/><link name="tip"/></nested></hardware>';
+  urdf.bytes=utf8.encode(textOf(urdf).replace('</robot>',legacy+'<custom target="joint"/></robot>'));
+  for(const action of [{kind:'rename',node:'joint',name:'joint',value:'renamed'},{kind:'delete',node:'joint',name:'joint',mode:'subtree'}] as const){
+    const plan=planRobotChange(p,action);
+    expect(textOf(fileById(plan.project,p.entrypoints.urdf)!)).toContain(legacy);
+    expect(plan.warnings).toHaveLength(1);
+    expect(plan.warnings[0]).toContain('custom');
+    expect(plan.project.editor.notices).toHaveLength(1);
+  }
 });
 it('uses only explicit standard URDF limits for optional Hardware drafts',()=>{
   for(const continuous of [false,true]){

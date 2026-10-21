@@ -3,6 +3,7 @@ import { digest, uid, utf8, type Project, type ProjectFile, type FileRole, type 
 import { checkPaths, safePath } from './paths';
 import { collectReferences } from './references';
 import type { ArchiveProgress } from './progress';
+import { FORMAT_VERSION, PROJECT_SCHEMA_VERSION, MigrationRegistry, type MigrationData, type MigrationReport } from './migrations';
 
 const FORMAT = 'rocos-configurator-project';
 const STATE = 'project-data/editor-state.json';
@@ -10,7 +11,7 @@ import { modules } from '../modules';
 import type { ModuleRegistry } from '../modules/registry';
 import { fileModule, moduleSnapshots, unsupportedRequired } from '../modules/project';
 import { validTemplateUse } from './templates';
-export interface Manifest {
+export interface ManifestV1 {
   format: typeof FORMAT; formatVersion: 1; projectSchemaVersion: 1;
   createdWith: { name: string; version: string };
   project: Pick<Project, 'id' | 'name' | 'description' | 'revision' | 'createdAt' | 'modifiedAt'>;
@@ -22,9 +23,14 @@ export interface Manifest {
   portability: { state: 'complete' | 'incomplete'; unresolved: Project['references']; missingSnapshots?:string[] };
   editorStateFileId: string;
 }
+export type Manifest = ManifestV1;
 function object(value: unknown): value is Record<string, any> { return !!value && typeof value === 'object' && !Array.isArray(value); }
 function assert(condition: unknown, message: string): asserts condition { if (!condition) throw new Error(message); }
 export function validateManifest(value: unknown): asserts value is Manifest {
+  validateManifestV1(value);
+}
+/** Keep historical validators pinned when adding a later project schema. */
+export function validateManifestV1(value: unknown): asserts value is ManifestV1 {
   assert(object(value) && value.format === FORMAT, '不是 ROCOS 工程文件');
   assert(value.formatVersion === 1 && value.projectSchemaVersion === 1, '工程格式版本不受支持；请保留原文件并使用对应版本打开');
   assert(object(value.project) && typeof value.project.id === 'string' && typeof value.project.name === 'string' && Number.isSafeInteger(value.project.revision) && value.project.revision >= 0, '工程信息无效');
@@ -89,7 +95,7 @@ export async function saveProject(project: Project, version = 'development', reg
   const snapshotIds=[p.targets.app.profile?.fileId,p.targets.master.profile?.fileId,...(Array.isArray(p.editor.templateUses)?p.editor.templateUses.filter(validTemplateUse).map(use=>use.snapshotFileId):[])].filter((id):id is string=>!!id);
   const missingSnapshots=[...new Set(snapshotIds.filter(id=>!p.files.some(f=>f.id===id)))];
   const manifest: Manifest = {
-    ...original, format: FORMAT, formatVersion: 1, projectSchemaVersion: 1,
+    ...original, format: FORMAT, formatVersion: FORMAT_VERSION, projectSchemaVersion: PROJECT_SCHEMA_VERSION,
     createdWith: original.createdWith || { name: 'ROCOS Configurator', version }, lastSavedWith: { name: 'ROCOS Configurator', version },
     project: { ...original.project, id: p.id, name: p.name, description: p.description, revision: p.revision, createdAt: p.createdAt, modifiedAt: p.modifiedAt },
     snapshotId: uid(), targets: p.targets, entrypoints: p.entrypoints, files: index,
@@ -106,7 +112,7 @@ export async function saveProject(project: Project, version = 'development', reg
   return packed;
 }
 export interface ArchiveSummary { name: string; formatVersion: number; projectSchemaVersion: number; files: { path: string; size: number }[] }
-export type ArchiveInspection = { mode: 'editable'; project: Project } | { mode: 'readonly'; original: Uint8Array; reason: string; summary: ArchiveSummary };
+export type ArchiveInspection = { mode: 'editable'; project: Project; migration?: MigrationReport } | { mode: 'readonly'; original: Uint8Array; reason: string; summary: ArchiveSummary };
 export async function inspectProjectArchive(bytes: Uint8Array, limits: ArchiveLimits = LIMITS, registry: ModuleRegistry = modules, progress?:ArchiveProgress): Promise<ArchiveInspection> {
   progress?.(5);
   const contents = unpackZip(bytes, limits);
@@ -120,16 +126,16 @@ export async function inspectProjectArchive(bytes: Uint8Array, limits: ArchiveLi
     name: typeof raw.project?.name === 'string' ? raw.project.name : '未识别工程', formatVersion: raw.formatVersion, projectSchemaVersion: raw.projectSchemaVersion,
     files: [...contents].map(([path, data]) => ({ path, size: data.length })),
   } });
-  if (raw.formatVersion !== 1 || raw.projectSchemaVersion !== 1) return readonly('工程格式版本不受支持；仅展示 ZIP 摘要，未按该版本契约校验，不重新打包');
-  validateManifest(raw); const manifest = raw;
-  assert(contents.size === manifest.files.length + 1, '存在未登记或缺失文件');
-  let hashed=0;
-  const files = await Promise.all(manifest.files.map(async f => {
-    const data = contents.get(f.path); assert(data && data.length === f.size, `文件缺失或长度不符：${f.path}`);
-    assert(await digest(data) === f.sha256, `文件 SHA-256 不匹配：${f.path}`);
-    progress?.(30+60*(++hashed)/manifest.files.length);
-    return { id: f.id, path: f.path, role: f.role, owner: f.owner, encoding: f.encoding, bytes: data };
-  }));
+  const migrations = projectMigrations(limits);
+  if (raw.formatVersion !== FORMAT_VERSION || !migrations.supports(raw.projectSchemaVersion)) return readonly('工程格式版本不受支持；仅展示 ZIP 摘要，未按该版本契约校验，不重新打包');
+  const payload = new Map(contents); payload.delete('rocos-project.json');
+  let prepared: MigrationData = { manifest: raw, files: payload }, migration: MigrationReport | undefined;
+  // Current archives need no additional copies of potentially large mesh data.
+  if (raw.projectSchemaVersion !== PROJECT_SCHEMA_VERSION) {
+    const result = await migrations.prepare(prepared); prepared = result.data; migration = result.report;
+  }
+  validateManifest(prepared.manifest); const manifest = prepared.manifest;
+  const files = await readArchiveFiles(manifest, prepared.files, limits, progress);
   const unsupported = manifest.modules.filter(m => !registry.get(m.id, m.version));
   const coreIds = [manifest.entrypoints.master.fileId, manifest.entrypoints.master.eniFileId, manifest.entrypoints.app, manifest.entrypoints.urdf, manifest.entrypoints.hardware, manifest.entrypoints.binding, manifest.editorStateFileId];
   const required = unsupported.filter(m => m.required || m.fileIds.some(id => coreIds.includes(id)) || m.stateFileIds?.some(id => coreIds.includes(id)));
@@ -150,10 +156,35 @@ export async function inspectProjectArchive(bytes: Uint8Array, limits: ArchiveLi
   // Also cover unsupported owners omitted from an otherwise legal module list.
   assert(!unsupportedRequired(project, registry).length, '必要模块不受支持');
   progress?.(100);
-  return { mode: 'editable', project };
+  return { mode: 'editable', project, ...(migration ? { migration } : {}) };
 }
 export async function openProject(bytes: Uint8Array, limits: ArchiveLimits = LIMITS, registry: ModuleRegistry = modules, progress?:ArchiveProgress): Promise<Project> {
   const inspection = await inspectProjectArchive(bytes, limits, registry, progress);
   if (inspection.mode === 'readonly') throw new Error(inspection.reason);
   return inspection.project;
+}
+
+/** Shared by ordinary opening and every registered migration schema validator. */
+async function readArchiveFiles(manifest: Manifest, contents: Map<string, Uint8Array>, limits: ArchiveLimits, progress?: ArchiveProgress): Promise<ProjectFile[]> {
+  assert(contents.size === manifest.files.length, '存在未登记或缺失文件');
+  const manifestSize = utf8.encode(JSON.stringify(manifest)).length;
+  assert(manifestSize <= limits.manifest && contents.size + 1 <= limits.entries, '迁移后工程索引超过限额');
+  assert([...contents.values()].every(bytes => bytes.length <= limits.file) && [...contents.values()].reduce((total, bytes) => total + bytes.length, manifestSize) <= limits.total, '工程文件超过限额');
+  let hashed = 0;
+  return Promise.all(manifest.files.map(async f => {
+    const data = contents.get(f.path); assert(data && data.length === f.size, `文件缺失或长度不符：${f.path}`);
+    assert(await digest(data) === f.sha256, `文件 SHA-256 不匹配：${f.path}`);
+    progress?.(30 + 60 * (++hashed) / manifest.files.length);
+    return { id: f.id, path: f.path, role: f.role, owner: f.owner, encoding: f.encoding, bytes: data };
+  }));
+}
+
+function projectMigrations(limits: ArchiveLimits): MigrationRegistry {
+  // v1 is the first published schema. Add real historical validators and
+  // adjacent pure-data transforms here when a model upgrade is introduced.
+  // Never relabel arbitrary archives or manufacture a pre-v1 history.
+  return new MigrationRegistry(PROJECT_SCHEMA_VERSION, [{ version: 1, validate: async data => {
+    validateManifestV1(data.manifest);
+    await readArchiveFiles(data.manifest, data.files, limits);
+  } }], []);
 }

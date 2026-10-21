@@ -1,4 +1,4 @@
-import { t } from '../i18n';
+import { errorText, t } from '../i18n';
 import { useEffect, useState } from 'react';
 import { Alert, App, Button, Card, Input, Select, Space, Table, Tag } from 'antd';
 import type { Document } from 'yaml';
@@ -15,7 +15,7 @@ function TextCell({ label, value, commit }: { label: string; value: unknown; com
   const { message } = App.useApp();
   useEffect(() => setText(saved), [saved]);
   return <Input aria-label={label} value={text} onChange={event => setText(event.target.value)}
-    onBlur={() => { if (text !== saved) try { commit(text); } catch (error) { message.error(String(error)); } }}
+    onBlur={() => { if (text !== saved) try { commit(text); } catch (error) { message.error(errorText(error,true)); } }}
     onPressEnter={event => event.currentTarget.blur()} />;
 }
 const hex = (value: unknown) => typeof value === 'bigint' || typeof value === 'number' ? '0x' + value.toString(16).toUpperCase() : String(value ?? '');
@@ -30,7 +30,7 @@ export function IghEditor({ p }: { p: Project }) {
   const index = Math.min(selected, Math.max(0, slaves.length - 1));
   const slave = slaves[index];
   const edit = (fn: (doc: Document) => void) => useProject.getState().change(next => editProjectYaml(next, masterFileId(next), fn));
-  const run = (fn: () => void) => { try { fn(); } catch (error) { message.error(String(error)); } };
+  const run = (fn: () => void) => { try { fn(); } catch (error) { message.error(errorText(error,true)); } };
   const changeSlave = (action: SlaveAction) => run(() => {
     const preview = planSlaveChange(p, action);
     const apply = () => run(() => {
@@ -55,7 +55,7 @@ export function IghEditor({ p }: { p: Project }) {
         // Keep unfinished values in the editable document as strings. The native
         // schema rejects them for runtime export, but an rcproj can retain them.
         edit(doc => doc.setIn(path, text));
-        message.warning(t('输入已保留，尚未通过校验：{error}',{error:String(error)}));
+        message.warning(t('输入已保留，尚未通过校验：{error}',{error:errorText(error,true)}));
         return;
       }
       edit(doc => setInteger(doc, path, parsed, showHex));

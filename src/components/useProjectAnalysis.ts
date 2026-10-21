@@ -1,3 +1,4 @@
+import { m as msg, errorMessage, messageFields, type MessageTemplate } from '../core/project/messages';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { runArchiveTask } from '../adapters/archive-tasks';
 import { analysisInput, analyzeProject, sameAnalysisInput, type ProjectAnalysis } from '../core/project/analysis';
@@ -19,15 +20,15 @@ export function useProjectAnalysis(project:Project|null,workspaceEpoch:number){
   const large=!!input&&input.files.reduce((total,file)=>total+file.bytes.length,0)>ANALYSIS_WORKER_THRESHOLD;
   const small=useMemo(()=>input&&!large?analyzeProject(input,workspaceEpoch):undefined,[input,large,workspaceEpoch]);
   const [attempt,setAttempt]=useState(0);
-  const [state,setState]=useState<{input:Project;epoch:number;result?:ProjectAnalysis;error?:string}>();
+  const [state,setState]=useState<{input:Project;epoch:number;result?:ProjectAnalysis;error?:string;errorTemplate?:MessageTemplate}>();
   useEffect(()=>{
     if(!input||!large)return;
     const controller=new AbortController();
     void runArchiveTask({kind:'analyze',project:input,workspaceEpoch},{signal:controller.signal}).then(result=>{
       if(controller.signal.aborted)return;
-      if(result.projectId!==input.id||result.revision!==input.revision||result.workspaceEpoch!==workspaceEpoch){setState({input,epoch:workspaceEpoch,error:'解析结果对应的工程版本不一致，请重新解析'});return;}
+      if(result.projectId!==input.id||result.revision!==input.revision||result.workspaceEpoch!==workspaceEpoch){const detail=msg('解析结果对应的工程版本不一致，请重新解析');setState({input,epoch:workspaceEpoch,error:detail.message,errorTemplate:detail.text});return;}
       setState({input,epoch:workspaceEpoch,result});
-    }).catch(error=>{if(!controller.signal.aborted)setState({input,epoch:workspaceEpoch,error:error instanceof Error?error.message:String(error)});});
+    }).catch(error=>{if(!controller.signal.aborted){const detail=messageFields(errorMessage(error));setState({input,epoch:workspaceEpoch,error:detail.message,errorTemplate:detail.text});}});
     return()=>controller.abort();
   },[input,large,workspaceEpoch,attempt]);
   // A render may precede effect cleanup. Never expose the old input's result,
@@ -37,6 +38,6 @@ export function useProjectAnalysis(project:Project|null,workspaceEpoch:number){
   // The view can be associated with a newer revision only because the input
   // comparison above proved the complete parsed document set is unchanged.
   const data=useMemo(()=>result&&project?{...result,revision:project.revision}:undefined,[result,project?.revision]);
-  return {data,pending:!!input&&large&&!current,error:current?.error,
+  return {data,pending:!!input&&large&&!current,error:current?.error,errorTemplate:current?.errorTemplate,
     retry:()=>{setState(undefined);setAttempt(value=>value+1);}};
 }

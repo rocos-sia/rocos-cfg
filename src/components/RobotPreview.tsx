@@ -1,4 +1,5 @@
-import { t, useLocale } from '../i18n';
+import { m as msg, MessageError, errorMessage, messageFields, joinMessages, type MessageInput } from '../core/project/messages';
+import { diagnosticText, t, useLocale } from '../i18n';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, Button, Select, Slider, Space } from 'antd';
 import * as THREE from 'three';
@@ -21,11 +22,14 @@ function disposeObject(object: THREE.Object3D) {
     }
   });
 }
-class PreviewError extends Error {
-  constructor(public source:string,public values:Record<string,string|number>){super(source);}
+class PreviewError extends MessageError {
+  constructor(source:string,values:Record<string,string|number>){super(msg(source,values));}
 }
-type PreviewMessage=string|{source:string;values:Record<string,string|number>};
-const previewError=(error:unknown):PreviewMessage=>error instanceof PreviewError?error:{source:'模型预览失败：{error}',values:{error:String(error)}};
+type PreviewMessage=MessageInput;
+const previewError=(error:unknown):PreviewMessage=>{
+  const detail=messageFields(errorMessage(error,!(error instanceof PreviewError)));
+  return error instanceof PreviewError?detail:msg('模型预览失败：{error}',{error:detail.text||detail.message});
+};
 interface Runtime {
   scene: THREE.Scene; renderer: THREE.WebGLRenderer; camera: THREE.PerspectiveCamera;
   controls: OrbitControls; model?: URDFRobot; highlight?: THREE.BoxHelper; fit: (view?: string) => void;
@@ -97,7 +101,7 @@ export function RobotPreview({ project, robot, selected = '', onSelect }: { proj
       manager.setURLModifier(url => {
         if (url.startsWith('data:')) return url;
         const asset = resolve(sourceId, url);
-        if (!asset) { if (!disposed) setError({source:'缺少或外部模型资源：{path}。结构编辑仍可继续。',values:{path:url}}); return 'data:application/octet-stream;base64,'; }
+        if (!asset) { if (!disposed) setError(msg('缺少或外部模型资源：{path}。结构编辑仍可继续。',{path:url})); return 'data:application/octet-stream;base64,'; }
         const blob = URL.createObjectURL(new Blob([new Uint8Array(asset.bytes).buffer])); urls.push(blob); return blob;
       });
       manager.onLoad = () => { if (!disposed) { r.fit(); highlight(); } };
@@ -106,7 +110,7 @@ export function RobotPreview({ project, robot, selected = '', onSelect }: { proj
     };
     const manager = managerFor(file.id);
     try {
-      if (robot.errors.length) throw new Error(robot.errors.join('；'));
+      if (robot.errors.length) throw new MessageError(joinMessages(robot.issues));
       const loader = new URDFLoader(manager); loader.packages = name => `package://${name}`;
       loader.loadMeshCb = (url, _, done) => {
         try {
@@ -142,7 +146,7 @@ export function RobotPreview({ project, robot, selected = '', onSelect }: { proj
   const setJoint = (name: string, value: number) => { runtime.current?.model?.setJointValue(name, value); setPose(p => ({ ...p, [name]: value })); };
   return <>
     <div className="robot-preview" ref={host} data-selected={selected} />
-    {error && <Alert type="warning" message={typeof error==='string'?t(error):t(error.source,error.values)} />}
+    {error && <Alert type="warning" message={typeof error==='string'?t(error):diagnosticText(error)} />}
     <Space wrap className="space-top"><Button size="small" onClick={() => runtime.current?.fit()}>{t("适应模型")}</Button>{[['front', t("正视")], ['side', t("侧视")], ['top', t("俯视")]].map(([key, label]) => <Button size="small" key={key} onClick={() => runtime.current?.fit(key)}>{label}</Button>)}<Button size="small" onClick={() => { const values = Object.fromEntries(joints.map(j => [j.name, neutral(j)])); runtime.current?.model?.setJointValues(values); setPose(values); }}>{t("重置姿态")}</Button></Space>
     {!!joints.length && <div className="space-top"><Select aria-label={t("预览关节")} style={{ width: '100%' }} value={current?.name} options={joints.map(j => ({ value: j.name, label: `${j.name} · ${j.type === 'prismatic' ? 'm' : 'rad'}` }))} onChange={setPoseJoint} />
       <Slider ariaLabelForHandle={t("关节预览位置")} disabled={!validLimits} min={validLimits ? min : 0} max={validLimits ? max : 1} step={.001} value={pose[current?.name] ?? 0} onChange={value => current && setJoint(current.name, value)} />

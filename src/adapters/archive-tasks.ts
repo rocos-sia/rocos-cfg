@@ -1,6 +1,7 @@
 import type { Project } from '../core/project/types';
 import type { TransferOptions } from './file-access';
 import type { ArchiveTasks, ArchiveResponse } from './archive-protocol';
+import { MessageError } from '../core/project/messages';
 
 type JobWorker=Pick<Worker,'postMessage'|'terminate'|'addEventListener'|'removeEventListener'>;
 export type WorkerFactory=()=>JobWorker;
@@ -28,7 +29,7 @@ export function runArchiveTask<K extends keyof ArchiveTasks>(
       if(ended)return;
       const data=(event as MessageEvent<ArchiveResponse>).data;
       if(data.type==='progress'){options.progress?.(data.percent,100);return;}
-      if(data.type==='error'){fail(new Error(data.message));return;}
+      if(data.type==='error'){fail(new MessageError(data));return;}
       if(data.type==='result'){dispose();resolve(data.result as ArchiveTasks[K]['output']);}
     };
     worker.addEventListener('message',message);worker.addEventListener('error',error);worker.addEventListener('messageerror',decodeError);

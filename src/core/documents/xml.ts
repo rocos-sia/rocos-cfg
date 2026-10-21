@@ -1,9 +1,10 @@
+import { m as msg, MessageError } from '../project/messages';
 import { DOMParser, XMLSerializer } from '@xmldom/xmldom';
 export function xmlDocument(text: string) {
-  if (/<!DOCTYPE|<!ENTITY/i.test(text)) throw new Error('不支持 XML DTD 或外部实体');
+  if (/<!DOCTYPE|<!ENTITY/i.test(text)) throw new MessageError(msg('不支持 XML DTD 或外部实体'));
   const errors: string[] = [];
   const doc = new DOMParser({ errorHandler: { warning: m => errors.push(m), error: m => errors.push(m), fatalError: m => errors.push(m) } }).parseFromString(text, 'application/xml');
-  if (errors.length || !doc.documentElement) throw new Error(errors.join('\n') || 'XML 缺少根节点');
+  if (errors.length || !doc.documentElement) throw new MessageError(errors.length?errors.join('\n'):msg('XML 缺少根节点'));
   return doc;
 }
 export const serializeXml = (doc: Document | Element) => new XMLSerializer().serializeToString(doc);
@@ -25,3 +26,10 @@ export function decodeXml(bytes: Uint8Array): { text: string; encoding: string }
 }
 
 export const elements = (root: Document | Element, tag: string) => Array.from(root.getElementsByTagName('*')).filter(n => n.localName === tag);
+
+// URDF hardware extensions are retained as opaque XML, including their attributes.
+export function isLegacyHardware(node: Node): boolean {
+  for (let current: Node | null = node; current; current = current.parentNode)
+    if (current.nodeType === 1 && (current as Element).localName === 'hardware') return true;
+  return false;
+}

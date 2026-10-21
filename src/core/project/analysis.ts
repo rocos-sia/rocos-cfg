@@ -1,3 +1,4 @@
+import { m as msg, MessageError, errorMessage, messageFields, type MessageTemplate } from './messages';
 import { buildBusCatalog } from '../bus/catalog';
 import { controlChainFromRobot, readRobot, type RobotJoint, type RobotModel } from '../documents/urdf';
 import { appDocument } from '../documents/app-config';
@@ -5,8 +6,8 @@ import { fileById, textOf, type BusCatalog, type Project } from './types';
 
 export interface ProjectAnalysis {
   projectId:string;revision:number;workspaceEpoch:number;
-  catalog:BusCatalog;robot?:RobotModel;robotError?:string;
-  chain:RobotJoint[];chainError?:string;
+  catalog:BusCatalog;robot?:RobotModel;robotError?:string;robotErrorText?:MessageTemplate;
+  chain:RobotJoint[];chainError?:string;chainErrorText?:MessageTemplate;
 }
 // Do not copy meshes, attachments, archive metadata, or unsaved source buffers
 // merely to derive bus/model views. Views represent committed document bytes.
@@ -29,12 +30,12 @@ export function analyzeProject(p:Project,workspaceEpoch:number):ProjectAnalysis 
   const urdf=fileById(p,p.entrypoints.urdf),app=fileById(p,p.entrypoints.app);
   if(urdf)try{
     const {doc:_,...robot}=readRobot(textOf(urdf));result.robot=robot;
-  }catch(error){result.robotError=error instanceof Error?error.message:String(error);}
+  }catch(error){const fields=messageFields(errorMessage(error));result.robotError=fields.message;if(fields.text)result.robotErrorText=fields.text;}
   try{
-    if(!urdf||!app)throw new Error('请先配置 APP 与 URDF');
-    if(!result.robot)throw new Error(result.robotError||'URDF 无法解析');
+    if(!urdf||!app)throw new MessageError(msg("请先配置 APP 与 URDF"));
+    if(!result.robot)throw new MessageError(result.robotError?{message:result.robotError,text:result.robotErrorText}:msg('URDF 无法解析'));
     const startup=appDocument(app).data?.robot;
     result.chain=controlChainFromRobot(result.robot,startup?.base_link,startup?.tip_link);
-  }catch(error){result.chainError=error instanceof Error?error.message:String(error);}
+  }catch(error){const fields=messageFields(errorMessage(error));result.chainError=fields.message;if(fields.text)result.chainErrorText=fields.text;}
   return result;
 }
