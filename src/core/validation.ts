@@ -17,7 +17,7 @@ export function validateProject(p: Project, registry: ModuleRegistry = modules):
   const expected = [{id:p.entrypoints.app,role:'app'}, {id:p.entrypoints.urdf,role:'urdf'}, {id:p.entrypoints.hardware,role:'hardware'}, {id:p.entrypoints.binding,role:'binding'}];
   for (const {id,role} of expected) if (!fileById(p,id) || fileById(p,id)?.role !== role) add('entrypoint.missing',msg("缺少有效的 {v0} 入口", {v0:String(role)}),id||undefined);
   diagnostics.push(...validateModules(p, active, registry));
-  for(const notice of p.editor.notices || []) add('editor.review',notice.message,notice.fileId,undefined,'warning');
+  for(const notice of p.editor.notices || []) add('editor.review',notice,notice.fileId,undefined,'warning');
   for(const id of Object.keys(p.editor.buffers).filter(id => active.has(id))) add('editor.pending',msg("存在未应用的源码草稿"),id);
   for(const ref of references.filter(r => active.has(r.sourceFileId))) if(ref.state!=='internal') add('reference.'+ref.state,msg("{v0}：{v1} {v2}", {v0:String(ref.field), v1:String(ref.original), v2:(ref.state==='external' ? msg("由目标环境提供").text : msg("未找到").text)}),ref.sourceFileId,ref.field,ref.state==='external'?'warning':'error');
   for (const [sourceId, field, targetId] of [[p.entrypoints.app,'robot.urdf',p.entrypoints.urdf], [p.entrypoints.app,'robot.hardware_config',p.entrypoints.hardware], [p.entrypoints.app,'robot.joint_binding',p.entrypoints.binding], ...(p.entrypoints.master.kind==='ecm'?[[p.entrypoints.master.fileId,'eni',p.entrypoints.master.eniFileId]]:[])] as (string|null)[][]) {

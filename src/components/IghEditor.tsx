@@ -1,11 +1,11 @@
-import { errorText, t } from '../i18n';
+import { diagnosticText, errorText, t } from '../i18n';
 import { useEffect, useState } from 'react';
-import { Alert, App, Button, Card, Input, Select, Space, Table, Tag } from 'antd';
+import { Alert, App, Button, Card, Input, Select, Space, Table, Tag, Modal } from 'antd';
 import type { Document } from 'yaml';
 import { fileById, textOf, type Project } from '../core/project/types';
 import { readYaml } from '../core/documents/yaml';
 import { exactInteger, SDO_TYPES } from '../core/bus/igh';
-import { editProjectYaml, masterFileId, modifySequence, planSlaveChange, setInteger, type SlaveAction } from '../core/bus/igh-edit';
+import { editProjectYaml, masterFileId, modifySequence, planSlaveChange, setInteger, type SlaveAction, type SlavePlan } from '../core/bus/igh-edit';
 import { useProject } from '../store';
 import { Fields } from './Fields';
 
@@ -21,7 +21,8 @@ function TextCell({ label, value, commit }: { label: string; value: unknown; com
 const hex = (value: unknown) => typeof value === 'bigint' || typeof value === 'number' ? '0x' + value.toString(16).toUpperCase() : String(value ?? '');
 
 export function IghEditor({ p }: { p: Project }) {
-  const { message, modal } = App.useApp();
+  const { message } = App.useApp();
+  const [pending,setPending]=useState<{plan:SlavePlan;revision:number;epoch:number}>();
   const [selected, setSelected] = useState(0);
   const file = fileById(p, p.entrypoints.master.fileId)!;
   let config: any;
@@ -38,9 +39,7 @@ export function IghEditor({ p }: { p: Project }) {
       useProject.getState().change(next => Object.assign(next, preview.project)); setSelected(preview.selected);
     });
     if (action.kind === 'add') apply();
-    else modal.confirm({ title: t("确认从站及绑定变更"), width: 620,
-      content: <ul>{preview.impacts.map((impact, i) => <li key={i}>{impact}</li>)}</ul>,
-      okText: t("应用变更"), cancelText: t("取消"), onOk: apply });
+    else setPending({plan:preview,revision:p.revision,epoch:useProject.getState().workspaceEpoch});
   });
   const rowActions = (path: (string | number)[], row: number, count: number, label: string) => <Space size={4}>
     <Button size="small" aria-label={t('{label}上移',{label})} disabled={!row} onClick={() => run(() => edit(doc => modifySequence(doc, path, 'up', row)))}>↑</Button>
@@ -61,6 +60,14 @@ export function IghEditor({ p }: { p: Project }) {
       edit(doc => setInteger(doc, path, parsed, showHex));
     }} />;
   return <div>
+    <Modal title={t("确认从站及绑定变更")} open={!!pending} width={620} okText={t("应用变更")} cancelText={t("取消")} onCancel={()=>setPending(undefined)} onOk={()=>run(()=>{
+      if(!pending)return;
+      const state=useProject.getState();
+      if(state.workspaceEpoch!==pending.epoch||state.project?.id!==p.id||state.project.revision!==pending.revision)throw new Error(t("工程已变化，请重新查看影响后操作"));
+      state.change(next=>Object.assign(next,pending.plan.project));setSelected(pending.plan.selected);setPending(undefined);
+    })}>
+      <ul>{pending?.plan.impactMessages.map((issue,i)=><li key={i}>{diagnosticText(issue)}</li>)}</ul>
+    </Modal>
     <Space wrap className="section-tools">
       <Select aria-label={t("编辑从站")} style={{ minWidth: 230 }} value={slaves.length ? index : undefined} placeholder={t("请选择从站")}
         options={slaves.map((s: any, i: number) => ({ value: i, label: `${i} · ${s?.name ?? t("无名称")}` }))} onChange={setSelected} />

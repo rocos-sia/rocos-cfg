@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import english from './en.json';
-import { formatMessage, errorMessage, messageFields, type MessageTemplate } from '../core/project/messages';
+import { formatMessage, validMessageTemplate, errorMessage, messageFields, type MessageTemplate } from '../core/project/messages';
 export type Locale = 'zh-CN' | 'en-US';
 const messages:Record<string,string>=english;
 const listeners=new Set<()=>void>();
@@ -27,6 +27,11 @@ export function persistenceText(status:string){
 }
 /** Re-render worker results in the chosen language without rerunning validation. */
 export function diagnosticText(diagnostic:{message:string;text?:MessageTemplate}){
-  return diagnostic.text ? formatMessage(diagnostic.text,key=>locale==='en-US'&&Object.hasOwn(messages,key)?messages[key]:key) : diagnostic.message;
+  if(validMessageTemplate(diagnostic.text))try{
+    // Bound expansion as well as template depth when rendering archived notices.
+    if(formatMessage(diagnostic.text,undefined,65536)===diagnostic.message)
+      return formatMessage(diagnostic.text,key=>locale==='en-US'&&Object.hasOwn(messages,key)?messages[key]:key,65536);
+  }catch{/* Unsupported optional metadata must not prevent reading the original notice. */}
+  return diagnostic.message;
 }
 export const errorText=(error:unknown,includeName=false)=>diagnosticText(messageFields(errorMessage(error,includeName)));

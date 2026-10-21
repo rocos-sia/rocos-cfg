@@ -1,3 +1,4 @@
+import { m as msg, MessageError, type DiagnosticMessage } from '../project/messages';
 import { makeFile } from '../project/create';
 import { targetStatus } from '../project/profiles';
 import { checkPaths, relativePath } from '../project/paths';
@@ -12,16 +13,16 @@ import { signalTypeProblem } from './validation';
 
 export function hardwareChain(p:Project) {
   const app=fileById(p,p.entrypoints.app),urdf=fileById(p,p.entrypoints.urdf);
-  if(!app||!urdf)throw new Error('请先配置 APP 与 URDF');
+  if(!app||!urdf)throw new MessageError(msg("请先配置 APP 与 URDF"));
   const robot=appDocument(app).data?.robot;
   return controlChain(textOf(urdf),robot?.base_link,robot?.tip_link);
 }
 export function bindJoint(p:Project,name:string,id:number|undefined) {
-  const file=fileById(p,p.entrypoints.binding);if(!file)throw new Error('缺少绑定文件');
+  const file=fileById(p,p.entrypoints.binding);if(!file)throw new MessageError(msg("缺少绑定文件"));
   const {bindings}=bindingDocument(file);
-  if(bindings.some(b=>!isRecord(b)))throw new Error('请先修复无效绑定条目');
+  if(bindings.some(b=>!isRecord(b)))throw new MessageError(msg("请先修复无效绑定条目"));
   const matches=bindings.map((b,i)=>b.joint_name===name?i:-1).filter(i=>i>=0);
-  if(matches.length>1)throw new Error('关节绑定重复，请先在源码中修复');
+  if(matches.length>1)throw new MessageError(msg("关节绑定重复，请先在源码中修复"));
   editProjectYaml(p,file.id,doc=>{
     const seq=sequence(doc,['joint_bindings'],true);
     doc.set('binding_policy','explicit');
@@ -31,19 +32,19 @@ export function bindJoint(p:Project,name:string,id:number|undefined) {
   });
 }
 export function planHardware(p:Project,action:{kind:'add';type:HardwareType;id:number;joint?:string}|{kind:'delete'|'id';index:number;id?:number}) {
-  const target=targetStatus(p,'app');if(!target.supported)throw new Error(target.message);
+  const target=targetStatus(p,'app');if(!target.supported)throw new MessageError(target);
   const next=structuredClone(p),file=fileById(next,next.entrypoints.hardware);
-  if(!file)throw new Error('缺少 Hardware 文件');
-  const {devices}=hardwareDocument(file),bus=buildBusCatalog(next),impacts:string[]=[];
-  if(devices.some(d=>!isRecord(d)||!Number.isInteger(d.id)))throw new Error('请先修复无效硬件条目或 ID');
+  if(!file)throw new MessageError(msg("缺少 Hardware 文件"));
+  const {devices}=hardwareDocument(file),bus=buildBusCatalog(next),impacts:DiagnosticMessage[]=[];
+  if(devices.some(d=>!isRecord(d)||!Number.isInteger(d.id)))throw new MessageError(msg("请先修复无效硬件条目或 ID"));
   if(action.kind==='add'||action.kind==='id') {
-    if(!bus.slaves.some(s=>s.id===action.id))throw new Error('请选择实际存在的主站从站');
-    if(devices.some((d,i)=>d.id===action.id&&(action.kind==='add'||i!==action.index)))throw new Error('该从站已被 Hardware 使用');
+    if(!bus.slaves.some(s=>s.id===action.id))throw new MessageError(msg("请选择实际存在的主站从站"));
+    if(devices.some((d,i)=>d.id===action.id&&(action.kind==='add'||i!==action.index)))throw new MessageError(msg("该从站已被 Hardware 使用"));
   }
   if(action.kind==='add') {
     const joint=action.joint?hardwareChain(next).find(j=>j.name===action.joint):undefined;
-    if(action.joint&&!joint)throw new Error('关节已不在控制链');
-    if(joint){const bf=fileById(next,next.entrypoints.binding);if(bf&&bindingDocument(bf).bindings.some(b=>b?.joint_name===joint.name))throw new Error('该关节已有绑定');}
+    if(action.joint&&!joint)throw new MessageError(msg("关节已不在控制链"));
+    if(joint){const bf=fileById(next,next.entrypoints.binding);if(bf&&bindingDocument(bf).bindings.some(b=>b?.joint_name===joint.name))throw new MessageError(msg("该关节已有绑定"));}
     const d:Record<string,any>={id:action.id,type:action.type,inputs:{}};
     if(action.type!=='ft_sensor')d.outputs={};
     if(action.type==='driver') {
@@ -51,29 +52,29 @@ export function planHardware(p:Project,action:{kind:'add';type:HardwareType;id:n
       Object.assign(d,{joint_name:joint?.name??'',torque_source:'load_torque',transform:{ratio:null,offset_pos_cnt:null,cnt_per_unit:null,torque_per_unit:null,user_unit_name:joint?.type==='prismatic'?'m':'rad'},limit:{lower:n(joint?.lower),upper:n(joint?.upper),vel:n(joint?.velocity),effort:n(joint?.effort),acc:null,jerk:null}});
       for(const group of ['inputs','outputs'] as const)for(const spec of signals.driver[group]) {
         const candidates=bus.signals.filter(s=>s.slaveId===action.id&&s.direction===(group==='inputs'?'input':'output')&&s.resolution==='resolved'&&s.storageBytes===spec.bytes&&s.bitLength===spec.bytes*8&&!signalTypeProblem(s.dataType,spec)&&(spec.index!==undefined&&s.index===spec.index&&s.subIndex===0||s.runtimeName===spec.key));
-        if(candidates.length===1){d[group][spec.key]=candidates[0].runtimeName;impacts.push(`${group}.${spec.key} → ${candidates[0].runtimeName}（候选，需复核）`);}
+        if(candidates.length===1){d[group][spec.key]=candidates[0].runtimeName;impacts.push(msg("{v0}.{v1} → {v2}（候选，需复核）", {v0:String(group), v1:String(spec.key), v2:String(candidates[0].runtimeName)}));}
       }
-      impacts.push('换算比例、零点、力矩系数、acc / jerk 保持未配置；需要人工核对后才能导出运行包。');
+      impacts.push(msg("换算比例、零点、力矩系数、acc / jerk 保持未配置；需要人工核对后才能导出运行包。"));
     } else if(action.type==='ft_sensor')d.offset=Object.fromEntries(['fx','fy','fz','tx','ty','tz'].map(k=>[k,0]));
     else Object.assign(d,{digital_in_channels:0,digital_out_channels:0,analog_in_channels:0,analog_out_channels:0});
     editProjectYaml(next,file.id,doc=>sequence(doc,['hardware'],true).add(doc.createNode(d)));
-    if(joint){bindJoint(next,joint.name,action.id);impacts.unshift(`${joint.name} → Drive ${action.id} → Slave ${action.id}；带入标准 URDF 已提供的限位，缺省值留空待核对。`);}
-    impacts.unshift(`新增 ${action.type}，使用 Slave ${action.id}。`);
+    if(joint){bindJoint(next,joint.name,action.id);impacts.unshift(msg("{v0} → Drive {v1} → Slave {v2}；带入标准 URDF 已提供的限位，缺省值留空待核对。", {v0:String(joint.name), v1:String(action.id), v2:String(action.id)}));}
+    impacts.unshift(msg("新增 {v0}，使用 Slave {v1}。", {v0:String(action.type), v1:String(action.id)}));
   } else {
-    const old=devices[action.index];if(!old)throw new Error('设备已不存在');
+    const old=devices[action.index];if(!old)throw new MessageError(msg("设备已不存在"));
     editProjectYaml(next,file.id,doc=>{const list=sequence(doc,['hardware']);if(action.kind==='delete')list.items.splice(action.index,1);else doc.setIn(['hardware',action.index,'id'],action.id);});
     const bf=fileById(next,next.entrypoints.binding);
     if(bf){const {bindings}=bindingDocument(bf);editProjectYaml(next,bf.id,doc=>{
       const list=sequence(doc,['joint_bindings']);
-      for(let i=bindings.length-1;i>=0;i--){const b=bindings[i];if(!isRecord(b)||!isMap(list.items[i]))throw new Error('请先修复无效绑定条目');if(b.drive_id!==old.id)continue;
-        impacts.push(`${b.joint_name}：${action.kind==='delete'?'移除绑定':`Drive ${old.id} → ${action.id}`}`);
+      for(let i=bindings.length-1;i>=0;i--){const b=bindings[i];if(!isRecord(b)||!isMap(list.items[i]))throw new MessageError(msg("请先修复无效绑定条目"));if(b.drive_id!==old.id)continue;
+        impacts.push(msg("{v0}：{v1}", {v0:String(b.joint_name), v1:(action.kind==='delete' ? msg("移除绑定").text : String(`Drive ${old.id} → ${action.id}`))}));
         if(action.kind==='delete')list.items.splice(i,1);else doc.setIn(['joint_bindings',i,'drive_id'],action.id);
       }
     });}
-    impacts.unshift(action.kind==='delete'?`删除设备 ${old.id} 及关联绑定。`:`设备 ${old.id} → ${action.id}；PDO 名称保留，需核对新从站中的变量。`);
+    impacts.unshift(action.kind==='delete' ? msg("删除设备 {v0} 及关联绑定。", {v0:String(old.id)}) : msg("设备 {v0} → {v1}；PDO 名称保留，需核对新从站中的变量。", {v0:String(old.id), v1:String(action.id)}));
   }
   for(const key of Object.keys(next.editor.confirmations))if(key.startsWith('drive:'))delete next.editor.confirmations[key];
-  return {project:next,impacts};
+  return {project:next,impacts:impacts.map(issue=>issue.message),impactMessages:impacts};
 }
 
 // An approval belongs to the exact mechanical/bus configuration that was reviewed.
@@ -88,11 +89,11 @@ export function invalidateHardwareConfirmation(before:Project,after:Project) {
 }
 
 export function legacyBindingSuggestion(p:Project) {
-  if(fileById(p,p.entrypoints.binding))throw new Error('已存在显式绑定文件，不使用缺失文件回退规则');
-  const hw=fileById(p,p.entrypoints.hardware);if(!hw)throw new Error('缺少 Hardware 文件');
+  if(fileById(p,p.entrypoints.binding))throw new MessageError(msg("已存在显式绑定文件，不使用缺失文件回退规则"));
+  const hw=fileById(p,p.entrypoints.hardware);if(!hw)throw new MessageError(msg("缺少 Hardware 文件"));
   const chain=hardwareChain(p),drives=hardwareDocument(hw).devices.filter(d=>d?.type==='driver');
-  if(!chain.length||chain.length!==drives.length)throw new Error('缺少绑定文件时，APP 要求控制关节数与 Driver 数量相同');
-  if(drives.some(d=>!Number.isInteger(d.id))||new Set(drives.map(d=>d.id)).size!==drives.length)throw new Error('Driver ID 无效或重复，无法推导绑定');
+  if(!chain.length||chain.length!==drives.length)throw new MessageError(msg("缺少绑定文件时，APP 要求控制关节数与 Driver 数量相同"));
+  if(drives.some(d=>!Number.isInteger(d.id))||new Set(drives.map(d=>d.id)).size!==drives.length)throw new MessageError(msg("Driver ID 无效或重复，无法推导绑定"));
   // Robot::jointBinding uses YAML drive order, not sorted IDs or joint_name.
   return chain.map((j,i)=>({joint_name:j.name,drive_id:drives[i].id as number}));
 }
@@ -104,11 +105,12 @@ export function planLegacyBinding(p:Project) {
     const candidate=(base?base+'/':'')+`joint_binding${i?'-'+i:''}.yaml`;
     try{checkPaths([...next.files.map(f=>f.path),candidate]);path=candidate;break;}catch{/* Choose a non-conflicting filename. */}
   }
-  if(!path)throw new Error('无法找到无冲突的绑定文件路径');
+  if(!path)throw new MessageError(msg("无法找到无冲突的绑定文件路径"));
   const file=makeFile(path,'binding','binding_policy: explicit\njoint_bindings: []\n');next.files.push(file);next.entrypoints.binding=file.id;
   for(const b of suggested)bindJoint(next,b.joint_name,b.drive_id);
   editProjectYaml(next,app.id,doc=>doc.setIn(['robot','joint_binding'],relativePath(app.path,path)));
   next.references=next.references.filter(r=>r.sourceFileId!==app.id||r.field!=='robot.joint_binding');
   for(const k of Object.keys(next.editor.confirmations))if(k.startsWith('drive:'))delete next.editor.confirmations[k];
-  return {project:next,impacts:[`新增显式绑定文件 ${path}，同步 APP 引用。`,...suggested.map(b=>`${b.joint_name} → Drive ${b.drive_id}（来源：Hardware YAML 中 Driver 的顺序）`)]};
+  const impactMessages=[msg('新增显式绑定文件 {path}，同步 APP 引用。',{path}),...suggested.map(b=>msg('{joint} → Drive {id}（来源：Hardware YAML 中 Driver 的顺序）',{joint:b.joint_name,id:b.drive_id}))];
+  return {project:next,impacts:impactMessages.map(issue=>issue.message),impactMessages};
 }

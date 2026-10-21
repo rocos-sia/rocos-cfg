@@ -5,12 +5,34 @@ export interface MessageTemplate {
 }
 export interface DiagnosticMessage { message: string; text: MessageTemplate }
 export type MessageInput = string | {message:string;text?:MessageTemplate};
-export function formatMessage(text: MessageTemplate, translate: (key: string) => string = key => key): string {
-  return translate(text.key).replace(/\{([a-zA-Z][a-zA-Z0-9_]*)\}/g, (token, key) => {
-    if (!Object.hasOwn(text.values, key)) return token;
-    const value = text.values[key];
-    return typeof value === 'object' ? formatMessage(value, translate) : String(value);
-  });
+/** Optional text metadata may come from an older or third-party project archive. */
+export function validMessageTemplate(value:unknown):value is MessageTemplate {
+  let remaining=1024;
+  const object=(v:unknown):v is Record<string,unknown>=>!!v&&typeof v==='object'&&!Array.isArray(v);
+  const visit=(v:unknown,depth:number):boolean=>{
+    if(--remaining<0||depth>16||!object(v)||typeof v.key!=='string'||!object(v.values))return false;
+    return Object.values(v.values).every(item=>{
+      if(--remaining<0)return false;
+      return typeof item==='string'||typeof item==='number'&&Number.isFinite(item)||visit(item,depth+1);
+    });
+  };
+  return visit(value,0);
+}
+export function formatMessage(text: MessageTemplate, translate: (key: string) => string = key => key, maxLength=Infinity): string {
+  const template=translate(text.key),tokens=/\{([a-zA-Z][a-zA-Z0-9_]*)\}/g;
+  if(template.length>maxLength)throw new RangeError('Message exceeds display limit');
+  const parts:string[]=[];let length=0,offset=0,match:RegExpExecArray|null;
+  const append=(part:string)=>{length+=part.length;if(length>maxLength)throw new RangeError('Message exceeds display limit');parts.push(part);};
+  while((match=tokens.exec(template))){
+    append(template.slice(offset,match.index));
+    if(!Object.hasOwn(text.values,match[1]))append(match[0]);
+    else{
+      const value=text.values[match[1]];
+      append(typeof value==='object'?formatMessage(value,translate,maxLength-length):String(value));
+    }
+    offset=match.index+match[0].length;
+  }
+  append(template.slice(offset));return parts.join('');
 }
 export function m(key: string, values: MessageTemplate['values'] = {}): DiagnosticMessage {
   const text = {key, values};

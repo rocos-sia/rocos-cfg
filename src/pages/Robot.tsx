@@ -6,7 +6,7 @@ import { type Project, fileById, textOf } from '../core/project/types';
 import { type RobotJointParameters } from '../core/documents/urdf';
 import type { ProjectAnalysis } from '../core/project/analysis';
 import { appDocument } from '../core/documents/app-config';
-import { changeJointParameter, planRobotChange, type RobotAction } from '../core/documents/robot-edit';
+import { changeJointParameter, planRobotChange, type RobotAction, type RobotPlan } from '../core/documents/robot-edit';
 import { useProject } from '../store';
 import { SourceEditor } from '../components/SourceEditor';
 import { RobotPreview } from '../components/RobotPreview';
@@ -17,6 +17,7 @@ export function Robot({ p, analysis, onImport }: { p: Project; analysis?:Project
   const file = fileById(p, p.entrypoints.urdf), app = fileById(p, p.entrypoints.app);
   const [selected, setSelected] = useState(''), [search, setSearch] = useState(''), [form, setForm] = useState<Form | null>(null);
   const { message, modal } = App.useApp();
+  const [pending,setPending]=useState<{plan:RobotPlan;revision:number;epoch:number}>();
   if(!analysis)return null;
   if (!file) return <Button onClick={onImport}>{t("导入 URDF")}</Button>;
   const robot=analysis.robot;
@@ -43,14 +44,7 @@ export function Robot({ p, analysis, onImport }: { p: Project; analysis?:Project
   const prepare = (action: RobotAction) => {
     try {
       const plan = planRobotChange(p, action);
-      modal.confirm({ title: t("确认模型与引用变更"), width: 680, okText: t("应用模型变更"), cancelText: t("取消"),
-        content: <><ul>{plan.impacts.map((line, i) => <li key={i}>{line}</li>)}</ul>{plan.warnings.map((line, i) => <Alert key={i} type="warning" message={line} />)}<p>{t("整次操作可撤销。")}</p></>,
-        onOk: () => {
-          if (useProject.getState().project?.revision !== p.revision) { message.error(t("工程已变化，请重新查看影响")); return; }
-          useProject.getState().change(next => Object.assign(next, plan.project));
-          if (plan.selection) setSelected(plan.selection);
-        },
-      });
+      setPending({plan,revision:p.revision,epoch:useProject.getState().workspaceEpoch});
       return true;
     } catch (error) { message.error(errorText(error,true)); return false; }
   };
@@ -68,8 +62,20 @@ export function Robot({ p, analysis, onImport }: { p: Project; analysis?:Project
   };
   const selectedParent = link || joint?.child || robot.roots[0] || '';
   return <>
+    <Modal title={t("确认模型与引用变更")} open={!!pending} width={680} okText={t("应用模型变更")} cancelText={t("取消")} onCancel={()=>setPending(undefined)} onOk={()=>{
+      if(!pending)return;
+      const state=useProject.getState();
+      if(state.workspaceEpoch!==pending.epoch||state.project?.id!==p.id||state.project.revision!==pending.revision){message.error(t("工程已变化，请重新查看影响"));return;}
+      state.change(next=>Object.assign(next,pending.plan.project));
+      if(pending.plan.selection)setSelected(pending.plan.selection);
+      setPending(undefined);
+    }}>
+      <ul>{pending?.plan.impactMessages.map((issue,i)=><li key={i}>{diagnosticText(issue)}</li>)}</ul>
+      {pending?.plan.warningMessages.map((issue,i)=><Alert key={i} type="warning" message={diagnosticText(issue)}/>)}
+      <p>{t("整次操作可撤销。")}</p>
+    </Modal>
     <div className="page-heading"><div><h1>{t("机器人模型")}</h1><p>{t("编辑结构与属性，预览模型；预览不会驱动真实设备。")}</p></div><Button onClick={onImport}>{t("导入 URDF / Mesh")}</Button></div>
-    {(p.editor.notices || []).filter(n => n.fileId === file.id).map((n, i) => <Alert key={`notice-${i}`} message={n.message} type="warning" className="space-top" action={<Button size="small" onClick={() => useProject.getState().change(next => { next.editor.notices = next.editor.notices?.filter(item => item.fileId !== n.fileId || item.message !== n.message); })}>{t("已核对")}</Button>} />)}
+    {(p.editor.notices || []).filter(n => n.fileId === file.id).map((n, i) => <Alert key={`notice-${i}`} message={diagnosticText(n)} type="warning" className="space-top" action={<Button size="small" onClick={() => useProject.getState().change(next => { next.editor.notices = next.editor.notices?.filter(item => item.fileId !== n.fileId || item.message !== n.message); })}>{t("已核对")}</Button>} />)}
     {robot.issues.map((e, i) => <Alert key={i} message={diagnosticText(e)} type="error" className="space-top" />)}
     <Space wrap className="section-tools space-top">
       <Button onClick={() => setForm({ kind: 'add', node: 'joint', name: '', value: '', link: '', parent: selectedParent })}>{t("新增关节与 Link")}</Button>
