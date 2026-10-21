@@ -1,3 +1,4 @@
+import { useLocalizedModal } from './useLocalizedModal';
 import { errorText, t } from '../i18n';
 import { fileAccess } from '../adapters/file-access';
 import { useRef, useState } from 'react';
@@ -8,7 +9,7 @@ import { mapReference, moveResource, setPackagePath } from '../core/project/reso
 import { useImportDialog } from './ImportDialog';
 import { useProject } from '../store';
 export function Resources({ p }: { p: Project }) {
-  const { message, modal } = App.useApp();
+  const { message } = App.useApp();const modal=useLocalizedModal();
   const { selectFiles, dialog } = useImportDialog();
   const [packageName, setPackageName] = useState(''), [packagePath, setPackageDirectory] = useState<string>();
   const [moving, setMoving] = useState<{ id: string; path: string } | null>(null);
@@ -21,6 +22,19 @@ export function Resources({ p }: { p: Project }) {
     try{const files=await fileAccess().import(directory);if(files?.length)await selectFiles(files);}catch(e){message.error(errorText(e,true));}
   };
   const update = (ref: FileReference, target: Parameters<typeof mapReference>[2]) => run(() => useProject.getState().change(next => mapReference(next, ref, target)));
+  const markExternal = (ref: FileReference) => {
+    const epoch=useProject.getState().workspaceEpoch;
+    modal.confirm(()=>({
+      title:t("由目标环境提供此资源"),
+      content:t('{path} 将保留原路径，运行包不会携带该资源。请确认目标电脑已准备好此文件或目录。',{path:ref.original}),
+      okText:t("标记为外部依赖"),
+      onOk:()=>run(()=>{
+        const state=useProject.getState();
+        if(state.workspaceEpoch!==epoch||state.project?.revision!==p.revision)throw new Error(t("工程已变化，请重新预览"));
+        state.change(next=>mapReference(next,ref,{external:true}));
+      }),
+    }));
+  };
   return <>
     {dialog}
     <Card className="space-top" title={t("资源与路径映射")} extra={<Space><Button onClick={() => void pick(false)}>{t("导入资源 / ZIP")}</Button><Button onClick={() => void pick(true)}>{t("导入资源目录")}</Button></Space>}>
@@ -33,7 +47,7 @@ export function Resources({ p }: { p: Project }) {
           value={ref.state === 'internal' ? ref.kind === 'directory' ? ref.targetPath : ref.targetFileId : undefined}
           options={ref.kind === 'directory' ? directories.map(value => ({ value, label: value })) : p.files.filter(f => !['editor-state', 'profile', 'template'].includes(f.role)).map(f => ({ value: f.id, label: f.path }))}
           onChange={value => update(ref, ref.kind === 'directory' ? { directory: value } : { fileId: value })} /> },
-        { title: t("操作"), width: 180, render: (_, ref) => <Space><Button size="small" onClick={() => update(ref, null)}>{t("自动解析")}</Button><Button size="small" onClick={() => modal.confirm({ title: t("由目标环境提供此资源"), content: t('{path} 将保留原路径，运行包不会携带该资源。请确认目标电脑已准备好此文件或目录。',{path:ref.original}), okText: t("标记为外部依赖"), onOk: () => update(ref, { external: true }) })}>{t("外部")}</Button></Space> },
+        { title: t("操作"), width: 180, render: (_, ref) => <Space><Button size="small" onClick={() => update(ref, null)}>{t("自动解析")}</Button><Button size="small" onClick={() => markExternal(ref)}>{t("外部")}</Button></Space> },
       ]} />
       <Alert type="info" message={t("DAE 图片及 glTF buffers/images 会纳入依赖检查。脚本、网页和其他附件的动态依赖只做原样保留，需在目标环境验证。")} />
     </Card>

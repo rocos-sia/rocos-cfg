@@ -1,3 +1,4 @@
+import { useLocalizedModal } from '../components/useLocalizedModal';
 import { diagnosticText, errorText, t } from '../i18n';
 import { LinkProperties } from '../components/LinkProperties';
 import { useState } from 'react';
@@ -16,7 +17,7 @@ interface TreeNode { key: string; title: string; children?: TreeNode[] }
 export function Robot({ p, analysis, onImport }: { p: Project; analysis?:ProjectAnalysis; onImport: () => void }) {
   const file = fileById(p, p.entrypoints.urdf), app = fileById(p, p.entrypoints.app);
   const [selected, setSelected] = useState(''), [search, setSearch] = useState(''), [form, setForm] = useState<Form | null>(null);
-  const { message, modal } = App.useApp();
+  const { message } = App.useApp();const modal=useLocalizedModal();
   const [pending,setPending]=useState<{plan:RobotPlan;revision:number;epoch:number}>();
   if(!analysis)return null;
   if (!file) return <Button onClick={onImport}>{t("导入 URDF")}</Button>;
@@ -55,10 +56,16 @@ export function Robot({ p, analysis, onImport }: { p: Project; analysis?:Project
   };
   const deleteNode = () => {
     if (!link && !joint) return;
-    const decision = modal.confirm({ title: t("选择删除方式"), content: t("级联删除会移除整个子树；保留后代会将子关节挂到上一级 Link，并保留其局部 origin。"), okText: t("级联删除子树"), cancelText: t("取消"),
-      footer: (_, { OkBtn, CancelBtn }) => <Space><CancelBtn /><Button onClick={() => { decision.destroy(); prepare({ kind: 'delete', node: selectedKind, name: selectedName, mode: 'reattach' }); }}>{t("删除并保留后代")}</Button><OkBtn /></Space>,
-      onOk: () => { prepare({ kind: 'delete', node: selectedKind, name: selectedName, mode: 'subtree' }); },
-    });
+    const epoch=useProject.getState().workspaceEpoch;
+    const choose=(mode:'reattach'|'subtree')=>{
+      const state=useProject.getState();
+      if(state.workspaceEpoch!==epoch||state.project?.revision!==p.revision){message.error(t("工程已变化，请重新查看影响"));return;}
+      prepare({kind:'delete',node:selectedKind,name:selectedName,mode});
+    };
+    const decision = modal.confirm(()=>({ title: t("选择删除方式"), content: t("级联删除会移除整个子树；保留后代会将子关节挂到上一级 Link，并保留其局部 origin。"), okText: t("级联删除子树"), cancelText: t("取消"),
+      footer: (_, { OkBtn, CancelBtn }) => <Space wrap><CancelBtn /><Button onClick={() => { decision.destroy(); choose('reattach'); }}>{t("删除并保留后代")}</Button><OkBtn /></Space>,
+      onOk: () => choose('subtree'),
+    }));
   };
   const selectedParent = link || joint?.child || robot.roots[0] || '';
   return <>

@@ -1,3 +1,4 @@
+import { useLocalizedModal } from './useLocalizedModal';
 import { errorText, diagnosticText, t } from '../i18n';
 import { useState } from 'react';
 import { Alert, App, Button, Card, Modal, Space, Table, Tag } from 'antd';
@@ -6,15 +7,15 @@ import { validateTemplates } from '../core/project/templates';
 import { fileById, textOf, type Project, type ProjectFile } from '../core/project/types';
 import { useProject } from '../store';
 export function Provenance({p}:{p:Project}){
-  const [selected,setSelected]=useState<ProjectFile>();const {message,modal}=App.useApp();
+  const [selected,setSelected]=useState<ProjectFile>();const {message}=App.useApp();const modal=useLocalizedModal();
   const rows=(['master','app'] as const).map(slot=>({slot,label:slot==='master'?t("主站"):'APP',...targetStatus(p,slot)}));
   const adopt=(slot:'app'|'master')=>{
     const definition=profileDefinition(slot==='app'?'app':p.entrypoints.master.kind),epoch=useProject.getState().workspaceEpoch;
-    modal.confirm({title:t("确认目标规则"),content:<><p>{t('当前目标：{target}。将使用内置 {id} v{version}（{baseline}）并保存规则快照。',{target:p.targets[slot].version,id:definition.id,version:definition.version,baseline:definition.target.version})}</p><p>{t("配置原文和已有快照保留；这不证明原文件来自该版本。机械参数与绑定需重新确认，再重新校验。")}</p></>,okText:t("使用此规则"),onOk:()=>{
+    modal.confirm(()=>({title:t("确认目标规则"),content:<><p>{t('当前目标：{target}。将使用内置 {id} v{version}（{baseline}）并保存规则快照。',{target:p.targets[slot].version,id:definition.id,version:definition.version,baseline:definition.target.version})}</p><p>{t("配置原文和已有快照保留；这不证明原文件来自该版本。机械参数与绑定需重新确认，再重新校验。")}</p></>,okText:t("使用此规则"),onOk:()=>{
       try{if(useProject.getState().workspaceEpoch!==epoch||useProject.getState().project?.revision!==p.revision)throw new Error(t("工程已变化，请重新确认目标规则"));
         useProject.getState().change(next=>{const status=targetStatus(next,slot);if(status.supported&&status.legacy)attachProfile(next,slot);else{next.targets[slot]=baseTarget(slot==='app'?'app':next.entrypoints.master.kind);attachProfile(next,slot,true);}next.editor.confirmations={};});
       }catch(e){message.error(errorText(e,true));}
-    }});
+    }}));
   };
   const show=(id?:string)=>{const file=fileById(p,id);if(file&&file.bytes.length>1024*1024)message.warning(t("快照超过预览限额，可在导出页下载原文查看"));else if(file)setSelected(file);else message.warning(t("快照文件不存在"));};
   const issues=validateTemplates(p);

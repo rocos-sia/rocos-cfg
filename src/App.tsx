@@ -1,3 +1,4 @@
+import { useLocalizedModal } from './components/useLocalizedModal';
 import { errorText, diagnosticText, persistenceText, setLocale, t, useLocale, type Locale } from './i18n';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { App as AntApp, Alert, Badge, Button, Card, ConfigProvider, Dropdown, Empty, Input, Menu, Modal, Select, Space, Statistic, Table, Tag, theme } from 'antd';
@@ -24,7 +25,7 @@ const pages=[{key:'overview',label:'工程总览',icon:<FolderOpenOutlined aria-
 function Workspace({dark,toggle}:{dark:boolean;toggle:()=>void}) {
   const locale=useLocale();
   const {selectFiles,dialog:importDialog}=useImportDialog();
-  const state=useProject(),p=state.project;const {message,modal}=AntApp.useApp();
+  const state=useProject(),p=state.project;const {message}=AntApp.useApp();const modal=useLocalizedModal();
   const [route,setRoute]=useState(location.hash.slice(2)||'overview'),[newOpen,setNewOpen]=useState(false),[name,setName]=useState('我的机器人'),[kind,setKind]=useState<MasterKind>('igh'),[busy,setBusy]=useState(false);
   const [robotSeed,setRobotSeed]=useState('blank'),[robotPrefix,setRobotPrefix]=useState('arm'),[robotLength,setRobotLength]=useState(0.3);
   const [report,setReport]=useState<{revision:number;items:Diagnostic[]}|null>(null);
@@ -52,12 +53,12 @@ function Workspace({dark,toggle}:{dark:boolean;toggle:()=>void}) {
     setReport({revision:snapshot.revision,items:result.diagnostics});
     if(!result.prepared){message.error(t("运行配置仍有错误，请先修复诊断结果"));return;}
     const prepared=result.prepared,{plan}=prepared;
-    modal.confirm({title:t("运行包导出计划"),width:760,content:<div><p>{directory?t("将在所选父目录中创建独立目录，不覆盖已有配置。"):''}{t('将导出 {count} 个文件，来自 revision {revision}。消费端、SDK 与实机验证尚未执行。',{count:plan.files.length,revision:snapshot.revision})}</p><ul>{plan.rewrites.map((r,i)=><li key={i}>{snapshot.files.find(f=>f.id===r.fileId)?.path} · {r.field}<br/>{r.from} → {r.to}</li>)}</ul>{!!plan.external.length&&<Alert type="warning" message={t('包含 {count} 项目标环境依赖，详见包内 ROCOS-DEPLOYMENT.txt。',{count:plan.external.length})}/>}<details><summary>{t("文件清单")}</summary><ul>{plan.files.map(f=><li key={f.path}>{f.path}</li>)}</ul></details></div>,okText:directory?t("选择父目录并导出"):t("下载运行包"),onOk:()=>{if(!current()){message.error(t("工程已变化，请重新检查导出计划"));return;}if('bytes' in prepared)return download(prepared.bytes,snapshot.name+'-config.zip');
+    modal.confirm(()=>({title:t("运行包导出计划"),width:760,content:<div><p>{directory?t("将在所选父目录中创建独立目录，不覆盖已有配置。"):''}{t('将导出 {count} 个文件，来自 revision {revision}。消费端、SDK 与实机验证尚未执行。',{count:plan.files.length,revision:snapshot.revision})}</p><ul>{plan.rewrites.map((r,i)=><li key={i}>{snapshot.files.find(f=>f.id===r.fileId)?.path} · {r.field}<br/>{r.from} → {r.to}</li>)}</ul>{!!plan.external.length&&<Alert type="warning" message={t('包含 {count} 项目标环境依赖，详见包内 ROCOS-DEPLOYMENT.txt。',{count:plan.external.length})}/>}<details><summary>{t("文件清单")}</summary><ul>{plan.files.map(f=><li key={f.path}>{f.path}</li>)}</ul></details></div>,okText:directory?t("选择父目录并导出"):t("下载运行包"),onOk:()=>{if(!current()){message.error(t("工程已变化，请重新检查导出计划"));return;}if('bytes' in prepared)return download(prepared.bytes,snapshot.name+'-config.zip');
       return files.compute(async options=>{
         const access=fileAccess();if(!access.writeDirectory)throw new Error(t("当前环境不支持目录导出，请使用 ZIP"));
         const written=await access.writeDirectory(prepared.plan.files,snapshot.name,options);
-        if(written)modal.success({title:t("运行目录已导出"),content:<div><p>{written.displayPath}</p><p>{t('{count} 个文件已写入并校验。当前工程与保存目标保持不变。',{count:written.files})}</p>{written.warning&&<Alert type="warning" message={diagnosticText({message:written.warning,text:written.warningText})}/>}</div>});
-      });}});
+        if(written)modal.success(()=>({title:t("运行目录已导出"),content:<div><p>{written.displayPath}</p><p>{t('{count} 个文件已写入并校验。当前工程与保存目标保持不变。',{count:written.files})}</p>{written.warning&&<Alert type="warning" message={diagnosticText({message:written.warning,text:written.warningText})}/>}</div>}));
+      });}}));
   });
   const analysis=useProjectAnalysis(p,state.workspaceEpoch),catalog=analysis.data?.catalog;
   const diagnostics=report?.items||[];const errors=diagnostics.filter(d=>d.severity==='error').length;

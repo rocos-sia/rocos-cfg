@@ -137,7 +137,8 @@ try {
   await writeFile(join(artifacts,'desktop-model.png'),Buffer.from(await request('GET',`/session/${session}/screenshot`),'base64'));
   await rename('unsaved-close-check');
   const window=xdotool('search','--onlyvisible','--name','^ROCOS Configurator$').split('\n')[0];
-  xdotool('windowactivate','--sync',window);xdotool('key','--clearmodifiers','alt+F4');await visibleText('当前工程有未保存修改');await click('取消');await visibleText('unsaved-close-check');
+  xdotool('windowactivate','--sync',window);xdotool('key','--clearmodifiers','alt+F4');await visibleText('当前工程有未保存修改');
+  await language('en-US');await visibleText('Close application');await visibleText('Close without saving');await click('Cancel');await visibleText('unsaved-close-check');await language('zh-CN');
   assert.equal((await manifest(returned)).project.name,'browser-return');
   console.log('Desktop: large URDF background parsing, WebGL viewport and cancelled unsaved-close confirmation passed.');
   const damagedPath=join(temp,'damaged.rcproj'),damagedEntries=unzipSync(await readFile(returned));
@@ -176,7 +177,8 @@ try {
   for(const file of receipt.files){const bytes=await readFile(join(runtimeDir,file.path));assert.equal(bytes.length,file.size);assert.equal(createHash('sha256').update(bytes).digest('hex'),file.sha256);}
   assert.equal(await readFile(join(exportParent,'existing.txt'),'utf8'),'preserve existing');assert.deepEqual(await readFile(runtimeProject),sourceBefore);
   assert.match(await readFile(join(runtimeDir,'models/robot.urdf'),'utf8'),/filename="meshes\/part.dae"/);
-  await click('知道了');await click('检查并导出配置');await visibleText('运行包导出计划');await click('下载运行包');
+  await language('en-US');await visibleText('Runtime directory exported');await visibleText('files written and verified');
+  await language('zh-CN');await visibleText('运行目录已导出');await click('知道了');await click('检查并导出配置');await visibleText('运行包导出计划');await click('下载运行包');
   const runtimeZip=join(temp,'runtime.zip');await picker(runtimeZip,'Save File');await wait(()=>{accessSync(runtimeZip);return true;},'runtime zip');
   const runtimeEntries=unzipSync(await readFile(runtimeZip));assert.deepEqual(Object.keys(runtimeEntries).sort(),receipt.files.map(f=>f.path).sort());
   for(const [path,bytes] of Object.entries(runtimeEntries))assert.deepEqual(await readFile(join(runtimeDir,path)),Buffer.from(bytes));
@@ -186,7 +188,7 @@ try {
     status:'passed',applicationVersion:expectedVersion,platform:process.platform,architecture:process.arch,node:process.version,
     binary:{path:binary,sha256:createHash('sha256').update(await readFile(binary)).digest('hex')},
     scope:'Actual Linux WebKit application, native GTK dialogs and temporary files in an isolated display.',
-    checks:['displayed and archived application version','initial save and verified backup','external conflict with bilingual reason and difference view','save as','native directory import','same-ID copy and new-ID fork','browser and desktop archive roundtrip','background URDF analysis and WebGL viewport','cancelled unsaved close','damaged archive recovery and protected source','directory picker cancellation','directory receipt and file hashes','ZIP and directory byte parity','retained project save target'],
+    checks:['displayed and archived application version','initial save and verified backup','external conflict with bilingual reason and difference view','save as','native directory import','same-ID copy and new-ID fork','browser and desktop archive roundtrip','background URDF analysis and WebGL viewport','bilingual unsaved-close confirmation and cancellation','damaged archive recovery and protected source','directory picker cancellation','bilingual directory-export success dialog','directory receipt and file hashes','ZIP and directory byte parity','retained project save target'],
     notExecuted:['Windows installation','independent offline computer','power loss or full disk','controller SDK or physical devices'],
   },null,2)+'\n');
 } catch(e) {

@@ -1,3 +1,4 @@
+import { useLocalizedModal } from './useLocalizedModal';
 import { m as msg, errorMessage, messageFields, type MessageInput } from '../core/project/messages';
 import { diagnosticText, errorText, t } from '../i18n';
 import { useEffect, useRef, useState } from 'react';
@@ -21,7 +22,7 @@ export function useProjectFiles(onLoaded:()=>void) {
   const [failed,setFailed]=useState<FailedArchive>();
   const [migration,setMigration]=useState<PendingMigration>();
   const [conflict,setConflict]=useState<{handle:FileHandle;error:FileAccessError;disk?:OpenedFile;reason?:MessageInput;rows?:{path:string;change:string;current:string;disk:string}[]}>();
-  const {message,modal}=App.useApp();const afterLoad=useRef(onLoaded);afterLoad.current=onLoaded;
+  const {message}=App.useApp();const modal=useLocalizedModal();const afterLoad=useRef(onLoaded);afterLoad.current=onLoaded;
   const run=async<T,>(work:(controller:AbortController)=>Promise<T>):Promise<T|undefined>=>{
     if(operation.current){message.info(t("已有文件操作，请等待完成或取消"));return;}
     const controller=new AbortController();operation.current=controller;setBusy(true);setProgress(undefined);
@@ -36,13 +37,13 @@ export function useProjectFiles(onLoaded:()=>void) {
     if(current)await new Promise<void>((resolve,reject)=>{
       const cancel=async()=>{signal?.removeEventListener('abort',abort);try{if(opened?.handle)await access.release(opened.handle);if(protectedSource)await access.release(protectedSource);resolve();}catch(e){reject(e);}};
       const abort=()=>{dialog.destroy();void cancel();};
-      const dialog=modal.confirm({title:t("切换工程"),width:680,content:<>
+      const dialog=modal.confirm(()=>({title:t("切换工程"),width:680,content:<>
       <p>{t("当前工程将被替换。请确认已保存或下载需要留存的修改。")}</p>
       {opened&&<><Alert type="info" message={current.id===next.id?t("这是同一工程的另一份文件；将按所选快照打开，不合并工作区修改。"):t("所选文件属于另一个工程。")}/>
         <p>{t("当前：")}{current.name} · revision {current.revision}<br/>{t("所选：")}{next.name} · revision {next.revision}</p>
         <details><summary>{t("工程与快照标识")}</summary><p style={{overflowWrap:'anywhere'}}>{t("当前工程 UUID：")}{current.id}<br/>{t("当前载入快照：")}{current.snapshotId}<br/>{t("所选工程 UUID：")}{next.id}<br/>{t("所选快照：")}{next.snapshotId}</p></details>
       </>}
-    </>,okText:t("打开新工程"),onOk:async()=>{signal?.removeEventListener('abort',abort);try{await load();resolve();}catch(e){reject(e);throw e;}},onCancel:cancel});
+    </>,okText:t("打开新工程"),onOk:async()=>{signal?.removeEventListener('abort',abort);try{await load();resolve();}catch(e){reject(e);throw e;}},onCancel:cancel}));
       signal?.addEventListener('abort',abort,{once:true});if(signal?.aborted)abort();
     });
     else await load();
@@ -98,7 +99,7 @@ export function useProjectFiles(onLoaded:()=>void) {
   const closeHandler=useRef<()=>void>(()=>{});
   closeHandler.current=()=>{
     if(operation.current||access.busy){message.info(t("文件操作尚未完成，请等待或取消后再关闭"));return;}
-    void flushBuffers().then(()=>{const state=useProject.getState();if(state.project&&state.project.revision!==state.savedRevision)modal.confirm({title:t("关闭应用"),content:t("当前工程有未保存修改。浏览器缓存不代替工程文件；可取消后先保存。"),okText:t("不保存并关闭"),cancelText:t("取消"),onOk:()=>access.close?.()});else return access.close?.();}).catch(e=>message.error(errorText(e,true)));
+    void flushBuffers().then(()=>{const state=useProject.getState();if(state.project&&state.project.revision!==state.savedRevision)modal.confirm(()=>({title:t("关闭应用"),content:t("当前工程有未保存修改。浏览器缓存不代替工程文件；可取消后先保存。"),okText:t("不保存并关闭"),cancelText:t("取消"),onOk:()=>access.close?.()}));else return access.close?.();}).catch(e=>message.error(errorText(e,true)));
   };
   useEffect(()=>{
     if(!access.onClose)return;let dispose:(()=>void)|undefined,ended=false;
