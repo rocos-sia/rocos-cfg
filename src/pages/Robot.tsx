@@ -1,0 +1,113 @@
+import { t } from '../i18n';
+import { LinkProperties } from '../components/LinkProperties';
+import { useState } from 'react';
+import { Alert, App, Button, Card, Input, Modal, Select, Space, Tree } from 'antd';
+import { type Project, fileById, textOf } from '../core/project/types';
+import { type RobotJointParameters } from '../core/documents/urdf';
+import type { ProjectAnalysis } from '../core/project/analysis';
+import { appDocument } from '../core/documents/app-config';
+import { changeJointParameter, planRobotChange, type RobotAction } from '../core/documents/robot-edit';
+import { useProject } from '../store';
+import { SourceEditor } from '../components/SourceEditor';
+import { RobotPreview } from '../components/RobotPreview';
+
+type Form = { kind: 'rename' | 'add'; node: 'link' | 'joint'; name: string; value: string; link: string; parent: string };
+interface TreeNode { key: string; title: string; children?: TreeNode[] }
+export function Robot({ p, analysis, onImport }: { p: Project; analysis?:ProjectAnalysis; onImport: () => void }) {
+  const file = fileById(p, p.entrypoints.urdf), app = fileById(p, p.entrypoints.app);
+  const [selected, setSelected] = useState(''), [search, setSearch] = useState(''), [form, setForm] = useState<Form | null>(null);
+  const { message, modal } = App.useApp();
+  if(!analysis)return null;
+  if (!file) return <Button onClick={onImport}>{t("导入 URDF")}</Button>;
+  const robot=analysis.robot;
+  if(!robot)return <><Alert message={analysis.robotError||t("URDF 无法解析")} type="error" /><SourceEditor file={file} /></>;
+  const selectedKind = selected.startsWith('link:') ? 'link' : 'joint';
+  const selectedName = selected.slice(selected.indexOf(':') + 1);
+  const joint = selectedKind === 'joint' ? robot.joints.find(j => j.name === selectedName) : undefined;
+  const link = selectedKind === 'link' && robot.links.includes(selectedName) ? selectedName : undefined;
+  let startup: any; try { startup = app && appDocument(app).data; } catch {}
+  const seen = new Set<string>(); let conflict = 0;
+  const node = (name: string): TreeNode => {
+    if (seen.has(name)) return { key: `conflict:${conflict++}`, title: t('{name} [重复父节点 / 环]',{name}) };
+    seen.add(name);
+    return { key: `link:${name}`, title: `${name}${[startup?.robot?.base_link, startup?.robot?.tip_link].includes(name) ? t(" [控制链端点]") : ''}`,
+      children: robot.joints.filter(j => j.parent === name).map(j => ({ key: `joint:${j.name}`, title: `${j.name} [${j.type}${j.mimic ? ' · mimic' : ''}]`, children: [node(j.child)] })) };
+  };
+  const tree = robot.roots.map(node);
+  const disconnected = robot.links.filter(name => !seen.has(name));
+  if (disconnected.length) tree.push({ key: 'unconnected', title: t("未连接节点 / 冲突节点"), children: disconnected.filter(name => !seen.has(name)).map(node) });
+  const filter = (items: TreeNode[]): TreeNode[] => items.flatMap(item => {
+    if (item.title.toLowerCase().includes(search.toLowerCase())) return [item];
+    const children = filter(item.children || []); return children.length ? [{ ...item, children }] : [];
+  });
+  const prepare = (action: RobotAction) => {
+    try {
+      const plan = planRobotChange(p, action);
+      modal.confirm({ title: t("确认模型与引用变更"), width: 680, okText: t("应用模型变更"), cancelText: t("取消"),
+        content: <><ul>{plan.impacts.map((line, i) => <li key={i}>{line}</li>)}</ul>{plan.warnings.map((line, i) => <Alert key={i} type="warning" message={line} />)}<p>{t("整次操作可撤销。")}</p></>,
+        onOk: () => {
+          if (useProject.getState().project?.revision !== p.revision) { message.error(t("工程已变化，请重新查看影响")); return; }
+          useProject.getState().change(next => Object.assign(next, plan.project));
+          if (plan.selection) setSelected(plan.selection);
+        },
+      });
+      return true;
+    } catch (error) { message.error(String(error)); return false; }
+  };
+  const edit = (field: keyof RobotJointParameters, value: string) => {
+    if (!joint) return;
+    try { useProject.getState().change(next => changeJointParameter(next, joint.name, field, value)); }
+    catch (error) { message.error(String(error)); }
+  };
+  const deleteNode = () => {
+    if (!link && !joint) return;
+    const decision = modal.confirm({ title: t("选择删除方式"), content: t("级联删除会移除整个子树；保留后代会将子关节挂到上一级 Link，并保留其局部 origin。"), okText: t("级联删除子树"), cancelText: t("取消"),
+      footer: (_, { OkBtn, CancelBtn }) => <Space><CancelBtn /><Button onClick={() => { decision.destroy(); prepare({ kind: 'delete', node: selectedKind, name: selectedName, mode: 'reattach' }); }}>{t("删除并保留后代")}</Button><OkBtn /></Space>,
+      onOk: () => { prepare({ kind: 'delete', node: selectedKind, name: selectedName, mode: 'subtree' }); },
+    });
+  };
+  const selectedParent = link || joint?.child || robot.roots[0] || '';
+  return <>
+    <div className="page-heading"><div><h1>{t("机器人模型")}</h1><p>{t("编辑结构与属性，预览模型；预览不会驱动真实设备。")}</p></div><Button onClick={onImport}>{t("导入 URDF / Mesh")}</Button></div>
+    {(p.editor.notices || []).filter(n => n.fileId === file.id).map((n, i) => <Alert key={`notice-${i}`} message={n.message} type="warning" className="space-top" action={<Button size="small" onClick={() => useProject.getState().change(next => { next.editor.notices = next.editor.notices?.filter(item => item.fileId !== n.fileId || item.message !== n.message); })}>{t("已核对")}</Button>} />)}
+    {robot.errors.map((e, i) => <Alert key={i} message={e} type="error" className="space-top" />)}
+    <Space wrap className="section-tools space-top">
+      <Button onClick={() => setForm({ kind: 'add', node: 'joint', name: '', value: '', link: '', parent: selectedParent })}>{t("新增关节与 Link")}</Button>
+      <Button disabled={!joint && !link} onClick={() => setForm({ kind: 'rename', node: selectedKind, name: selectedName, value: selectedName, link: '', parent: '' })}>{t("重命名节点")}</Button>
+      <Button danger disabled={(!joint && !link) || robot.roots.includes(link || '')} onClick={deleteNode}>{t("删除节点")}</Button>
+    </Space>
+    <div className="robot-workspace">
+      <Card title={t("Link / Joint 结构")}><Input.Search aria-label={t("搜索模型节点")} placeholder={t("搜索节点名称")} value={search} onChange={e => setSearch(e.target.value)} allowClear />
+        <div className="model-tree"><Tree key={`${file.id}:${search}:${robot.links.join('|')}:${robot.joints.map(j => `${j.name}:${j.parent}`).join('|')}`} defaultExpandAll treeData={filter(tree)} selectedKeys={[selected]} onSelect={keys => setSelected(String(keys[0] || ''))} /></div>
+      </Card>
+      <Card title={robot.name || t("模型预览")} className="preview-card"><RobotPreview project={p} robot={robot} selected={selected} onSelect={setSelected} /><div className="preview-caption">{t("配置预览 · m / rad · 拖动旋转，滚轮缩放")}</div></Card>
+      <Card title={joint?.name || link || t("节点属性")}>
+        {joint ? <div className="fields single">
+          <div className="field"><label htmlFor="joint-parent">{t("父 Link（重挂接）")}</label><Select id="joint-parent" value={joint.parent} options={robot.links.map(value => ({ value, label: value }))} onChange={parent => prepare({ kind: 'reparent', joint: joint.name, parent })} /></div>
+          <div className="field"><label htmlFor="joint-child">{t("子 Link")}</label><Select id="joint-child" value={joint.child} options={robot.links.map(value => ({ value, label: value }))} onChange={child => prepare({ kind: 'rechild', joint: joint.name, child })} /></div><p className="muted">{t("调整子树位置通常使用父 Link；子 Link 变更也必须保持树结构完整。")}</p>
+          {(['type', 'xyz', 'rpy', ...(['fixed', 'floating'].includes(joint.type) ? [] : ['axis']), ...(['revolute', 'prismatic'].includes(joint.type) ? ['lower', 'upper'] : []), ...(['revolute', 'continuous', 'prismatic'].includes(joint.type) ? ['velocity', 'effort'] : [])] as (keyof RobotJointParameters)[]).map(key => <div className="field" key={key}>
+            <label htmlFor={`joint-${key}`}>{({ type: t("关节类型"), xyz: t("位置 xyz (m)"), rpy: t("旋转 rpy (rad)"), axis: t("轴向 xyz"), lower: t("位置下限"), upper: t("位置上限"), velocity: t("速度上限"), effort: t("力 / 力矩上限") } as Record<string, string>)[key]}</label>
+            {key === 'type' ? <Select id={`joint-${key}`} value={joint[key]} options={['fixed', 'revolute', 'continuous', 'prismatic', 'floating', 'planar'].map(value => ({ value, label: value }))} onChange={v => edit(key, v)} />
+              : <Input id={`joint-${key}`} key={joint.name + key + joint[key]} defaultValue={joint[key]} onBlur={e => { if (e.target.value !== joint[key]) edit(key, e.target.value); }} />}
+          </div>)}
+          {joint.mimic && <Alert type="info" message={t('Mimic：{joint}；当前 APP 不支持将 mimic 加入控制链。',{joint:joint.mimic})} />}
+        </div> : link ? <><p>Link：{link}</p><p>{t("父关节：")}{robot.joints.find(j => j.child === link)?.name || t("根节点")}</p><p>{t("直接子关节：")}{robot.joints.filter(j => j.parent === link).length}</p><LinkProperties text={textOf(file)} name={link} /></> : <p className="muted">{t("选择 Link 或 Joint 编辑结构与属性。")}</p>}
+      </Card>
+    </div>
+    <Card className="space-top" title={t("控制关节链")}><Space wrap><label htmlFor="base-link">Base Link</label><Select id="base-link" value={startup?.robot?.base_link} style={{ width: 200 }} options={robot.links.map(value => ({ value, label: value }))} onChange={base => prepare({ kind: 'chain', base, tip: robot.links.includes(startup?.robot?.tip_link) ? startup.robot.tip_link : base })} />
+      <label htmlFor="tip-link">Tip Link</label><Select id="tip-link" value={startup?.robot?.tip_link} style={{ width: 200 }} options={robot.links.map(value => ({ value, label: value }))} onChange={tip => prepare({ kind: 'chain', base: robot.links.includes(startup?.robot?.base_link) ? startup.robot.base_link : robot.roots[0], tip })} /></Space>
+    </Card>
+    <Card className="space-top" title={t("URDF 源文件")}><SourceEditor file={file} /></Card>
+    <Modal title={form?.kind === 'add' ? t("新增固定关节与 Link") : t("重命名节点")} open={!!form} okText={t("查看变更")} cancelText={t("取消")} onCancel={() => setForm(null)} onOk={() => {
+      if (!form) return;
+      const action: RobotAction = form.kind === 'add' ? { kind: 'add', parent: form.parent, joint: form.value, link: form.link } : { kind: 'rename', node: form.node, name: form.name, value: form.value };
+      if (prepare(action)) setForm(null);
+    }}>
+      {form && <Space direction="vertical" style={{ width: '100%' }}>
+        {form.kind === 'add' && <Select aria-label={t("新增节点的父 Link")} style={{ width: '100%' }} value={form.parent} options={robot.links.map(value => ({ value, label: value }))} onChange={parent => setForm({ ...form, parent })} />}
+        <Input aria-label={form.kind === 'add' ? t("新关节名称") : t("节点新名称")} value={form.value} onChange={e => setForm({ ...form, value: e.target.value })} />
+        {form.kind === 'add' && <Input aria-label={t("新 Link 名称")} value={form.link} onChange={e => setForm({ ...form, link: e.target.value })} />}
+      </Space>}
+    </Modal>
+  </>;
+}

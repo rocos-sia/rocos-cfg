@@ -1,0 +1,7 @@
+{
+  "format":"rocos-structured-template","id":"robot.two-axis","version":1,"name":"双关节演示模型","kind":"robot",
+  "profiles":["rocos.igh@1","rocos.ecm@1","rocos.app@1"],"source":"ROCOS Configurator 自带教学模型，不对应特定厂商或实际机械参数",
+  "defaults":{"prefix":"arm","linkLength":0.3},
+  "data":{"joints":2,"axis":[0,0,1],"lower":-1.57,"upper":1.57,"velocity":1,"effort":1,"thickness":0.05,"color":[0.15,0.4,0.8,1]},
+  "notice":"几何、关节限位和速度/力矩为演示值，不能替代实机参数核对；不生成驱动器换算或绑定。"
+}

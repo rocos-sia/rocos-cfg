@@ -1,0 +1,762 @@
+<?xml version='1.0' encoding='utf-8'?>
+<EtherCATConfig xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="EtherCATConfig.xsd" Version="1.3">
+  <Config>
+    <Slave>
+      <Info>
+        <Name>Slave_1001 [Elmo Drive ]</Name>
+        <PhysAddr>1001</PhysAddr>
+        <AutoIncAddr>0</AutoIncAddr>
+        <Physics>YY</Physics>
+        <VendorId>154</VendorId>
+        <ProductCode>198948</ProductCode>
+        <RevisionNo>66592</RevisionNo>
+        <SerialNo>0</SerialNo>
+      </Info>
+      <ProcessData>
+        <Send>
+          <BitStart>0</BitStart>
+          <BitLength>112</BitLength>
+        </Send>
+        <Recv>
+          <BitStart>0</BitStart>
+          <BitLength>176</BitLength>
+        </Recv>
+      </ProcessData>
+      <DC>
+        <PotentialReferenceClock>0</PotentialReferenceClock>
+        <ReferenceClock>1</ReferenceClock>
+        <CycleTime0>1000000</CycleTime0>
+        <CycleTime1>0</CycleTime1>
+        <ShiftTime>0</ShiftTime>
+      </DC>
+    </Slave>
+    <Slave>
+      <Info>
+        <Name>Slave_1002 [Elmo Drive ]</Name>
+        <PhysAddr>1002</PhysAddr>
+        <AutoIncAddr>65535</AutoIncAddr>
+        <Physics>YY</Physics>
+        <VendorId>154</VendorId>
+        <ProductCode>198948</ProductCode>
+        <RevisionNo>66592</RevisionNo>
+        <SerialNo>0</SerialNo>
+      </Info>
+      <ProcessData>
+        <Send>
+          <BitStart>176</BitStart>
+          <BitLength>112</BitLength>
+        </Send>
+        <Recv>
+          <BitStart>176</BitStart>
+          <BitLength>176</BitLength>
+        </Recv>
+      </ProcessData>
+      <DC>
+        <PotentialReferenceClock>0</PotentialReferenceClock>
+        <ReferenceClock>0</ReferenceClock>
+        <CycleTime0>1000000</CycleTime0>
+        <CycleTime1>0</CycleTime1>
+        <ShiftTime>0</ShiftTime>
+      </DC>
+    </Slave>
+    <Slave>
+      <Info>
+        <Name>Slave_1003 [Elmo Drive ]</Name>
+        <PhysAddr>1003</PhysAddr>
+        <AutoIncAddr>65534</AutoIncAddr>
+        <Physics>YY</Physics>
+        <VendorId>154</VendorId>
+        <ProductCode>198948</ProductCode>
+        <RevisionNo>66592</RevisionNo>
+        <SerialNo>0</SerialNo>
+      </Info>
+      <ProcessData>
+        <Send>
+          <BitStart>352</BitStart>
+          <BitLength>112</BitLength>
+        </Send>
+        <Recv>
+          <BitStart>352</BitStart>
+          <BitLength>176</BitLength>
+        </Recv>
+      </ProcessData>
+      <DC>
+        <PotentialReferenceClock>0</PotentialReferenceClock>
+        <ReferenceClock>0</ReferenceClock>
+        <CycleTime0>1000000</CycleTime0>
+        <CycleTime1>0</CycleTime1>
+        <ShiftTime>0</ShiftTime>
+      </DC>
+    </Slave>
+    <Slave>
+      <Info>
+        <Name>Slave_1004 [Elmo Drive ]</Name>
+        <PhysAddr>1004</PhysAddr>
+        <AutoIncAddr>65533</AutoIncAddr>
+        <Physics>YY</Physics>
+        <VendorId>154</VendorId>
+        <ProductCode>198948</ProductCode>
+        <RevisionNo>66592</RevisionNo>
+        <SerialNo>0</SerialNo>
+      </Info>
+      <ProcessData>
+        <Send>
+          <BitStart>528</BitStart>
+          <BitLength>112</BitLength>
+        </Send>
+        <Recv>
+          <BitStart>528</BitStart>
+          <BitLength>176</BitLength>
+        </Recv>
+      </ProcessData>
+      <DC>
+        <PotentialReferenceClock>0</PotentialReferenceClock>
+        <ReferenceClock>0</ReferenceClock>
+        <CycleTime0>1000000</CycleTime0>
+        <CycleTime1>0</CycleTime1>
+        <ShiftTime>0</ShiftTime>
+      </DC>
+    </Slave>
+    <Slave>
+      <Info>
+        <Name>Slave_1005 [Elmo Drive ]</Name>
+        <PhysAddr>1005</PhysAddr>
+        <AutoIncAddr>65532</AutoIncAddr>
+        <Physics>YY</Physics>
+        <VendorId>154</VendorId>
+        <ProductCode>198948</ProductCode>
+        <RevisionNo>66592</RevisionNo>
+        <SerialNo>0</SerialNo>
+      </Info>
+      <ProcessData>
+        <Send>
+          <BitStart>704</BitStart>
+          <BitLength>112</BitLength>
+        </Send>
+        <Recv>
+          <BitStart>704</BitStart>
+          <BitLength>176</BitLength>
+        </Recv>
+      </ProcessData>
+      <DC>
+        <PotentialReferenceClock>0</PotentialReferenceClock>
+        <ReferenceClock>0</ReferenceClock>
+        <CycleTime0>1000000</CycleTime0>
+        <CycleTime1>0</CycleTime1>
+        <ShiftTime>0</ShiftTime>
+      </DC>
+    </Slave>
+    <Slave>
+      <Info>
+        <Name>Slave_1006 [Elmo Drive ]</Name>
+        <PhysAddr>1006</PhysAddr>
+        <AutoIncAddr>65531</AutoIncAddr>
+        <Physics>YY</Physics>
+        <VendorId>154</VendorId>
+        <ProductCode>198948</ProductCode>
+        <RevisionNo>66592</RevisionNo>
+        <SerialNo>0</SerialNo>
+      </Info>
+      <ProcessData>
+        <Send>
+          <BitStart>880</BitStart>
+          <BitLength>112</BitLength>
+        </Send>
+        <Recv>
+          <BitStart>880</BitStart>
+          <BitLength>176</BitLength>
+        </Recv>
+      </ProcessData>
+      <DC>
+        <PotentialReferenceClock>0</PotentialReferenceClock>
+        <ReferenceClock>0</ReferenceClock>
+        <CycleTime0>1000000</CycleTime0>
+        <CycleTime1>0</CycleTime1>
+        <ShiftTime>0</ShiftTime>
+      </DC>
+    </Slave>
+    <Slave>
+      <Info>
+        <Name>Slave_1007 [Elmo Drive ]</Name>
+        <PhysAddr>1007</PhysAddr>
+        <AutoIncAddr>65530</AutoIncAddr>
+        <Physics>YY</Physics>
+        <VendorId>154</VendorId>
+        <ProductCode>198948</ProductCode>
+        <RevisionNo>66592</RevisionNo>
+        <SerialNo>0</SerialNo>
+      </Info>
+      <ProcessData>
+        <Send>
+          <BitStart>1056</BitStart>
+          <BitLength>112</BitLength>
+        </Send>
+        <Recv>
+          <BitStart>1056</BitStart>
+          <BitLength>176</BitLength>
+        </Recv>
+      </ProcessData>
+      <DC>
+        <PotentialReferenceClock>0</PotentialReferenceClock>
+        <ReferenceClock>0</ReferenceClock>
+        <CycleTime0>1000000</CycleTime0>
+        <CycleTime1>0</CycleTime1>
+        <ShiftTime>0</ShiftTime>
+      </DC>
+    </Slave>
+    <ProcessImage>
+      <Inputs>
+        <ByteSize>168</ByteSize>
+        <Variable>
+          <Name>Slave_1001 [Elmo Drive ].Inputs.Position actual value</Name>
+          <DataType>DINT</DataType>
+          <BitSize>32</BitSize>
+          <BitOffs>0</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1001 [Elmo Drive ].Inputs.Torque actual value</Name>
+          <DataType>INT</DataType>
+          <BitSize>16</BitSize>
+          <BitOffs>32</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1001 [Elmo Drive ].Inputs.Status word</Name>
+          <DataType>UINT</DataType>
+          <BitSize>16</BitSize>
+          <BitOffs>48</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1001 [Elmo Drive ].Inputs.Mode of operation display</Name>
+          <DataType>SINT</DataType>
+          <BitSize>8</BitSize>
+          <BitOffs>64</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1001 [Elmo Drive ].Inputs.Velocity actual value</Name>
+          <DataType>DINT</DataType>
+          <BitSize>32</BitSize>
+          <BitOffs>80</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1001 [Elmo Drive ].Inputs.Analog Input 1</Name>
+          <DataType>INT</DataType>
+          <BitSize>16</BitSize>
+          <BitOffs>112</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1001 [Elmo Drive ].Inputs.Auxiliary position actual value</Name>
+          <DataType>DINT</DataType>
+          <BitSize>32</BitSize>
+          <BitOffs>128</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1001 [Elmo Drive ].Inputs.Current actual value</Name>
+          <DataType>INT</DataType>
+          <BitSize>16</BitSize>
+          <BitOffs>160</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1002 [Elmo Drive ].Inputs.Position actual value</Name>
+          <DataType>DINT</DataType>
+          <BitSize>32</BitSize>
+          <BitOffs>176</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1002 [Elmo Drive ].Inputs.Torque actual value</Name>
+          <DataType>INT</DataType>
+          <BitSize>16</BitSize>
+          <BitOffs>208</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1002 [Elmo Drive ].Inputs.Status word</Name>
+          <DataType>UINT</DataType>
+          <BitSize>16</BitSize>
+          <BitOffs>224</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1002 [Elmo Drive ].Inputs.Mode of operation display</Name>
+          <DataType>SINT</DataType>
+          <BitSize>8</BitSize>
+          <BitOffs>240</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1002 [Elmo Drive ].Inputs.Velocity actual value</Name>
+          <DataType>DINT</DataType>
+          <BitSize>32</BitSize>
+          <BitOffs>256</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1002 [Elmo Drive ].Inputs.Analog Input 1</Name>
+          <DataType>INT</DataType>
+          <BitSize>16</BitSize>
+          <BitOffs>288</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1002 [Elmo Drive ].Inputs.Auxiliary position actual value</Name>
+          <DataType>DINT</DataType>
+          <BitSize>32</BitSize>
+          <BitOffs>304</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1002 [Elmo Drive ].Inputs.Current actual value</Name>
+          <DataType>INT</DataType>
+          <BitSize>16</BitSize>
+          <BitOffs>336</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1003 [Elmo Drive ].Inputs.Position actual value</Name>
+          <DataType>DINT</DataType>
+          <BitSize>32</BitSize>
+          <BitOffs>352</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1003 [Elmo Drive ].Inputs.Torque actual value</Name>
+          <DataType>INT</DataType>
+          <BitSize>16</BitSize>
+          <BitOffs>384</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1003 [Elmo Drive ].Inputs.Status word</Name>
+          <DataType>UINT</DataType>
+          <BitSize>16</BitSize>
+          <BitOffs>400</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1003 [Elmo Drive ].Inputs.Mode of operation display</Name>
+          <DataType>SINT</DataType>
+          <BitSize>8</BitSize>
+          <BitOffs>416</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1003 [Elmo Drive ].Inputs.Velocity actual value</Name>
+          <DataType>DINT</DataType>
+          <BitSize>32</BitSize>
+          <BitOffs>432</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1003 [Elmo Drive ].Inputs.Analog Input 1</Name>
+          <DataType>INT</DataType>
+          <BitSize>16</BitSize>
+          <BitOffs>464</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1003 [Elmo Drive ].Inputs.Auxiliary position actual value</Name>
+          <DataType>DINT</DataType>
+          <BitSize>32</BitSize>
+          <BitOffs>480</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1003 [Elmo Drive ].Inputs.Current actual value</Name>
+          <DataType>INT</DataType>
+          <BitSize>16</BitSize>
+          <BitOffs>512</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1004 [Elmo Drive ].Inputs.Position actual value</Name>
+          <DataType>DINT</DataType>
+          <BitSize>32</BitSize>
+          <BitOffs>528</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1004 [Elmo Drive ].Inputs.Torque actual value</Name>
+          <DataType>INT</DataType>
+          <BitSize>16</BitSize>
+          <BitOffs>560</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1004 [Elmo Drive ].Inputs.Status word</Name>
+          <DataType>UINT</DataType>
+          <BitSize>16</BitSize>
+          <BitOffs>576</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1004 [Elmo Drive ].Inputs.Mode of operation display</Name>
+          <DataType>SINT</DataType>
+          <BitSize>8</BitSize>
+          <BitOffs>592</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1004 [Elmo Drive ].Inputs.Velocity actual value</Name>
+          <DataType>DINT</DataType>
+          <BitSize>32</BitSize>
+          <BitOffs>608</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1004 [Elmo Drive ].Inputs.Analog Input 1</Name>
+          <DataType>INT</DataType>
+          <BitSize>16</BitSize>
+          <BitOffs>640</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1004 [Elmo Drive ].Inputs.Auxiliary position actual value</Name>
+          <DataType>DINT</DataType>
+          <BitSize>32</BitSize>
+          <BitOffs>656</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1004 [Elmo Drive ].Inputs.Current actual value</Name>
+          <DataType>INT</DataType>
+          <BitSize>16</BitSize>
+          <BitOffs>688</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1005 [Elmo Drive ].Inputs.Position actual value</Name>
+          <DataType>DINT</DataType>
+          <BitSize>32</BitSize>
+          <BitOffs>704</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1005 [Elmo Drive ].Inputs.Torque actual value</Name>
+          <DataType>INT</DataType>
+          <BitSize>16</BitSize>
+          <BitOffs>736</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1005 [Elmo Drive ].Inputs.Status word</Name>
+          <DataType>UINT</DataType>
+          <BitSize>16</BitSize>
+          <BitOffs>752</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1005 [Elmo Drive ].Inputs.Mode of operation display</Name>
+          <DataType>SINT</DataType>
+          <BitSize>8</BitSize>
+          <BitOffs>768</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1005 [Elmo Drive ].Inputs.Velocity actual value</Name>
+          <DataType>DINT</DataType>
+          <BitSize>32</BitSize>
+          <BitOffs>784</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1005 [Elmo Drive ].Inputs.Analog Input 1</Name>
+          <DataType>INT</DataType>
+          <BitSize>16</BitSize>
+          <BitOffs>816</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1005 [Elmo Drive ].Inputs.Auxiliary position actual value</Name>
+          <DataType>DINT</DataType>
+          <BitSize>32</BitSize>
+          <BitOffs>832</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1005 [Elmo Drive ].Inputs.Current actual value</Name>
+          <DataType>INT</DataType>
+          <BitSize>16</BitSize>
+          <BitOffs>864</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1006 [Elmo Drive ].Inputs.Position actual value</Name>
+          <DataType>DINT</DataType>
+          <BitSize>32</BitSize>
+          <BitOffs>880</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1006 [Elmo Drive ].Inputs.Torque actual value</Name>
+          <DataType>INT</DataType>
+          <BitSize>16</BitSize>
+          <BitOffs>912</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1006 [Elmo Drive ].Inputs.Status word</Name>
+          <DataType>UINT</DataType>
+          <BitSize>16</BitSize>
+          <BitOffs>928</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1006 [Elmo Drive ].Inputs.Mode of operation display</Name>
+          <DataType>SINT</DataType>
+          <BitSize>8</BitSize>
+          <BitOffs>944</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1006 [Elmo Drive ].Inputs.Velocity actual value</Name>
+          <DataType>DINT</DataType>
+          <BitSize>32</BitSize>
+          <BitOffs>960</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1006 [Elmo Drive ].Inputs.Analog Input 1</Name>
+          <DataType>INT</DataType>
+          <BitSize>16</BitSize>
+          <BitOffs>992</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1006 [Elmo Drive ].Inputs.Auxiliary position actual value</Name>
+          <DataType>DINT</DataType>
+          <BitSize>32</BitSize>
+          <BitOffs>1008</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1006 [Elmo Drive ].Inputs.Current actual value</Name>
+          <DataType>INT</DataType>
+          <BitSize>16</BitSize>
+          <BitOffs>1040</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1007 [Elmo Drive ].Inputs.Position actual value</Name>
+          <DataType>DINT</DataType>
+          <BitSize>32</BitSize>
+          <BitOffs>1056</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1007 [Elmo Drive ].Inputs.Torque actual value</Name>
+          <DataType>INT</DataType>
+          <BitSize>16</BitSize>
+          <BitOffs>1088</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1007 [Elmo Drive ].Inputs.Status word</Name>
+          <DataType>UINT</DataType>
+          <BitSize>16</BitSize>
+          <BitOffs>1104</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1007 [Elmo Drive ].Inputs.Mode of operation display</Name>
+          <DataType>SINT</DataType>
+          <BitSize>8</BitSize>
+          <BitOffs>1120</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1007 [Elmo Drive ].Inputs.Velocity actual value</Name>
+          <DataType>DINT</DataType>
+          <BitSize>32</BitSize>
+          <BitOffs>1136</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1007 [Elmo Drive ].Inputs.Analog Input 1</Name>
+          <DataType>INT</DataType>
+          <BitSize>16</BitSize>
+          <BitOffs>1168</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1007 [Elmo Drive ].Inputs.Auxiliary position actual value</Name>
+          <DataType>DINT</DataType>
+          <BitSize>32</BitSize>
+          <BitOffs>1184</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1007 [Elmo Drive ].Inputs.Current actual value</Name>
+          <DataType>INT</DataType>
+          <BitSize>16</BitSize>
+          <BitOffs>1216</BitOffs>
+        </Variable>
+      </Inputs>
+      <Outputs>
+        <ByteSize>168</ByteSize>
+        <Variable>
+          <Name>Slave_1001 [Elmo Drive ].Outputs.Target Torque</Name>
+          <DataType>INT</DataType>
+          <BitSize>16</BitSize>
+          <BitOffs>0</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1001 [Elmo Drive ].Outputs.Control word</Name>
+          <DataType>UINT</DataType>
+          <BitSize>16</BitSize>
+          <BitOffs>16</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1001 [Elmo Drive ].Outputs.Mode of operation</Name>
+          <DataType>SINT</DataType>
+          <BitSize>8</BitSize>
+          <BitOffs>32</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1001 [Elmo Drive ].Outputs.Target Position</Name>
+          <DataType>DINT</DataType>
+          <BitSize>32</BitSize>
+          <BitOffs>48</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1001 [Elmo Drive ].Outputs.Target Velocity</Name>
+          <DataType>DINT</DataType>
+          <BitSize>32</BitSize>
+          <BitOffs>80</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1002 [Elmo Drive ].Outputs.Target Torque</Name>
+          <DataType>INT</DataType>
+          <BitSize>16</BitSize>
+          <BitOffs>176</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1002 [Elmo Drive ].Outputs.Control word</Name>
+          <DataType>UINT</DataType>
+          <BitSize>16</BitSize>
+          <BitOffs>192</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1002 [Elmo Drive ].Outputs.Mode of operation</Name>
+          <DataType>SINT</DataType>
+          <BitSize>8</BitSize>
+          <BitOffs>208</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1002 [Elmo Drive ].Outputs.Target Position</Name>
+          <DataType>DINT</DataType>
+          <BitSize>32</BitSize>
+          <BitOffs>224</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1002 [Elmo Drive ].Outputs.Target Velocity</Name>
+          <DataType>DINT</DataType>
+          <BitSize>32</BitSize>
+          <BitOffs>256</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1003 [Elmo Drive ].Outputs.Target Torque</Name>
+          <DataType>INT</DataType>
+          <BitSize>16</BitSize>
+          <BitOffs>352</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1003 [Elmo Drive ].Outputs.Control word</Name>
+          <DataType>UINT</DataType>
+          <BitSize>16</BitSize>
+          <BitOffs>368</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1003 [Elmo Drive ].Outputs.Mode of operation</Name>
+          <DataType>SINT</DataType>
+          <BitSize>8</BitSize>
+          <BitOffs>384</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1003 [Elmo Drive ].Outputs.Target Position</Name>
+          <DataType>DINT</DataType>
+          <BitSize>32</BitSize>
+          <BitOffs>400</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1003 [Elmo Drive ].Outputs.Target Velocity</Name>
+          <DataType>DINT</DataType>
+          <BitSize>32</BitSize>
+          <BitOffs>432</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1004 [Elmo Drive ].Outputs.Target Torque</Name>
+          <DataType>INT</DataType>
+          <BitSize>16</BitSize>
+          <BitOffs>528</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1004 [Elmo Drive ].Outputs.Control word</Name>
+          <DataType>UINT</DataType>
+          <BitSize>16</BitSize>
+          <BitOffs>544</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1004 [Elmo Drive ].Outputs.Mode of operation</Name>
+          <DataType>SINT</DataType>
+          <BitSize>8</BitSize>
+          <BitOffs>560</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1004 [Elmo Drive ].Outputs.Target Position</Name>
+          <DataType>DINT</DataType>
+          <BitSize>32</BitSize>
+          <BitOffs>576</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1004 [Elmo Drive ].Outputs.Target Velocity</Name>
+          <DataType>DINT</DataType>
+          <BitSize>32</BitSize>
+          <BitOffs>608</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1005 [Elmo Drive ].Outputs.Target Torque</Name>
+          <DataType>INT</DataType>
+          <BitSize>16</BitSize>
+          <BitOffs>704</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1005 [Elmo Drive ].Outputs.Control word</Name>
+          <DataType>UINT</DataType>
+          <BitSize>16</BitSize>
+          <BitOffs>720</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1005 [Elmo Drive ].Outputs.Mode of operation</Name>
+          <DataType>SINT</DataType>
+          <BitSize>8</BitSize>
+          <BitOffs>736</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1005 [Elmo Drive ].Outputs.Target Position</Name>
+          <DataType>DINT</DataType>
+          <BitSize>32</BitSize>
+          <BitOffs>752</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1005 [Elmo Drive ].Outputs.Target Velocity</Name>
+          <DataType>DINT</DataType>
+          <BitSize>32</BitSize>
+          <BitOffs>784</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1006 [Elmo Drive ].Outputs.Target Torque</Name>
+          <DataType>INT</DataType>
+          <BitSize>16</BitSize>
+          <BitOffs>880</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1006 [Elmo Drive ].Outputs.Control word</Name>
+          <DataType>UINT</DataType>
+          <BitSize>16</BitSize>
+          <BitOffs>896</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1006 [Elmo Drive ].Outputs.Mode of operation</Name>
+          <DataType>SINT</DataType>
+          <BitSize>8</BitSize>
+          <BitOffs>912</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1006 [Elmo Drive ].Outputs.Target Position</Name>
+          <DataType>DINT</DataType>
+          <BitSize>32</BitSize>
+          <BitOffs>928</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1006 [Elmo Drive ].Outputs.Target Velocity</Name>
+          <DataType>DINT</DataType>
+          <BitSize>32</BitSize>
+          <BitOffs>960</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1007 [Elmo Drive ].Outputs.Target Torque</Name>
+          <DataType>INT</DataType>
+          <BitSize>16</BitSize>
+          <BitOffs>1056</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1007 [Elmo Drive ].Outputs.Control word</Name>
+          <DataType>UINT</DataType>
+          <BitSize>16</BitSize>
+          <BitOffs>1072</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1007 [Elmo Drive ].Outputs.Mode of operation</Name>
+          <DataType>SINT</DataType>
+          <BitSize>8</BitSize>
+          <BitOffs>1088</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1007 [Elmo Drive ].Outputs.Target Position</Name>
+          <DataType>DINT</DataType>
+          <BitSize>32</BitSize>
+          <BitOffs>1104</BitOffs>
+        </Variable>
+        <Variable>
+          <Name>Slave_1007 [Elmo Drive ].Outputs.Target Velocity</Name>
+          <DataType>DINT</DataType>
+          <BitSize>32</BitSize>
+          <BitOffs>1136</BitOffs>
+        </Variable>
+      </Outputs>
+    </ProcessImage>
+  </Config>
+</EtherCATConfig>

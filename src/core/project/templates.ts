@@ -1,0 +1,45 @@
+import starter from '../../../templates/projects/starter.v1.json' with {type:'json'};
+import robot from '../../../templates/robots/two-axis.v1.json' with {type:'json'};
+import device from '../../../templates/devices/igh-discovery.v1.json' with {type:'json'};
+import { canonicalData, targetStatus } from './profiles';
+import { fileById, textOf, uid, utf8, type Diagnostic, type Project, type EditorState } from './types';
+type TemplateUse=NonNullable<EditorState['templateUses']>[number];
+export function validTemplateUse(value:unknown):value is TemplateUse{
+  if(!value||typeof value!=='object'||Array.isArray(value))return false;
+  const v=value as TemplateUse;
+  const params=(p:unknown)=>!!p&&typeof p==='object'&&!Array.isArray(p)&&Object.values(p).every(x=>typeof x==='string'||typeof x==='number'&&Number.isFinite(x));
+  return [v.id,v.templateId,v.snapshotFileId,v.appliedAt].every(x=>typeof x==='string'&&!!x)&&Number.isSafeInteger(v.version)&&v.version>0&&Number.isFinite(Date.parse(v.appliedAt))&&params(v.parameters)&&params(v.overrides)&&Array.isArray(v.outputs)&&v.outputs.every(x=>typeof x==='string');
+}
+export const starterData=()=>structuredClone(starter.data);
+export const starterTemplate=()=>structuredClone(starter);
+export const robotTemplate=()=>structuredClone(robot);
+export const deviceTemplate=()=>structuredClone(device);
+type Definition=typeof starter|typeof robot|typeof device;
+export function recordTemplate(p:Project,definition:Definition,parameters:Record<string,string|number>,outputs:string[]){
+  for(const slot of ['app','master'] as const){const status=targetStatus(p,slot);if(!status.supported)throw new Error(status.message);if(!definition.profiles.includes(`${status.definition!.id}@${status.definition!.version}`))throw new Error('模板不适用于当前目标规则');}
+  const path=`project-data/templates/${definition.id}.v${definition.version}.json`,bytes=utf8.encode(JSON.stringify(definition,null,2)+'\n');
+  let file=p.files.find(f=>f.path===path);
+  if(file){if(file.role!=='template'||file.owner!=='template'||file.bytes.length!==bytes.length||file.bytes.some((b,i)=>b!==bytes[i]))throw new Error(`模板快照已存在不同内容：${path}`);}
+  else{file={id:uid(),path,role:'template',owner:'template',encoding:'utf-8',bytes};p.files.push(file);}
+  const overrides=Object.fromEntries(Object.entries(parameters).filter(([key,value])=>value!==(definition.defaults as Record<string,unknown>)[key]));
+  (p.editor.templateUses??=[]).push({id:uid(),templateId:definition.id,version:definition.version,snapshotFileId:file.id,appliedAt:new Date().toISOString(),parameters:structuredClone(parameters),overrides,outputs:[...outputs]});
+}
+export function validateTemplates(p:Project):Diagnostic[]{
+  const result:Diagnostic[]=[];
+  if(p.editor.templateUses!==undefined&&!Array.isArray(p.editor.templateUses))return [{code:'template.state',severity:'error',message:'模板使用记录格式不受支持'}];
+  for(const use of p.editor.templateUses||[]){
+    if(!validTemplateUse(use)){result.push({code:'template.state',severity:'error',message:'模板使用记录无效'});continue;}
+    const file=fileById(p,use.snapshotFileId),definition=[starter,robot,device].find(t=>t.id===use.templateId&&t.version===use.version);
+    let message:string|undefined;
+    if(!file||file.role!=='template')message=`实际使用的模板快照缺失：${use.templateId} v${use.version}`;
+    else if(file.bytes.length>1024*1024)message=`模板快照超过 1 MiB 解释限额：${use.templateId}；保留原文件，不重新应用`;
+    else try{
+      const snapshot=JSON.parse(textOf(file));
+      if(snapshot.id!==use.templateId||snapshot.version!==use.version)message='模板快照与使用记录不一致';
+      else if(definition&&canonicalData(snapshot)!==canonicalData(definition))message=`模板 ${use.templateId} v${use.version} 与内置定义不同，仅保留历史数据，不重新应用`;
+      else if(!definition)message=`模板 ${use.templateId} v${use.version} 不在当前库中；保留原配置与快照，不重新应用`;
+    }catch{message=`模板快照无法解析：${use.templateId}`;}
+    if(message)result.push({code:'template.snapshot',severity:'warning',message,fileId:use.snapshotFileId});
+  }
+  return result;
+}

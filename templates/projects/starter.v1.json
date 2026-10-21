@@ -1,0 +1,11 @@
+{
+  "format":"rocos-structured-template","id":"project.starter","version":1,"name":"空白控制器工程","kind":"project",
+  "profiles":["rocos.igh@1","rocos.ecm@1","rocos.app@1"],"source":"ROCOS Configurator 内置初始草稿；默认值对照对应消费端配置字段",
+  "defaults":{},
+  "data":{
+    "igh":{"version":1,"master":{"master_id":0,"period_us":1000,"cpu":null,"dc":"off","preop_timeout_ms":10000,"op_timeout_ms":60000,"pdo_config_attempts":5},"slaves":[]},
+    "ecm":{"id":0,"eni":"eni.xml","cycle":1000,"duration":0,"cpuidx":0,"auxclk":0,"link":2,"instance":1,"mode":1,"dcmmode":1,"ctloff":false,"state":"op","verbose":3,"perf":1,"log":"","sp":null,"mbxsrv":null,"flash":null,"license":"","maxbusslaves":256},
+    "robot":{"name":"robot","root":"base_link"},"hardware":{"hardware":[]},"binding":{"binding_policy":"explicit","joint_bindings":[]},
+    "app":{"http_host":"0.0.0.0","http_port":8080,"http_control_ttl_seconds":300,"robot":{"hardware_config":"hardware_config.yaml","ecat_id":0,"urdf":"../models/robot.urdf","base_link":"base_link","tip_link":"base_link","joint_binding":"joint_binding.yaml","payload":"payload.yaml"},"scripts":"scripts","web_root":"../web"}
+  }
+}

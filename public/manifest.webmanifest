@@ -1,0 +1,13 @@
+{
+  "id": "./",
+  "name": "ROCOS Configurator",
+  "short_name": "ROCOS",
+  "lang": "zh-CN",
+  "description": "ROCOS 控制器本地工程配置工具",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f5f7fb",
+  "theme_color": "#192b45",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

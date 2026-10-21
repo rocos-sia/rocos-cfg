@@ -1,0 +1,23 @@
+{
+  "igh": {
+    "format": "rocos-target-profile", "id": "rocos.igh", "version": 1,
+    "target": {"version": "3c92f2a", "configVersion": 1, "abi": "unverified"},
+    "rules": {"maxSlaves": 50, "variablesPerDirection": 25, "variableNameBytes": 71, "slaveNameBytes": 79, "minCycleUs": 1000, "maxDcCycleUs": 4294967},
+    "sources": ["rocos-igh@3c92f2a: pdo_config.cpp and shared_memory_config.hpp"],
+    "scope": "原生 YAML 加载及默认共享结构约束；不代表目标构建 ABI 或实机配对已验证"
+  },
+  "ecm": {
+    "format": "rocos-target-profile", "id": "rocos.ecm", "version": 1,
+    "target": {"version": "e0e5e32", "configVersion": 1, "abi": "unverified"},
+    "rules": {"maxSlaves": 50, "variablesPerDirection": 25, "variableNameBytes": 71, "slaveNameBytes": 79, "eniVersion": "1.3", "firstSlaveAddress": 1001},
+    "sources": ["rocos-ecm@e0e5e32: EcConfig.cpp, ENI ProcessImage profile, shared_memory_config.hpp"],
+    "scope": "启动 YAML、已支持的 ENI 过程映像及默认共享结构约束；SDK 元数据和目标 ABI 仍需验证"
+  },
+  "app": {
+    "format": "rocos-target-profile", "id": "rocos.app", "version": 1,
+    "target": {"version": "7093bcd", "configVersion": 1, "abi": "unverified"},
+    "rules": {"maxAnalogChannelsPerDirection": 1, "controlledJointTypes": ["revolute", "continuous", "prismatic"], "hardwareTypes": ["driver", "ft_sensor", "io"]},
+    "sources": ["rocos-app@7093bcd: HardwareConfig, JointBinding and Robot configuration loaders"],
+    "scope": "APP 文件字段、Hardware/Binding 加载及当前控制链约束；不代表设备或 SDK 验证"
+  }
+}

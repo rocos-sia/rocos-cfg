@@ -128,3 +128,12 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# Browser verification and distributable archives
+test-results/
+playwright-report/
+artifacts/
+
+# Native desktop build output
+src-tauri/target/
+src-tauri/gen/

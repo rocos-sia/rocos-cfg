@@ -1,0 +1,7 @@
+{
+  "format":"rocos-structured-template","id":"device.igh-discovery","version":1,"name":"IgH 待发现从站","kind":"device",
+  "profiles":["rocos.igh@1","rocos.app@1"],"source":"ROCOS Configurator IgH 新增从站草稿，空 PDO 条目沿用 rocos-igh 运行时发现语义",
+  "defaults":{"name":"EtherCAT Drive"},
+  "data":{"dc_ref":false,"rx_pdos":[{"index":5632,"entries":[]}],"tx_pdos":[{"index":6656,"entries":[]}],"init_commands":[]},
+  "notice":"PDO 索引需对照设备说明或 ESI 核对；条目尚未发现，不生成机械参数、SDO 启用命令或关节绑定。"
+}
