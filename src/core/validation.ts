@@ -8,7 +8,7 @@ import { appDocument } from './documents/app-config';
 import { controlChain } from './documents/urdf';
 import { activeFileIds, collectReferences } from './project/references';
 import { fileById, textOf, type Project, type Diagnostic } from './project/types';
-import { validateProfiles } from './project/profiles';
+import { targetStatus, validateProfiles } from './project/profiles';
 import { validateTemplates } from './project/templates';
 export function validateProject(p: Project, registry: ModuleRegistry = modules): Diagnostic[] {
   const bus = buildBusCatalog(p); const diagnostics = [...bus.diagnostics,...validateProfiles(p),...validateTemplates(p)];
@@ -28,6 +28,16 @@ export function validateProject(p: Project, registry: ModuleRegistry = modules):
   const appFile=fileById(p,p.entrypoints.app);
   try{if(appFile)app=appDocument(appFile).data;}catch{ /* Module validation reports malformed startup files. */ }
   if(app&&fileById(p,p.entrypoints.master.fileId)&&app.robot.ecat_id!==bus.masterId)add('app.master-id',msg("APP ecat_id 与主站 ID 不一致"),p.entrypoints.app!,'robot.ecat_id');
+  // APP 7093bcd Hardware::scanForEcatBus recognizes a bus only when slave 0
+  // has variables in both directions. A discovery PDO is unknown, not empty.
+  if(targetStatus(p,'app').supported && bus.slaves.length && !bus.diagnostics.some(d=>d.severity==='error')) {
+    const first=bus.slaves[0],master=p.entrypoints.master;
+    const absent=(['input','output'] as const).filter(direction=>!bus.signals.some(s=>s.slaveId===first.id&&s.direction===direction));
+    const unknown=absent.filter(direction=>master.kind==='igh' && bus.diagnostics.some(d=>d.code==='igh.discovery'&&d.field?.startsWith(`slaves.0.${direction==='input'?'tx_pdos':'rx_pdos'}.`)));
+    const fileId=(master.kind==='ecm'?master.eniFileId:master.fileId)||undefined;
+    if(absent.length>unknown.length) add('app.bus-location',msg("当前 APP 要求首个从站同时具有输入和输出变量，否则无法可靠定位总线；请核对主站配置与目标 APP 版本"),fileId);
+    else if(unknown.length) add('app.bus-location.pending',msg("首个从站的变量需运行时发现；当前 APP 要求它同时具有输入和输出变量，请在目标环境确认"),fileId,undefined,'warning');
+  }
   const urdf=fileById(p,p.entrypoints.urdf);
   if(urdf && app) try {
     const chain=controlChain(textOf(urdf),app.robot?.base_link,app.robot?.tip_link);
