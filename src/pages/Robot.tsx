@@ -92,7 +92,7 @@ export function Robot({ p, analysis, onImport }: { p: Project; analysis?:Project
     </Space>
     <div className="robot-workspace">
       <Card title={t("Link / Joint 结构")}><Input.Search aria-label={t("搜索模型节点")} placeholder={t("搜索节点名称")} value={search} onChange={e => setSearch(e.target.value)} allowClear />
-        <div className="model-tree"><Tree key={`${file.id}:${search}:${robot.links.join('|')}:${robot.joints.map(j => `${j.name}:${j.parent}`).join('|')}`} defaultExpandAll treeData={filter(tree)} selectedKeys={[selected]} onSelect={keys => setSelected(String(keys[0] || ''))} /></div>
+        <div className="model-tree"><Tree aria-label={t('机器人结构树')} key={`${file.id}:${search}:${robot.links.join('|')}:${robot.joints.map(j => `${j.name}:${j.parent}`).join('|')}`} defaultExpandAll treeData={filter(tree)} selectedKeys={[selected]} onSelect={keys => setSelected(String(keys[0] || ''))} /></div>
       </Card>
       <Card title={robot.name || t("模型预览")} className="preview-card"><RobotPreview project={p} robot={robot} selected={selected} onSelect={setSelected} /><div className="preview-caption">{t("配置预览 · m / rad · 拖动旋转，滚轮缩放")}</div></Card>
       <Card title={joint?.name || link || t("节点属性")}>

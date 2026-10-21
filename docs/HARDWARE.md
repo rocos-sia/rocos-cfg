@@ -59,3 +59,5 @@ ROCOS_APP_SOURCE=/path/to/rocos-app npm test -- tests/consumer/model.test.ts
 额外需要 urdfdom、TinyXML/TinyXML2、NLopt、Boost date_time/system 开发库。测试编译原始 Model、Logger、仓库内 KDL parser 和 TRAC-IK，构造本地运动学模型，不构造 Robot/Hardware、不运行主站。日志只写入临时测试目录。覆盖实际 Talon 七关节链、XML 顺序与控制链顺序、固定段、分支、旧消费端扩展限位/默认值与配置器忽略策略的差异，以及无效模型。mimic 不会由当前 Model 作为耦合自由度处理，floating/planar 会被 KDL 当作固定段；配置器因此仍拒绝将这些类型用于控制链。
 
 尚未覆盖所有原生异常/类型组合；ECM SDK、共享内存 ABI 和实机行为另行验证。
+
+硬件设备列表提供带 ID/类型名称的原生单选入口，可用 Tab/Shift+Tab 进入、方向键切换，也可点击整行。选择只改变当前查看对象，不产生工程编辑或撤销记录。单选命中区至少 44×44px，并显示当前主题的键盘焦点；字段编辑仍按所选设备索引提交，由现有事务机制清除 Drive 人工确认、保留撤销。`tests/browser/complex-input.spec.ts` 检查设备顺序与从站/关节顺序不同时，编辑只作用于目标 Driver，下载工程保真、撤销恢复，及英文/深色焦点布局。分支模型的树操作、筛选与语言切换也由该用例验证；本机仿真不代表实际 Pad 或读屏软件验收。

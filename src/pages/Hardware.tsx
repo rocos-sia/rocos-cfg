@@ -36,7 +36,10 @@ export function Hardware({p,analysis}:{p:Project;analysis?:ProjectAnalysis}) {
     <div className="page-heading"><div><h1>{t("硬件与绑定")}</h1><p>{t("按控制关节选择实际从站，确认机械换算与过程数据。")}</p></div><Space wrap>{hardwareTypes.map(type=><Button key={type} disabled={!freeSlaves.length||!!parseError} onClick={()=>{setAddType(type);setSlave(undefined);setJoint(undefined);}}>{t('新增 {type}',{type})}</Button>)}</Space></div>
     {parseError&&<Alert type="error" message={t("配置结构无效，请修复源文件")} description={parseError}/>}
     {!freeSlaves.length&&<Alert type="info" message={t("没有未使用的从站；可在主站配置中添加从站或调整现有设备。")}/>}
-    <div className="hardware-layout"><Card title={t("硬件设备")}><Table pagination={false} rowKey={(_,i)=>String(i)} dataSource={devices} onRow={(_,i)=>({onClick:()=>setSelected(i!)})} columns={[{title:'ID',dataIndex:'id',render:v=>String(v)},{title:t("类型"),dataIndex:'type'},{title:t("关节"),dataIndex:'joint_name',render:v=>typeof v==='string'?v:''}]}/></Card>
+    <div className="hardware-layout"><Card title={t("硬件设备")}><Table className="hardware-device-table" size="small" pagination={false} rowKey={(_,i)=>String(i)} dataSource={devices}
+      rowSelection={{type:'radio',columnWidth:84,columnTitle:t('选择'),selectedRowKeys:d?[String(selected)]:[],onChange:keys=>setSelected(Number(keys[0])),
+        getCheckboxProps:device=>({name:`hardware-device-${file.id}`,'aria-label':t('选择设备 {id}（{type}）',{id:String(device.id),type:String(device.type)})})}}
+      onRow={(_,i)=>({onClick:()=>setSelected(i!)})} columns={[{title:'ID',dataIndex:'id',render:v=>String(v)},{title:t("类型"),dataIndex:'type'},{title:t("关节"),dataIndex:'joint_name',render:v=>typeof v==='string'?v:''}]}/></Card>
       <Card title={d?t('设备 {id} · {type}',{id:d.id,type:String(d.type)}):t("选择或新增硬件")} extra={d&&<Button danger onClick={()=>stage({kind:'delete',index:selected},Math.max(0,selected-1))}>{t("删除设备")}</Button>}>
         {d&&<>
           <div className="field"><label htmlFor="hardware-slave">{t("Hardware / 从站 ID")}</label><Select id="hardware-slave" value={d.id} options={bus.slaves.filter(s=>s.id===d.id||!devices.some(v=>v.id===s.id)).map(s=>({value:s.id,label:`Slave ${s.id} · ${s.name}`}))} onChange={id=>stage({kind:'id',index:selected,id})}/></div>

@@ -1,3 +1,4 @@
+import { parse as parseYaml } from 'yaml';
 // Exercises the actual Linux WebKit application and GTK file dialogs inside an
 // isolated X server. No test-only file commands are compiled into the app.
 import { spawn, execFileSync } from 'node:child_process';
@@ -206,11 +207,32 @@ try {
     await writeFile(join(artifacts,kind+'-example-runtime.zip'),await readFile(exampleRuntime));
   }
   console.log('Desktop: both teaching examples saved and runtime-exported with ENI byte parity.');
+  const multiCompiler=await createViteServer({server:{middlewareMode:true},appType:'custom'}),multiPath=join(temp,'multiple-devices.rcproj');
+  try {
+    const {multiaxisProject}=await multiCompiler.ssrLoadModule('/tests/fixtures/multiaxis.ts');
+    const {saveProject}=await multiCompiler.ssrLoadModule('/src/core/project/archive.ts');
+    await writeFile(multiPath,await saveProject(multiaxisProject()));
+  } finally {await multiCompiler.close();}
+  await click('打开工程');await picker(multiPath,'Open File');await visibleText('切换工程');await click('打开新工程');await menu('硬件与绑定');
+  const multiBefore=await readFile(multiPath);
+  await wait(()=>script(`const e=document.querySelector('input[type=radio][aria-label="选择设备 4（driver）"]');if(!e||!e.checked)return false;e.focus();return true;`),'native device radio focus');
+  xdotool('key','--clearmodifiers','Down');
+  await wait(()=>script(`return document.querySelector('input[type=radio][aria-label="选择设备 0（driver）"]')?.checked&&document.querySelector('input[id$="transform.ratio"]')?.value==='100';`),'native second device selected');
+  assert.deepEqual(await readFile(multiPath),multiBefore);
+  await script(`const e=document.querySelector('input[id$="transform.ratio"]');e.focus();e.select();`);
+  xdotool('key','--clearmodifiers','ctrl+a');xdotool('type','--clearmodifiers','7');xdotool('key','--clearmodifiers','Tab');
+  await click('保存工程');await visibleText('已保存工程文件');
+  const multiManifest=await manifest(multiPath),multiEntries=unzipSync(await readFile(multiPath));
+  const hardwarePath=multiManifest.files.find(f=>f.id===multiManifest.entrypoints.hardware).path;
+  const driveValues=parseYaml(new TextDecoder().decode(multiEntries[hardwarePath])).hardware.map(d=>[d.id,d.transform.ratio]);
+  assert.deepEqual(driveValues,[[4,104],[0,7],[2,102]]);
+  await writeFile(join(artifacts,'multiple-devices-edited.rcproj'),await readFile(multiPath));
+  console.log('Desktop: keyboard device selection and isolated second-drive editing passed.');
   await writeFile(join(artifacts,'report.json'),JSON.stringify({
     status:'passed',applicationVersion:expectedVersion,platform:process.platform,architecture:process.arch,node:process.version,
     binary:{path:binary,sha256:createHash('sha256').update(await readFile(binary)).digest('hex')},
     scope:'Actual Linux WebKit application, native GTK dialogs and temporary files in an isolated display.',
-    checks:['displayed and archived application version','initial save and verified backup','bilingual overwrite-backup notification','external conflict with bilingual reason and difference view','save as','native directory import','same-ID copy and new-ID fork','browser and desktop archive roundtrip','background URDF analysis and WebGL viewport','bilingual unsaved-close confirmation and cancellation','damaged archive recovery and protected source','directory picker cancellation','bilingual directory-export success dialog','directory receipt and file hashes','ZIP and directory byte parity','retained project save target','both teaching examples archived and runtime-exported'],
+    checks:['displayed and archived application version','initial save and verified backup','bilingual overwrite-backup notification','external conflict with bilingual reason and difference view','save as','native directory import','same-ID copy and new-ID fork','browser and desktop archive roundtrip','background URDF analysis and WebGL viewport','bilingual unsaved-close confirmation and cancellation','damaged archive recovery and protected source','directory picker cancellation','bilingual directory-export success dialog','directory receipt and file hashes','ZIP and directory byte parity','retained project save target','both teaching examples archived and runtime-exported','keyboard device selection and isolated second-drive editing'],
     notExecuted:['Windows installation','independent offline computer','power loss or full disk','controller SDK or physical devices'],
   },null,2)+'\n');
 } catch(e) {
