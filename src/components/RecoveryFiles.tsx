@@ -1,24 +1,25 @@
+import { useLocalizedMessage } from './useLocalizedMessage';
 import { errorText, t, getLocale } from '../i18n';
 import { useEffect, useState } from 'react';
-import { Alert, App, Button, Modal, Popconfirm, Space, Table } from 'antd';
+import { Alert, Button, Modal, Popconfirm, Space, Table } from 'antd';
 import { listRecovery, readRecovery, type RecoverySummary } from '../adapters/recovery';
 import { discardRecovery, useProject } from '../store';
 import type { Project } from '../core/project/types';
 
 export function RecoveryFiles({replace,disabled}:{replace:(p:Project)=>Promise<void>;disabled:boolean}){
   const [open,setOpen]=useState(false),[busy,setBusy]=useState(false),[rows,setRows]=useState<RecoverySummary[]>([]);
-  const active=useProject(s=>s.recoveryKey),{message}=App.useApp();
+  const active=useProject(s=>s.recoveryKey),message=useLocalizedMessage();
   useEffect(()=>{
     let mounted=true;
     void listRecovery().then(found=>{if(mounted&&found.length&&!useProject.getState().project){setRows(found);setOpen(true);}}).catch(()=>{});
     return()=>{mounted=false;};
   },[]);
-  const refresh=async()=>{setBusy(true);try{setRows(await listRecovery());setOpen(true);}catch(e){message.error(t('无法读取本机草稿：{error}',{error:String(e)}));}finally{setBusy(false);}};
+  const refresh=async()=>{setBusy(true);try{setRows(await listRecovery());setOpen(true);}catch(e){message.error(()=>(t('无法读取本机草稿：{error}',{error:errorText(e,true)})));}finally{setBusy(false);}};
   const restore=async(row:RecoverySummary)=>{
-    setBusy(true);try{const p=await readRecovery(row.key);await replace(p);setOpen(false);}catch(e){message.error(t('草稿恢复失败，已保留缓存：{error}',{error:String(e)}));}finally{setBusy(false);}
+    setBusy(true);try{const p=await readRecovery(row.key);await replace(p);setOpen(false);}catch(e){message.error(()=>(t('草稿恢复失败，已保留缓存：{error}',{error:errorText(e,true)})));}finally{setBusy(false);}
   };
   const remove=async(row:RecoverySummary)=>{
-    setBusy(true);try{await discardRecovery(row.key);setRows(await listRecovery());}catch(e){message.error(errorText(e,true));}finally{setBusy(false);}
+    setBusy(true);try{await discardRecovery(row.key);setRows(await listRecovery());}catch(e){message.error(()=>(errorText(e,true)));}finally{setBusy(false);}
   };
   return <><Button disabled={disabled||busy} onClick={()=>void refresh()}>{t("本机恢复草稿")}</Button>
     <Modal title={t("本机恢复草稿")} open={open} width={900} onCancel={()=>{if(!busy)setOpen(false);}} footer={<Button disabled={busy} onClick={()=>setOpen(false)}>{t("暂不恢复")}</Button>}>

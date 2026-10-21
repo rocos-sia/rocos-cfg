@@ -1,6 +1,8 @@
+import { useLocalizedMessage } from '../components/useLocalizedMessage';
+import { m as msg, MessageError } from '../core/project/messages';
 import { errorText, diagnosticText, t } from '../i18n';
 import { useState } from 'react';
-import { Alert, App, Button, Card, Checkbox, Modal, Select, Space, Table, Tabs, Tag } from 'antd';
+import { Alert, Button, Card, Checkbox, Modal, Select, Space, Table, Tabs, Tag } from 'antd';
 import { type Project, fileById } from '../core/project/types';
 import type { ProjectAnalysis } from '../core/project/analysis';
 import { axes, bindingDocument, channels, hardwareDocument, hardwareTypes, isRecord, signals, type HardwareType } from '../core/hardware/schema';
@@ -12,19 +14,19 @@ import { SourceEditor } from '../components/SourceEditor';
 
 export function Hardware({p,analysis}:{p:Project;analysis?:ProjectAnalysis}) {
   const file=fileById(p,p.entrypoints.hardware),binding=fileById(p,p.entrypoints.binding);
-  const {message}=App.useApp();const [selected,setSelected]=useState(0);
+  const message=useLocalizedMessage();const [selected,setSelected]=useState(0);
   const [addType,setAddType]=useState<HardwareType>(),[slave,setSlave]=useState<number>(),[joint,setJoint]=useState<string>();
   const [pending,setPending]=useState<{project:Project;impactMessages:import('../core/project/messages').DiagnosticMessage[];revision:number;epoch:number;selected:number}>();
   if(!analysis)return null;
   if(!file)return <Alert type="warning" message={t("请先导入或创建 Hardware 文件，再配置设备。")}/>;
   let devices:Record<string,any>[]=[],binds:Record<string,any>[]=[],parseError='';
-  try{const hw=hardwareDocument(file);if(!Array.isArray(hw.data?.hardware)||hw.devices.some(d=>!isRecord(d)))throw new Error(t("hardware 必须为设备映射列表"));devices=hw.devices;}catch(e){parseError=errorText(e,true);}
+  try{const hw=hardwareDocument(file);if(!Array.isArray(hw.data?.hardware)||hw.devices.some(d=>!isRecord(d)))throw new MessageError(msg("hardware 必须为设备映射列表"));devices=hw.devices;}catch(e){parseError=errorText(e,true);}
   try{if(binding)binds=bindingDocument(binding).bindings.filter(isRecord);}catch(e){parseError+=errorText(e,true);}
   const bus=analysis.catalog,d=devices[selected],chain=analysis.chain,chainError=analysis.chainError?diagnosticText({message:analysis.chainError,text:analysis.chainErrorText}):'';
   let legacy:ReturnType<typeof legacyBindingSuggestion>=[],legacyError='';
   if(!binding)try{legacy=legacyBindingSuggestion(p);}catch(e){legacyError=errorText(e,true);}
   const diagnostics=validateHardware(p,bus,chainError?undefined:chain);
-  const run=(fn:()=>void)=>{try{fn();}catch(e){message.error(errorText(e,true));}};
+  const run=(fn:()=>void)=>{try{fn();}catch(e){message.error(()=>(errorText(e,true)));}};
   const stage=(action:Parameters<typeof planHardware>[1],selection=selected)=>run(()=>{const plan=planHardware(p,action);setPending({...plan,revision:p.revision,epoch:useProject.getState().workspaceEpoch,selected:selection});setAddType(undefined);});
   const update=(path:(string|number)[],value:unknown)=>run(()=>useProject.getState().yaml(file.id,path,value));
   const freeSlaves=bus.slaves.filter(s=>!devices.some(d=>d.id===s.id));
@@ -63,7 +65,7 @@ export function Hardware({p,analysis}:{p:Project;analysis?:ProjectAnalysis}) {
       <div className="field"><label htmlFor="new-hardware-slave">{t("目标从站")}</label><Select id="new-hardware-slave" value={slave} options={freeSlaves.map(s=>({value:s.id,label:`Slave ${s.id} · ${s.name}`}))} onChange={setSlave}/></div>
       {addType==='driver'&&<div className="field"><label htmlFor="new-hardware-joint">{t("控制关节（可稍后绑定）")}</label><Select id="new-hardware-joint" disabled={!binding} allowClear value={joint} options={chain.filter(j=>!binds.some(b=>b.joint_name===j.name)).map(j=>({value:j.name,label:j.name}))} onChange={setJoint}/><p>{t("选择关节可带入 URDF 限位。只生成唯一匹配的 PDO 候选，不猜测机械比例或零点。")}</p></div>}
     </Modal>
-    <Modal title={t("确认硬件变更")} open={!!pending} onCancel={()=>setPending(undefined)} okText={t("应用变更")} onOk={()=>run(()=>{if(!pending)return;const current=useProject.getState().project;if(useProject.getState().workspaceEpoch!==pending.epoch||current?.id!==pending.project.id||current.revision!==pending.revision)throw new Error(t("工程已变化，请重新预览"));useProject.getState().change(n=>Object.assign(n,pending.project));setSelected(pending.selected);setPending(undefined);})}>
+    <Modal title={t("确认硬件变更")} open={!!pending} onCancel={()=>setPending(undefined)} okText={t("应用变更")} onOk={()=>run(()=>{if(!pending)return;const current=useProject.getState().project;if(useProject.getState().workspaceEpoch!==pending.epoch||current?.id!==pending.project.id||current.revision!==pending.revision)throw new MessageError(msg("工程已变化，请重新预览"));useProject.getState().change(n=>Object.assign(n,pending.project));setSelected(pending.selected);setPending(undefined);})}>
       <ul>{pending?.impactMessages.map((x,i)=><li key={i}>{diagnosticText(x)}</li>)}</ul><p>{t("本次修改会清除机械参数确认；整次操作支持撤销。")}</p>
     </Modal>
   </>;

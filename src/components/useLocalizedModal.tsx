@@ -1,11 +1,5 @@
 import { App, type ModalFuncProps } from 'antd';
-import type { ReactNode } from 'react';
-import { useLocale } from '../i18n';
-
-function Localized({ render }: { render: () => ReactNode }) {
-  useLocale();
-  return render();
-}
+import { Localized } from './Localized';
 
 /** Factories must be pure: capture the operation once, regenerate only its display.
  * Locale changes preserve the modal instance, handlers, pending promise and focus.

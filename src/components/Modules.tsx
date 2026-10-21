@@ -1,6 +1,8 @@
+import { useLocalizedMessage } from './useLocalizedMessage';
+import { m as msg, MessageError } from '../core/project/messages';
 import { errorText, diagnosticText, t } from '../i18n';
 import { useState } from 'react';
-import { Alert, App, Button, Card, Input, Modal, Select, Space, Table, Tag } from 'antd';
+import { Alert, Button, Card, Input, Modal, Select, Space, Table, Tag } from 'antd';
 import type { Project } from '../core/project/types';
 import { moduleUI } from '../modules/ui';
 import { modules } from '../core/modules';
@@ -11,7 +13,7 @@ import { useProject } from '../store';
 import { SourceEditor } from './SourceEditor';
 const builtin = new Set(['igh', 'ecm', 'eni', 'urdf', 'hardware', 'binding', 'app', 'resource', 'attachment', 'editor-state', 'template', 'profile', 'model.dae', 'model.gltf']);
 export function Modules({ p }: { p: Project }) {
-  const { message } = App.useApp(), [selected, setSelected] = useState<string>(), [creating, setCreating] = useState(false);
+  const message=useLocalizedMessage(), [selected, setSelected] = useState<string>(), [creating, setCreating] = useState(false);
   const [kind, setKind] = useState(moduleUI[0]?.id), [path, setPath] = useState('app/payload.yaml');
   const records = moduleSnapshots(p).filter(m => !builtin.has(m.id)), active = activeFileIds(p);
   const file = p.files.find(f => f.id === selected), adapter = file && fileModule(p, file);
@@ -35,8 +37,8 @@ export function Modules({ p }: { p: Project }) {
     <Modal title={t("新建附加配置")} open={creating} okText={t("创建并关联")} onCancel={() => setCreating(false)} onOk={() => {
       try {
         const definition = moduleUI.find(u => u.id === kind), mod = definition && modules.get(definition.id, definition.version);
-        if (!definition?.create || !mod?.capabilities.generate) throw new Error(t("模块不支持创建"));
-        safePath(path); if (path.startsWith('project-data/') || path === 'rocos-project.json') throw new Error(t("不能使用工程保留路径"));
+        if (!definition?.create || !mod?.capabilities.generate) throw new MessageError(msg("模块不支持创建"));
+        safePath(path); if (path.startsWith('project-data/') || path === 'rocos-project.json') throw new MessageError(msg("不能使用工程保留路径"));
         let createdId = '';
         useProject.getState().change(next => {
           checkPaths([...next.files.map(f => f.path), path]);
@@ -44,7 +46,7 @@ export function Modules({ p }: { p: Project }) {
           next.files.push(created); definition.attach?.(next, created); next.references = collectReferences(next);
         });
         setCreating(false); setSelected(createdId);
-      } catch (e) { message.error(errorText(e,true)); }
+      } catch (e) { message.error(()=>(errorText(e,true))); }
     }}>
       <label>{t("配置类型")}<Select aria-label={t("附加配置类型")} style={{ width: '100%' }} value={kind} options={moduleUI.filter(u => u.create).map(u => ({ value: u.id, label: t(u.title) }))} onChange={setKind} /></label>
       <label>{t("工程内路径")}<Input aria-label={t("附加配置路径")} value={path} onChange={e => setPath(e.target.value)} /></label>

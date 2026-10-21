@@ -1,3 +1,4 @@
+import { m as msg, MessageError } from './project/messages';
 import { type Project, type ProjectFile, type FileReference, fileById, textOf, utf8 } from './project/types';
 import { packZip } from './project/zip';
 import { checkPaths, relativePath } from './project/paths';
@@ -15,29 +16,29 @@ const toolRoles = new Set(['editor-state', 'profile', 'template']);
 export function planRuntime(project: Project, registry: ModuleRegistry = modules): RuntimePlan {
   const p = structuredClone(project), refs = collectReferences(p, registry), active = activeFileIds(p, refs, registry);
   const errors = validateProject(p, registry).filter(d => d.severity === 'error');
-  if (errors.length) throw new Error(`运行配置仍有 ${errors.length} 项错误，请先修复。`);
+  if (errors.length) throw new MessageError(msg("运行配置仍有 {v0} 项错误，请先修复。", {v0:String(errors.length)}));
   const plan: RuntimePlan = { files: [], rewrites: [], external: refs.filter(r => active.has(r.sourceFileId) && r.state === 'external') };
   const paths = new Map(p.files.map(f => [f.id, f.path]));
   const master = fileById(p, p.entrypoints.master.fileId)!;
   paths.set(master.id, `${master.path.split('/').slice(0, -1).join('/')}${master.path.includes('/') ? '/' : ''}${p.entrypoints.master.kind}.yaml`);
   for (const file of p.files.filter(f => active.has(f.id))) {
-    if (toolRoles.has(file.role) || file.path.startsWith('project-data/')) throw new Error(`运行依赖指向工具元数据：${file.path}`);
+    if (toolRoles.has(file.role) || file.path.startsWith('project-data/')) throw new MessageError(msg("运行依赖指向工具元数据：{v0}", {v0:String(file.path)}));
     const changes: { ref: FileReference; value: string }[] = [];
     for (const ref of refs.filter(r => r.sourceFileId === file.id && r.state === 'internal')) {
       const target = ref.kind === 'directory' ? ref.targetPath : ref.targetFileId && paths.get(ref.targetFileId);
-      if (!target) throw new Error(`资源未解析：${ref.original}`);
+      if (!target) throw new MessageError(msg("资源未解析：{v0}", {v0:String(ref.original)}));
       let value = relativePath(paths.get(file.id)!, target);
       if (ref.uri) value = value.split('/').map(encodeURIComponent).join('/');
       if (value !== ref.original) { changes.push({ ref, value }); plan.rewrites.push({ fileId: file.id, field: ref.field, from: ref.original, to: value }); }
     }
     const adapter = fileModule(p, file, registry);
-    if (!adapter) throw new Error(`运行依赖模块不受支持：${file.path}`);
-    if (adapter.capabilities.readonly && changes.length) throw new Error(`只读文件不能改写：${file.path}`);
+    if (!adapter) throw new MessageError(msg("运行依赖模块不受支持：{v0}", {v0:String(file.path)}));
+    if (adapter.capabilities.readonly && changes.length) throw new MessageError(msg("只读文件不能改写：{v0}", {v0:String(file.path)}));
     const outputs = adapter.export(adapter.parse(file), { project: p, file, path: paths.get(file.id)!, rewrites: changes.map(({ ref, value }) => ({ field: ref.field, value })) });
-    if (!outputs.some(o => o.path === paths.get(file.id))) throw new Error(`模块没有输出计划内文件：${file.path}`);
+    if (!outputs.some(o => o.path === paths.get(file.id))) throw new MessageError(msg("模块没有输出计划内文件：{v0}", {v0:String(file.path)}));
     for (const output of outputs) {
-      if (output.path.startsWith('project-data/') || output.path === 'rocos-project.json') throw new Error('模块不能导出工具元数据');
-      if (file.role === 'eni' && (output.path !== paths.get(file.id) || output.bytes.length !== file.bytes.length || output.bytes.some((v, i) => v !== file.bytes[i]))) throw new Error('ENI 输出必须与原始字节一致');
+      if (output.path.startsWith('project-data/') || output.path === 'rocos-project.json') throw new MessageError(msg("模块不能导出工具元数据"));
+      if (file.role === 'eni' && (output.path !== paths.get(file.id) || output.bytes.length !== file.bytes.length || output.bytes.some((v, i) => v !== file.bytes[i]))) throw new MessageError(msg("ENI 输出必须与原始字节一致"));
       plan.files.push(output);
     }
   }

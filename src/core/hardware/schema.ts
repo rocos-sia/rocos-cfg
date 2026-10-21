@@ -1,3 +1,4 @@
+import { m as msg, MessageError } from '../project/messages';
 import { isAlias, isCollection, isScalar, isSeq, type Document } from 'yaml';
 import { yamlDocument } from '../documents/yaml';
 import { textOf, type ProjectFile } from '../project/types';
@@ -57,7 +58,7 @@ export function bindingDocument(file: ProjectFile) {
 // Resolve aliases at each path component (Document.getIn does not follow them).
 export function nativeNode(doc:Document,path:(string|number)[]):unknown {
   let node:unknown=doc.contents;
-  const resolve=(v:unknown)=>{const seen=new Set<unknown>();while(isAlias(v)){if(seen.has(v))throw new Error('YAML alias 存在循环');seen.add(v);v=v.resolve(doc);}return v;};
+  const resolve=(v:unknown)=>{const seen=new Set<unknown>();while(isAlias(v)){if(seen.has(v))throw new MessageError(msg("YAML alias 存在循环"));seen.add(v);v=v.resolve(doc);}return v;};
   for(const key of path){node=resolve(node);if(!isCollection(node))return undefined;node=node.get(key,true);}
   return resolve(node);
 }

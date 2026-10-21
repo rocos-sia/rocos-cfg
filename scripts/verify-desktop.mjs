@@ -88,6 +88,10 @@ try {
   console.log('Desktop: initial native save passed.');
   await rename('desktop-edited');await click('保存工程');await visibleText('已保存工程文件');
   const backups=(await readdir(temp)).filter(x=>x.startsWith('original-backup-'));assert.equal(backups.length,1);assert.deepEqual(await readFile(join(temp,backups[0])),first);
+  await language('en-US');
+  await wait(()=>script(`return [...document.querySelectorAll('.ant-message-notice')].some(e=>e.textContent.includes(arguments[0]));`,['Previous version backup: '+join(temp,backups[0])]),'English backup notification');
+  await language('zh-CN');
+  await wait(()=>script(`return [...document.querySelectorAll('.ant-message-notice')].some(e=>e.textContent.includes(arguments[0]));`,['上一版备份：'+join(temp,backups[0])]),'Chinese backup notification');
   const external=unzipSync(await readFile(original)),m=JSON.parse(new TextDecoder().decode(external['rocos-project.json']));m.project.name='external-edit';external['rocos-project.json']=new TextEncoder().encode(JSON.stringify(m));await writeFile(original,zipSync(external));const externalBytes=await readFile(original);
   await rename('local-edits');await click('保存工程');await visibleText('磁盘文件已变化');assert.deepEqual(await readFile(original),externalBytes);
   await language('en-US');await visibleText('The file was changed or deleted externally');
@@ -188,7 +192,7 @@ try {
     status:'passed',applicationVersion:expectedVersion,platform:process.platform,architecture:process.arch,node:process.version,
     binary:{path:binary,sha256:createHash('sha256').update(await readFile(binary)).digest('hex')},
     scope:'Actual Linux WebKit application, native GTK dialogs and temporary files in an isolated display.',
-    checks:['displayed and archived application version','initial save and verified backup','external conflict with bilingual reason and difference view','save as','native directory import','same-ID copy and new-ID fork','browser and desktop archive roundtrip','background URDF analysis and WebGL viewport','bilingual unsaved-close confirmation and cancellation','damaged archive recovery and protected source','directory picker cancellation','bilingual directory-export success dialog','directory receipt and file hashes','ZIP and directory byte parity','retained project save target'],
+    checks:['displayed and archived application version','initial save and verified backup','bilingual overwrite-backup notification','external conflict with bilingual reason and difference view','save as','native directory import','same-ID copy and new-ID fork','browser and desktop archive roundtrip','background URDF analysis and WebGL viewport','bilingual unsaved-close confirmation and cancellation','damaged archive recovery and protected source','directory picker cancellation','bilingual directory-export success dialog','directory receipt and file hashes','ZIP and directory byte parity','retained project save target'],
     notExecuted:['Windows installation','independent offline computer','power loss or full disk','controller SDK or physical devices'],
   },null,2)+'\n');
 } catch(e) {

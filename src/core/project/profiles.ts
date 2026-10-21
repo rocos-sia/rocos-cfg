@@ -32,7 +32,7 @@ export function targetStatus(p:Project,slot:'app'|'master'):ProfileStatus{
 }
 export function attachProfile(p:Project,slot:'app'|'master',separate=false){
   const kind=slot==='app'?'app':p.entrypoints.master.kind,definition=profileDefinition(kind),status=targetStatus(p,slot);
-  if(!status.supported)throw new Error(status.message);
+  if(!status.supported)throw new MessageError(status);
   if(!status.legacy)return;
   const path=`project-data/profiles/${definition.id}.v${definition.version}${separate?'.'+uid():''}.json`;
   let file=p.files.find(f=>f.path===path);

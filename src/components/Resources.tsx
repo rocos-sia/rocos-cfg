@@ -1,25 +1,27 @@
+import { useLocalizedMessage } from './useLocalizedMessage';
+import { m as msg, MessageError } from '../core/project/messages';
 import { useLocalizedModal } from './useLocalizedModal';
 import { errorText, t } from '../i18n';
 import { fileAccess } from '../adapters/file-access';
 import { useRef, useState } from 'react';
-import { Alert, App, Button, Card, Input, Modal, Select, Space, Table, Tag } from 'antd';
+import { Alert, Button, Card, Input, Modal, Select, Space, Table, Tag } from 'antd';
 import { type Project, type FileReference } from '../core/project/types';
 import { activeFileIds, collectReferences } from '../core/project/references';
 import { mapReference, moveResource, setPackagePath } from '../core/project/resources';
 import { useImportDialog } from './ImportDialog';
 import { useProject } from '../store';
 export function Resources({ p }: { p: Project }) {
-  const { message } = App.useApp();const modal=useLocalizedModal();
+  const message=useLocalizedMessage();const modal=useLocalizedModal();
   const { selectFiles, dialog } = useImportDialog();
   const [packageName, setPackageName] = useState(''), [packagePath, setPackageDirectory] = useState<string>();
   const [moving, setMoving] = useState<{ id: string; path: string } | null>(null);
   const fileInput = useRef<HTMLInputElement>(null), folderInput = useRef<HTMLInputElement>(null);
   const refs = collectReferences(p), active = activeFileIds(p, refs);
   const directories = [...new Set(p.files.flatMap(f => { const parts = f.path.split('/'); return parts.slice(0, -1).map((_, i) => parts.slice(0, i + 1).join('/')); }))].sort();
-  const run = (fn: () => void) => { try { fn(); } catch (error) { message.error(errorText(error,true)); } };
+  const run = (fn: () => void) => { try { fn(); } catch (error) { message.error(()=>(errorText(error,true))); } };
   const pick=async(directory:boolean)=>{
     if(fileAccess().kind==='browser'){(directory?folderInput:fileInput).current?.click();return;}
-    try{const files=await fileAccess().import(directory);if(files?.length)await selectFiles(files);}catch(e){message.error(errorText(e,true));}
+    try{const files=await fileAccess().import(directory);if(files?.length)await selectFiles(files);}catch(e){message.error(()=>(errorText(e,true)));}
   };
   const update = (ref: FileReference, target: Parameters<typeof mapReference>[2]) => run(() => useProject.getState().change(next => mapReference(next, ref, target)));
   const markExternal = (ref: FileReference) => {
@@ -30,7 +32,7 @@ export function Resources({ p }: { p: Project }) {
       okText:t("标记为外部依赖"),
       onOk:()=>run(()=>{
         const state=useProject.getState();
-        if(state.workspaceEpoch!==epoch||state.project?.revision!==p.revision)throw new Error(t("工程已变化，请重新预览"));
+        if(state.workspaceEpoch!==epoch||state.project?.revision!==p.revision)throw new MessageError(msg("工程已变化，请重新预览"));
         state.change(next=>mapReference(next,ref,{external:true}));
       }),
     }));
@@ -54,7 +56,7 @@ export function Resources({ p }: { p: Project }) {
     <Card className="space-top" title={t("package:// 包目录")}>
       <Space wrap><Input aria-label={t("Package 名称")} placeholder={t("例如 robot_description")} value={packageName} onChange={e => setPackageName(e.target.value)} />
         <Select aria-label={t("Package 目录")} placeholder={t("工程内目录")} value={packagePath} style={{ minWidth: 230 }} options={directories.map(value => ({ value, label: value }))} onChange={setPackageDirectory} />
-        <Button onClick={() => run(() => { if (!packagePath) throw new Error(t("请选择包目录")); useProject.getState().change(next => setPackagePath(next, packageName, packagePath)); setPackageName(''); })}>{t("添加包映射")}</Button>
+        <Button onClick={() => run(() => { if (!packagePath) throw new MessageError(msg("请选择包目录")); useProject.getState().change(next => setPackagePath(next, packageName, packagePath)); setPackageName(''); })}>{t("添加包映射")}</Button>
       </Space>
       <Table size="small" pagination={false} rowKey="name" dataSource={Object.entries(p.packageMap).map(([name, path]) => ({ name, path }))} columns={[{ title: t("包名"), dataIndex: 'name' }, { title: t("目录"), dataIndex: 'path' }, { title: t("操作"), render: (_, row) => <Button onClick={() => run(() => useProject.getState().change(next => setPackagePath(next, row.name, null)))}>{t("移除映射")}</Button> }]} />
     </Card>

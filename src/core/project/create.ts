@@ -1,3 +1,4 @@
+import { m as msg, MessageError } from './messages';
 import { stringify } from 'yaml';
 import { masterProfile } from './import';
 import { attachProfile, baseTarget } from './profiles';
@@ -20,7 +21,7 @@ export function createProject(name: string, kind: MasterKind, options:ProjectOpt
   recordTemplate(project,starterTemplate(),{},[master.id,robot.id,hardware.id,binding.id,app.id]);
   if(options.robotTemplate){
     const template=robotTemplate(),prefix=options.parameters?.prefix??template.defaults.prefix,length=options.parameters?.linkLength??template.defaults.linkLength;
-    if(!/^[A-Za-z_][A-Za-z0-9_]{0,39}$/.test(prefix)||!Number.isFinite(length)||length<=0||length>10)throw new Error('模型前缀须为字母/数字/下划线，连杆长度须在 0–10 m 之间且大于 0');
+    if(!/^[A-Za-z_][A-Za-z0-9_]{0,39}$/.test(prefix)||!Number.isFinite(length)||length<=0||length>10)throw new MessageError(msg("模型前缀须为字母/数字/下划线，连杆长度须在 0–10 m 之间且大于 0"));
     const doc=xmlDocument('<robot/>');doc.documentElement.setAttribute('name',prefix);
     const add=(parent:Element,tag:string,attrs:Record<string,string|number>)=>{const n=doc.createElement(tag);for(const [key,value] of Object.entries(attrs))n.setAttribute(key,String(value));parent.appendChild(n);return n;};
     const base=prefix+'_base';add(doc.documentElement,'link',{name:base});

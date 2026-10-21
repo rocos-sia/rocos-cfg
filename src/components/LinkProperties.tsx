@@ -1,10 +1,11 @@
+import { useLocalizedMessage } from './useLocalizedMessage';
 import { errorText, t } from '../i18n';
-import { Alert, App, Descriptions, Input, Tabs } from 'antd';
+import { Alert, Descriptions, Input, Tabs } from 'antd';
 import { linkProperties, type GeometryView } from '../core/documents/urdf-geometry';
 import { changeLinkGeometry } from '../core/documents/robot-edit';
 import { useProject } from '../store';
 export function LinkProperties({ text, name }: { text: string; name: string }) {
-  const properties = linkProperties(text, name), { message } = App.useApp();
+  const properties = linkProperties(text, name), message=useLocalizedMessage();
   const labels: Record<string, string> = { xyz: t("位置 xyz (m)"), rpy: t("旋转 rpy (rad)"), size: t("尺寸 xyz (m)"), radius: t("半径 (m)"), length: t("长度 (m)"), filename: t("Mesh 路径"), scale: t("Mesh 缩放 xyz") };
   return <Tabs items={[
     ...(['visual', 'collision'] as const).map(group => ({ key: group, label: `${group === 'visual' ? t("外观") : t("碰撞")} (${properties[group].length})`, children: <>
@@ -15,7 +16,7 @@ export function LinkProperties({ text, name }: { text: string; name: string }) {
           <Input id={`${group}-${g.index}-${field}`} key={`${name}:${g[field]}`} defaultValue={String(g[field])} onBlur={event => {
             if (event.target.value === g[field]) return;
             try { useProject.getState().change(p => changeLinkGeometry(p, name, group, g.index, field, event.target.value)); }
-            catch (error) { message.error(errorText(error,true)); }
+            catch (error) { message.error(()=>(errorText(error,true))); }
           }} />
         </div>)}
       </div>)}

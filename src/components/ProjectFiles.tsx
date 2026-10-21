@@ -1,8 +1,9 @@
+import { useLocalizedMessage } from './useLocalizedMessage';
 import { useLocalizedModal } from './useLocalizedModal';
 import { m as msg, errorMessage, messageFields, type MessageInput } from '../core/project/messages';
 import { diagnosticText, errorText, t } from '../i18n';
 import { useEffect, useRef, useState } from 'react';
-import { Alert, App, Button, Modal, Progress, Space, Table } from 'antd';
+import { Alert, Button, Modal, Progress, Space, Table } from 'antd';
 import { fileAccess, FileAccessError, type FileHandle, type OpenedFile, type TransferOptions } from '../adapters/file-access';
 import { ProjectSession, retainsSaveTarget, type SaveMode } from '../adapters/project-session';
 import { inspectArchive, recoverArchive, saveArchive } from '../adapters/archive-tasks';
@@ -22,13 +23,13 @@ export function useProjectFiles(onLoaded:()=>void) {
   const [failed,setFailed]=useState<FailedArchive>();
   const [migration,setMigration]=useState<PendingMigration>();
   const [conflict,setConflict]=useState<{handle:FileHandle;error:FileAccessError;disk?:OpenedFile;reason?:MessageInput;rows?:{path:string;change:string;current:string;disk:string}[]}>();
-  const {message}=App.useApp();const modal=useLocalizedModal();const afterLoad=useRef(onLoaded);afterLoad.current=onLoaded;
+  const message=useLocalizedMessage();const modal=useLocalizedModal();const afterLoad=useRef(onLoaded);afterLoad.current=onLoaded;
   const run=async<T,>(work:(controller:AbortController)=>Promise<T>):Promise<T|undefined>=>{
-    if(operation.current){message.info(t("已有文件操作，请等待完成或取消"));return;}
+    if(operation.current){message.info(()=>(t("已有文件操作，请等待完成或取消")));return;}
     const controller=new AbortController();operation.current=controller;setBusy(true);setProgress(undefined);
     try{return await work(controller);}catch(e){
       if(e instanceof FileAccessError&&e.code==='conflict'&&session.current.handle)setConflict({handle:session.current.handle,error:e});
-      else if(!(e instanceof DOMException&&e.name==='AbortError'))message.error(errorText(e));
+      else if(!(e instanceof DOMException&&e.name==='AbortError'))message.error(()=>(errorText(e)));
     }finally{operation.current=undefined;setBusy(false);setProgress(undefined);}
   };
   const replace=async(next:Project,opened?:OpenedFile,protectedSource?:FileHandle,signal?:AbortSignal)=>{
@@ -54,13 +55,13 @@ export function useProjectFiles(onLoaded:()=>void) {
     try{const result=await inspectArchive(opened.bytes,{signal:controller.signal,progress:(n,t)=>setProgress(t?n/t*100:undefined)});if(result.mode==='editable'){if(result.migration)setMigration({opened,project:result.project,report:result.migration});else await replace(result.project,opened,undefined,controller.signal);}else{setReadonly({...result,filename:opened.name});if(opened.handle)await access.release(opened.handle);}}
     catch(e){if(e instanceof DOMException&&e.name==='AbortError'){if(opened.handle)await access.release(opened.handle);throw e;}setFailed({opened,error:errorMessage(e)});}
   };
-  const closeMigration=()=>{const old=migration;setMigration(undefined);if(old?.opened.handle)void access.release(old.opened.handle).catch(e=>message.error(errorText(e,true)));};
+  const closeMigration=()=>{const old=migration;setMigration(undefined);if(old?.opened.handle)void access.release(old.opened.handle).catch(e=>message.error(()=>(errorText(e,true))));};
   const acceptMigration=()=>run(async c=>{if(!migration)return;const pending=migration;setMigration(undefined);await replace(pending.project,undefined,pending.opened.handle,c.signal);});
   const copyMigration=()=>run(async c=>{
     if(!migration)return;const result=await access.write(migration.opened.bytes,migration.opened.name,{signal:c.signal,exclude:migration.opened.handle});
     if(result?.kind==='written')await access.release(result.handle);
   });
-  const closeFailed=()=>{const old=failed;setFailed(undefined);if(old?.opened.handle)void access.release(old.opened.handle).catch(e=>message.error(errorText(e,true)));};
+  const closeFailed=()=>{const old=failed;setFailed(undefined);if(old?.opened.handle)void access.release(old.opened.handle).catch(e=>message.error(()=>(errorText(e,true))));};
   const inspectFailed=()=>run(async c=>{
     if(!failed)return;const current=failed;
     try{const recovery=await recoverArchive(current.opened.bytes,__APP_VERSION__,{signal:c.signal,progress:(n,t)=>setProgress(t?n/t*100:undefined)});setFailed(previous=>previous===current?{...current,recovery,recoveryError:undefined}:previous);}
@@ -81,10 +82,11 @@ export function useProjectFiles(onLoaded:()=>void) {
     const same=useProject.getState().workspaceEpoch===epoch&&useProject.getState().project?.id===snapshot.id;
     if(saved.result.kind==='written'){
       if(saved.current&&same&&!retainsSaveTarget(mode)){setDestination(saved.result.handle.displayPath);useProject.getState().markSaved(snapshot.revision,saved.result.handle.displayPath);}
-      message.success(mode==='fork'?t("新工程已写入磁盘，可打开后独立编辑"):mode==='copy'?t("工程副本已写入磁盘"):t("工程已写入磁盘"));
-      if(saved.result.backupPath)message.info(t('上一版备份：{path}',{path:saved.result.backupPath}),6);
-      if(saved.result.warning)message.warning(diagnosticText({message:saved.result.warning,text:saved.result.warningText}),8);
-    }else{if(same&&!retainsSaveTarget(mode))useProject.getState().markDownloaded(snapshot.revision);message.success(mode==='fork'?t("已生成新工程下载，可打开后独立编辑"):t("已生成工程下载，请保留下载文件"));}
+      message.success(()=>(mode==='fork'?t("新工程已写入磁盘，可打开后独立编辑"):mode==='copy'?t("工程副本已写入磁盘"):t("工程已写入磁盘")));
+      const {backupPath,warning,warningText}=saved.result;
+      if(backupPath)message.info(()=>(t('上一版备份：{path}',{path:backupPath})),6);
+      if(warning)message.warning(()=>(diagnosticText({message:warning,text:warningText})),8);
+    }else{if(same&&!retainsSaveTarget(mode))useProject.getState().markDownloaded(snapshot.revision);message.success(()=>(mode==='fork'?t("已生成新工程下载，可打开后独立编辑"):t("已生成工程下载，请保留下载文件")));}
   });
   const inspectDisk=()=>run(async c=>{
     if(!conflict)return;const base=conflict,opened=await access.refresh(base.handle,{signal:c.signal});const result=await inspectArchive(opened.bytes,{signal:c.signal,progress:(n,t)=>setProgress(t?n/t*100:undefined)});
@@ -98,12 +100,12 @@ export function useProjectFiles(onLoaded:()=>void) {
   });
   const closeHandler=useRef<()=>void>(()=>{});
   closeHandler.current=()=>{
-    if(operation.current||access.busy){message.info(t("文件操作尚未完成，请等待或取消后再关闭"));return;}
-    void flushBuffers().then(()=>{const state=useProject.getState();if(state.project&&state.project.revision!==state.savedRevision)modal.confirm(()=>({title:t("关闭应用"),content:t("当前工程有未保存修改。浏览器缓存不代替工程文件；可取消后先保存。"),okText:t("不保存并关闭"),cancelText:t("取消"),onOk:()=>access.close?.()}));else return access.close?.();}).catch(e=>message.error(errorText(e,true)));
+    if(operation.current||access.busy){message.info(()=>(t("文件操作尚未完成，请等待或取消后再关闭")));return;}
+    void flushBuffers().then(()=>{const state=useProject.getState();if(state.project&&state.project.revision!==state.savedRevision)modal.confirm(()=>({title:t("关闭应用"),content:t("当前工程有未保存修改。浏览器缓存不代替工程文件；可取消后先保存。"),okText:t("不保存并关闭"),cancelText:t("取消"),onOk:()=>access.close?.()}));else return access.close?.();}).catch(e=>message.error(()=>(errorText(e,true))));
   };
   useEffect(()=>{
     if(!access.onClose)return;let dispose:(()=>void)|undefined,ended=false;
-    void access.onClose(()=>closeHandler.current()).then(fn=>{if(ended)fn();else dispose=fn;}).catch(e=>message.error(t("关闭确认监听失败：")+String(e)));
+    void access.onClose(()=>closeHandler.current()).then(fn=>{if(ended)fn();else dispose=fn;}).catch(e=>message.error(()=>(t("关闭确认监听失败：")+String(e))));
     return()=>{ended=true;dispose?.();};
   },[access]);
   const saveHandler=useRef(save);saveHandler.current=save;
@@ -121,7 +123,7 @@ export function useProjectFiles(onLoaded:()=>void) {
         {conflict&&<><Alert type="warning" message={errorText(conflict.error)}/><p style={{overflowWrap:'anywhere'}}>{conflict.handle.displayPath}<br/>{t("打开/上次保存哈希：")}{conflict.handle.sha256}<br/>{t("检测到的磁盘哈希：")}{conflict.error.currentHash||t("文件不存在")}</p>
           {conflict.reason&&<p>{diagnosticText(messageFields(conflict.reason))}</p>}
           {conflict.rows&&<Table size="small" rowKey="path" scroll={{x:700}} dataSource={conflict.rows} columns={[{title:t("路径"),dataIndex:'path'},{title:t("差异"),dataIndex:'change',render:value=>t(value)},{title:t("工作区 SHA-256"),dataIndex:'current',ellipsis:true,render:value=>value||t('无')},{title:t("磁盘 SHA-256"),dataIndex:'disk',ellipsis:true,render:value=>value||t('无')}]} pagination={{pageSize:6}}/>}
-          {conflict.disk&&<Button onClick={()=>void download(conflict.disk!.bytes,conflict.disk!.name).catch(e=>message.error(errorText(e,true)))}>{t("导出磁盘版本副本")}</Button>}
+          {conflict.disk&&<Button onClick={()=>void download(conflict.disk!.bytes,conflict.disk!.name).catch(e=>message.error(()=>(errorText(e,true))))}>{t("导出磁盘版本副本")}</Button>}
         </>}
       </Modal>
     </>};

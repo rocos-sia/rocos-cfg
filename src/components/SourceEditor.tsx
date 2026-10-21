@@ -1,3 +1,4 @@
+import { useLocalizedMessage } from './useLocalizedMessage';
 import { errorText, t, useLocale } from '../i18n';
 import { editorPhrases } from '../i18n/editor';
 import { closeSearchPanel, openSearchPanel, searchPanelOpen } from '@codemirror/search';
@@ -7,7 +8,7 @@ import { Compartment, EditorState } from '@codemirror/state';
 import { basicSetup } from 'codemirror';
 import { yaml } from '@codemirror/lang-yaml';
 import { xml } from '@codemirror/lang-xml';
-import { Button, Alert, Space, Tag, App } from 'antd';
+import { Button, Alert, Space, Tag } from 'antd';
 import { fileModule, readonlyFile } from '../core/modules/project';
 import { useProject, flushBuffers } from '../store';
 import { textOf, type ProjectFile } from '../core/project/types';
@@ -23,7 +24,7 @@ function DecodedSourceEditor({ file, source }: { file: ProjectFile; source: stri
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
   const syncing = useRef(false);
-  const { message } = App.useApp();
+  const message=useLocalizedMessage();
   const draft = useProject(s => s.project?.editor.buffers[file.id]);
   const project = useProject(s => s.project);
   const readonly = !project || readonlyFile(project, file);
@@ -44,7 +45,7 @@ function DecodedSourceEditor({ file, source }: { file: ProjectFile; source: stri
           EditorView.updateListener.of(update => {
             if (update.docChanged && !readonly && !syncing.current) {
               void useProject.getState().buffer(file.id, update.state.doc.toString())
-                .catch(error => message.error(errorText(error,true)));
+                .catch(error => message.error(()=>(errorText(error,true))));
             }
           }),
         ],
@@ -82,12 +83,12 @@ function DecodedSourceEditor({ file, source }: { file: ProjectFile; source: stri
       <Tag>{file.path}</Tag>
       {readonly ? <Tag color="gold">{file.role === 'eni' ? t("ENI 原文 · 只读") : t("模块原文 · 只读")}</Tag> : <>
         <Button onClick={async () => {
-          try { await flushBuffers(); message.success(t("源码草稿已保留，可随工程保存")); }
-          catch (error) { message.error(errorText(error,true)); }
+          try { await flushBuffers(); message.success(()=>(t("源码草稿已保留，可随工程保存"))); }
+          catch (error) { message.error(()=>(errorText(error,true))); }
         }}>{t("保留源码草稿")}</Button>
         <Button type="primary" onClick={async () => {
-          try { await useProject.getState().apply(file.id); message.success(t("修改已应用")); }
-          catch (error) { message.error(errorText(error,true)); }
+          try { await useProject.getState().apply(file.id); message.success(()=>(t("修改已应用"))); }
+          catch (error) { message.error(()=>(errorText(error,true))); }
         }}>{t("应用修改")}</Button>
         {draft && <Button onClick={() => useProject.getState().discard(file.id)}>{t("放弃草稿")}</Button>}
       </>}

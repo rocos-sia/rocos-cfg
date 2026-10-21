@@ -1,3 +1,4 @@
+import { m as msg, MessageError } from '../project/messages';
 import type { ConfigModule, ModuleExportContext, ModuleReference } from './contracts';
 import { textOf, utf8 } from '../project/types';
 import { readYaml, yamlDocument } from '../documents/yaml';
@@ -34,7 +35,7 @@ export const nativeModules: ConfigModule[] = [
   { id: 'eni', version: 1, role: 'eni', syntax: 'xml', capabilities: { ...capabilities, readonly: true, advancedEdit: false },
     detect: f => /\.xml$/i.test(f.path) && xmlDocument(textOf(f)).documentElement.localName === 'EtherCATConfig',
     parse: f => xmlDocument(textOf(f)), validate: () => [], references: () => [], export: (v, ctx) => {
-      if (ctx.rewrites.length) throw new Error('ENI 只读，不能改写内部路径'); return copy(v, ctx);
+      if (ctx.rewrites.length) throw new MessageError(msg("ENI 只读，不能改写内部路径")); return copy(v, ctx);
     },
   },
   { id: 'urdf', version: 1, role: 'urdf', syntax: 'xml', capabilities,
@@ -44,17 +45,17 @@ export const nativeModules: ConfigModule[] = [
     export: (doc, ctx) => xmlExport(doc, ctx),
   },
   { id: 'model.dae', version: 1, role: 'resource', syntax: 'xml', capabilities: { ...capabilities, advancedEdit: false },
-    detect: f => /\.dae$/i.test(f.path), parse: f => { const doc = xmlDocument(textOf(f)); if (doc.documentElement.localName !== 'COLLADA') throw new Error('DAE 根节点须为 COLLADA'); return doc; },
+    detect: f => /\.dae$/i.test(f.path), parse: f => { const doc = xmlDocument(textOf(f)); if (doc.documentElement.localName !== 'COLLADA') throw new MessageError(msg("DAE 根节点须为 COLLADA")); return doc; },
     validate: () => [], references: doc => elements(doc, 'image').flatMap((im, i) => elements(im, 'init_from').map((n, j) => ({ field: `image[${i}].init_from[${j}]`, original: n.textContent?.trim() || '', uri: true }))),
     export: (doc, ctx) => xmlExport(doc, ctx),
   },
   { id: 'model.gltf', version: 1, role: 'resource', capabilities: { ...capabilities, advancedEdit: false },
-    detect: f => /\.gltf$/i.test(f.path), parse: f => { const data = JSON.parse(textOf(f)); if (!data || typeof data !== 'object' || !data.asset) throw new Error('glTF 缺少 asset 描述'); return data; },
+    detect: f => /\.gltf$/i.test(f.path), parse: f => { const data = JSON.parse(textOf(f)); if (!data || typeof data !== 'object' || !data.asset) throw new MessageError(msg("glTF 缺少 asset 描述")); return data; },
     validate: () => [], references: data => ['buffers', 'images'].flatMap(group => Array.isArray(data[group]) ? data[group].flatMap((n: any, i: number) => typeof n?.uri === 'string' ? [{ field: `${group}[${i}].uri`, original: n.uri, uri: true }] : []) : []),
     export: (data, ctx) => {
       if (!ctx.rewrites.length) return copy(data, ctx);
       for (const { field, value } of ctx.rewrites) {
-        const match = /^(buffers|images)\[(\d+)\]\.uri$/.exec(field); if (!match) throw new Error('glTF 引用位置无效');
+        const match = /^(buffers|images)\[(\d+)\]\.uri$/.exec(field); if (!match) throw new MessageError(msg("glTF 引用位置无效"));
         data[match[1]][Number(match[2])].uri = value;
       }
       return [{ path: ctx.path, bytes: utf8.encode(JSON.stringify(data, null, 2)), fileId: ctx.file.id }];
@@ -62,7 +63,7 @@ export const nativeModules: ConfigModule[] = [
   },
   ...['resource', 'attachment', 'editor-state', 'profile', 'template'].map(id => ({ id, version: 1, role: id, capabilities: { ...capabilities, readonly: !['resource', 'attachment'].includes(id), advancedEdit: false },
     detect: () => false, parse: () => null, validate: () => [], references: () => [], export: (v: unknown, ctx: ModuleExportContext) => {
-      if (ctx.rewrites.length) throw new Error(`尚不支持改写 ${ctx.file.path} 的资源引用`); return copy(v, ctx);
+      if (ctx.rewrites.length) throw new MessageError(msg("尚不支持改写 {v0} 的资源引用", {v0:String(ctx.file.path)})); return copy(v, ctx);
     },
   })),
 ];
@@ -71,11 +72,11 @@ function xmlExport(doc: Document, ctx: ModuleExportContext) {
   for (const { field, value } of ctx.rewrites) {
     const urdf = /^(mesh|texture)\[(\d+)\]\.filename$/.exec(field), dae = /^image\[(\d+)\]\.init_from\[(\d+)\]$/.exec(field);
     if (urdf) {
-      const node = urdfResources(doc, urdf[1])[Number(urdf[2])]; if (!node) throw new Error('URDF 引用位置已变化'); node.setAttribute('filename', value);
+      const node = urdfResources(doc, urdf[1])[Number(urdf[2])]; if (!node) throw new MessageError(msg("URDF 引用位置已变化")); node.setAttribute('filename', value);
     } else if (dae) {
       const image = elements(doc, 'image')[Number(dae[1])], node = image && elements(image, 'init_from')[Number(dae[2])];
-      if (!node) throw new Error('DAE 引用位置已变化'); node.textContent = value;
-    } else throw new Error(`无法安全改写引用：${ctx.file.path} ${field}`);
+      if (!node) throw new MessageError(msg("DAE 引用位置已变化")); node.textContent = value;
+    } else throw new MessageError(msg("无法安全改写引用：{v0} {v1}", {v0:String(ctx.file.path), v1:String(field)}));
   }
   return [{ path: ctx.path, bytes: utf8.encode(serializeXml(doc).replace(/(<\?xml\b[^?]*\bencoding\s*=\s*)["'][^"']+["']/i, '$1"UTF-8"')), fileId: ctx.file.id }];
 }

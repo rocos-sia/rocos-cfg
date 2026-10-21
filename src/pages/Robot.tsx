@@ -1,8 +1,9 @@
+import { useLocalizedMessage } from '../components/useLocalizedMessage';
 import { useLocalizedModal } from '../components/useLocalizedModal';
 import { diagnosticText, errorText, t } from '../i18n';
 import { LinkProperties } from '../components/LinkProperties';
 import { useState } from 'react';
-import { Alert, App, Button, Card, Input, Modal, Select, Space, Tree } from 'antd';
+import { Alert, Button, Card, Input, Modal, Select, Space, Tree } from 'antd';
 import { type Project, fileById, textOf } from '../core/project/types';
 import { type RobotJointParameters } from '../core/documents/urdf';
 import type { ProjectAnalysis } from '../core/project/analysis';
@@ -17,7 +18,7 @@ interface TreeNode { key: string; title: string; children?: TreeNode[] }
 export function Robot({ p, analysis, onImport }: { p: Project; analysis?:ProjectAnalysis; onImport: () => void }) {
   const file = fileById(p, p.entrypoints.urdf), app = fileById(p, p.entrypoints.app);
   const [selected, setSelected] = useState(''), [search, setSearch] = useState(''), [form, setForm] = useState<Form | null>(null);
-  const { message } = App.useApp();const modal=useLocalizedModal();
+  const message=useLocalizedMessage();const modal=useLocalizedModal();
   const [pending,setPending]=useState<{plan:RobotPlan;revision:number;epoch:number}>();
   if(!analysis)return null;
   if (!file) return <Button onClick={onImport}>{t("导入 URDF")}</Button>;
@@ -47,19 +48,19 @@ export function Robot({ p, analysis, onImport }: { p: Project; analysis?:Project
       const plan = planRobotChange(p, action);
       setPending({plan,revision:p.revision,epoch:useProject.getState().workspaceEpoch});
       return true;
-    } catch (error) { message.error(errorText(error,true)); return false; }
+    } catch (error) { message.error(()=>(errorText(error,true))); return false; }
   };
   const edit = (field: keyof RobotJointParameters, value: string) => {
     if (!joint) return;
     try { useProject.getState().change(next => changeJointParameter(next, joint.name, field, value)); }
-    catch (error) { message.error(errorText(error,true)); }
+    catch (error) { message.error(()=>(errorText(error,true))); }
   };
   const deleteNode = () => {
     if (!link && !joint) return;
     const epoch=useProject.getState().workspaceEpoch;
     const choose=(mode:'reattach'|'subtree')=>{
       const state=useProject.getState();
-      if(state.workspaceEpoch!==epoch||state.project?.revision!==p.revision){message.error(t("工程已变化，请重新查看影响"));return;}
+      if(state.workspaceEpoch!==epoch||state.project?.revision!==p.revision){message.error(()=>(t("工程已变化，请重新查看影响")));return;}
       prepare({kind:'delete',node:selectedKind,name:selectedName,mode});
     };
     const decision = modal.confirm(()=>({ title: t("选择删除方式"), content: t("级联删除会移除整个子树；保留后代会将子关节挂到上一级 Link，并保留其局部 origin。"), okText: t("级联删除子树"), cancelText: t("取消"),
@@ -72,7 +73,7 @@ export function Robot({ p, analysis, onImport }: { p: Project; analysis?:Project
     <Modal title={t("确认模型与引用变更")} open={!!pending} width={680} okText={t("应用模型变更")} cancelText={t("取消")} onCancel={()=>setPending(undefined)} onOk={()=>{
       if(!pending)return;
       const state=useProject.getState();
-      if(state.workspaceEpoch!==pending.epoch||state.project?.id!==p.id||state.project.revision!==pending.revision){message.error(t("工程已变化，请重新查看影响"));return;}
+      if(state.workspaceEpoch!==pending.epoch||state.project?.id!==p.id||state.project.revision!==pending.revision){message.error(()=>(t("工程已变化，请重新查看影响")));return;}
       state.change(next=>Object.assign(next,pending.plan.project));
       if(pending.plan.selection)setSelected(pending.plan.selection);
       setPending(undefined);

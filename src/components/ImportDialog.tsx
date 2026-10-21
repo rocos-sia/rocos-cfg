@@ -1,6 +1,8 @@
+import { useLocalizedMessage } from './useLocalizedMessage';
+import { m as msg, MessageError } from '../core/project/messages';
 import { diagnosticText, errorText, t } from '../i18n';
 import { useRef, useState } from 'react';
-import { Alert, App, Modal, Select, Space, Table, Tag } from 'antd';
+import { Alert, Modal, Select, Space, Table, Tag } from 'antd';
 import { prepareImport } from '../adapters/files';
 import { activeImportFile, applyImport, defaultImportSelection, importCandidates, type ImportPlan, type ImportSelection, type ImportSlot } from '../core/project/import';
 import { buildBusCatalog } from '../core/bus/catalog';
@@ -10,7 +12,7 @@ import { collectReferences } from '../core/project/references';
 import { flushBuffers, useProject } from '../store';
 const labels: Record<ImportSlot, string> = { master: '主站', eni: 'ENI', app: 'APP', urdf: 'URDF', hardware: 'Hardware', binding: 'Binding' };
 export function useImportDialog() {
-  const { message } = App.useApp(), generation = useRef(0);
+  const message=useLocalizedMessage(), generation = useRef(0);
   const [session, setSession] = useState<{ base: Project; workspaceEpoch:number; plan: ImportPlan; selection: ImportSelection; hashes: Record<string, string> }>();
   const selectFiles = async (files: File[]) => {
     const ticket = ++generation.current;
@@ -21,7 +23,7 @@ export function useImportDialog() {
       const eniFiles = [...base.files.filter(f => f.id === base.entrypoints.master.eniFileId), ...plan.files.filter(f => f.role === 'eni')];
       const hashes = Object.fromEntries(await Promise.all(eniFiles.map(async f => [f.id, await digest(f.bytes)])));
       if (generation.current === ticket && useProject.getState().workspaceEpoch===workspaceEpoch) setSession({ base, workspaceEpoch, plan, selection: defaultImportSelection(plan), hashes });
-    } catch (error) { message.error(errorText(error,true)); }
+    } catch (error) { message.error(()=>(errorText(error,true))); }
   };
   let preview: Project | undefined, error = '';
   if (session) try { preview = applyImport(session.base, session.plan, session.selection); } catch (e) { error = errorText(e); }
@@ -38,10 +40,10 @@ export function useImportDialog() {
     onCancel={() => { generation.current++; setSession(undefined); }} onOk={() => {
       if (!session || !preview) return;
       try {
-        if(useProject.getState().workspaceEpoch!==session.workspaceEpoch)throw new Error(t('导入期间工程已变化，请重新选择文件'));
+        if(useProject.getState().workspaceEpoch!==session.workspaceEpoch)throw new MessageError(msg('导入期间工程已变化，请重新选择文件'));
         useProject.getState().change(current => Object.assign(current, applyImport(current, session.plan, session.selection)));
-        setSession(undefined); message.success(t("文件已导入，请检查引用与绑定；可撤销本次操作"));
-      } catch (e) { message.error(errorText(e,true)); }
+        setSession(undefined); message.success(()=>(t("文件已导入，请检查引用与绑定；可撤销本次操作")));
+      } catch (e) { message.error(()=>(errorText(e,true))); }
     }}>
     {session && <Space direction="vertical" style={{ width: '100%' }}>
       <p>{t('本次包含 {count} 个文件。选择活动配置，其他候选仍保留在工程中。普通配置导入不代表已通过工程完整性或消费端验证。',{count:session.plan.files.length})}</p>

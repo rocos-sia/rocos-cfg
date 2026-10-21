@@ -17,7 +17,7 @@ export const robotTemplate=()=>structuredClone(robot);
 export const deviceTemplate=()=>structuredClone(device);
 type Definition=typeof starter|typeof robot|typeof device;
 export function recordTemplate(p:Project,definition:Definition,parameters:Record<string,string|number>,outputs:string[]){
-  for(const slot of ['app','master'] as const){const status=targetStatus(p,slot);if(!status.supported)throw new Error(status.message);if(!definition.profiles.includes(`${status.definition!.id}@${status.definition!.version}`))throw new MessageError(msg("模板不适用于当前目标规则"));}
+  for(const slot of ['app','master'] as const){const status=targetStatus(p,slot);if(!status.supported)throw new MessageError(status);if(!definition.profiles.includes(`${status.definition!.id}@${status.definition!.version}`))throw new MessageError(msg("模板不适用于当前目标规则"));}
   const path=`project-data/templates/${definition.id}.v${definition.version}.json`,bytes=utf8.encode(JSON.stringify(definition,null,2)+'\n');
   let file=p.files.find(f=>f.path===path);
   if(file){if(file.role!=='template'||file.owner!=='template'||file.bytes.length!==bytes.length||file.bytes.some((b,i)=>b!==bytes[i]))throw new MessageError(msg("模板快照已存在不同内容：{v0}", {v0:String(path)}));}

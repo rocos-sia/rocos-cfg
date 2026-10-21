@@ -1,6 +1,8 @@
+import { useLocalizedMessage } from './useLocalizedMessage';
+import { m as msg, MessageError } from '../core/project/messages';
 import { diagnosticText, errorText, t } from '../i18n';
 import { useEffect, useState } from 'react';
-import { Alert, App, Button, Card, Input, Select, Space, Table, Tag, Modal } from 'antd';
+import { Alert, Button, Card, Input, Select, Space, Table, Tag, Modal } from 'antd';
 import type { Document } from 'yaml';
 import { fileById, textOf, type Project } from '../core/project/types';
 import { readYaml } from '../core/documents/yaml';
@@ -12,16 +14,16 @@ import { Fields } from './Fields';
 function TextCell({ label, value, commit }: { label: string; value: unknown; commit: (value: string) => void }) {
   const saved = value == null ? '' : String(value);
   const [text, setText] = useState(saved);
-  const { message } = App.useApp();
+  const message=useLocalizedMessage();
   useEffect(() => setText(saved), [saved]);
   return <Input aria-label={label} value={text} onChange={event => setText(event.target.value)}
-    onBlur={() => { if (text !== saved) try { commit(text); } catch (error) { message.error(errorText(error,true)); } }}
+    onBlur={() => { if (text !== saved) try { commit(text); } catch (error) { message.error(()=>(errorText(error,true))); } }}
     onPressEnter={event => event.currentTarget.blur()} />;
 }
 const hex = (value: unknown) => typeof value === 'bigint' || typeof value === 'number' ? '0x' + value.toString(16).toUpperCase() : String(value ?? '');
 
 export function IghEditor({ p }: { p: Project }) {
-  const { message } = App.useApp();
+  const message=useLocalizedMessage();
   const [pending,setPending]=useState<{plan:SlavePlan;revision:number;epoch:number}>();
   const [selected, setSelected] = useState(0);
   const file = fileById(p, p.entrypoints.master.fileId)!;
@@ -31,11 +33,11 @@ export function IghEditor({ p }: { p: Project }) {
   const index = Math.min(selected, Math.max(0, slaves.length - 1));
   const slave = slaves[index];
   const edit = (fn: (doc: Document) => void) => useProject.getState().change(next => editProjectYaml(next, masterFileId(next), fn));
-  const run = (fn: () => void) => { try { fn(); } catch (error) { message.error(errorText(error,true)); } };
+  const run = (fn: () => void) => { try { fn(); } catch (error) { message.error(()=>(errorText(error,true))); } };
   const changeSlave = (action: SlaveAction) => run(() => {
     const preview = planSlaveChange(p, action);
     const apply = () => run(() => {
-      if (useProject.getState().project?.revision !== p.revision) throw new Error(t("工程已变化，请重新查看影响后操作"));
+      if (useProject.getState().project?.revision !== p.revision) throw new MessageError(msg("工程已变化，请重新查看影响后操作"));
       useProject.getState().change(next => Object.assign(next, preview.project)); setSelected(preview.selected);
     });
     if (action.kind === 'add') apply();
@@ -54,7 +56,7 @@ export function IghEditor({ p }: { p: Project }) {
         // Keep unfinished values in the editable document as strings. The native
         // schema rejects them for runtime export, but an rcproj can retain them.
         edit(doc => doc.setIn(path, text));
-        message.warning(t('输入已保留，尚未通过校验：{error}',{error:errorText(error,true)}));
+        message.warning(()=>(t('输入已保留，尚未通过校验：{error}',{error:errorText(error,true)})));
         return;
       }
       edit(doc => setInteger(doc, path, parsed, showHex));
@@ -63,7 +65,7 @@ export function IghEditor({ p }: { p: Project }) {
     <Modal title={t("确认从站及绑定变更")} open={!!pending} width={620} okText={t("应用变更")} cancelText={t("取消")} onCancel={()=>setPending(undefined)} onOk={()=>run(()=>{
       if(!pending)return;
       const state=useProject.getState();
-      if(state.workspaceEpoch!==pending.epoch||state.project?.id!==p.id||state.project.revision!==pending.revision)throw new Error(t("工程已变化，请重新查看影响后操作"));
+      if(state.workspaceEpoch!==pending.epoch||state.project?.id!==p.id||state.project.revision!==pending.revision)throw new MessageError(msg("工程已变化，请重新查看影响后操作"));
       state.change(next=>Object.assign(next,pending.plan.project));setSelected(pending.plan.selected);setPending(undefined);
     })}>
       <ul>{pending?.plan.impactMessages.map((issue,i)=><li key={i}>{diagnosticText(issue)}</li>)}</ul>

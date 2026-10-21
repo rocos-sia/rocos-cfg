@@ -1,3 +1,4 @@
+import { m as msg, MessageError } from './core/project/messages';
 import { editProjectYaml } from './core/bus/igh-edit';
 import { invalidateHardwareConfirmation } from './core/hardware/edit';
 import { create } from 'zustand';
@@ -21,7 +22,7 @@ let projectEpoch = 0;
 const bufferGeneration = new Map<string,number>();
 export async function flushBuffers(){await Promise.all([...pendingBuffers.values()]);}
 export async function discardRecovery(key:string){
-  if(useProject.getState().recoveryKey===key)throw new Error('当前工作区的恢复草稿不能清除');
+  if(useProject.getState().recoveryKey===key)throw new MessageError(msg("当前工作区的恢复草稿不能清除"));
   clearTimeout(cacheTimers.get(key));cacheTimers.delete(key);
   await cacheWrites.get(key);
   await deleteRecovery(key);
@@ -51,7 +52,7 @@ export const useProject=create<State>((setState,getState)=>({
   redo:()=>{projectEpoch++;const s=getState();if(!s.project||!s.future.length)return;const p=structuredClone(s.future[0]);p.revision=s.project.revision+1;setState({project:p,past:[...s.past,s.project],future:s.future.slice(1)});cache(p);},
   yaml:(id,path,value)=>{
     const p=getState().project;if(!p)return;
-    const original=fileById(p,id);if(!original)throw new Error('文件不存在');
+    const original=fileById(p,id);if(!original)throw new MessageError(msg("文件不存在"));
     const candidate={...original};
     // Number controls may emit the same value on input and again on blur.
     // Run all edit/readonly/draft checks, but do not create an empty undo step.
@@ -62,7 +63,7 @@ export const useProject=create<State>((setState,getState)=>({
   buffer:(id,text)=>{
     const p=getState().project,f=p&&fileById(p,id);
     if(!p||!f)return Promise.resolve();
-    if(readonlyFile(p,f))return Promise.reject(new Error('文件只读，不能写入源码草稿'));
+    if(readonlyFile(p,f))return Promise.reject(new MessageError(msg("文件只读，不能写入源码草稿")));
     const epoch=projectEpoch;
     const generation=(bufferGeneration.get(id)||0)+1;bufferGeneration.set(id,generation);
     if(p.editor.buffers[id]?.text===text || (!p.editor.buffers[id]&&textOf(f)===text))return Promise.resolve();
@@ -87,14 +88,14 @@ export const useProject=create<State>((setState,getState)=>({
     if(!p||!draft||!f)return;
     assertEditableFile(p,f);
     const epoch=projectEpoch;
-    if(await digest(f.bytes)!==draft.baseHash)throw new Error('源文件已变化，源码草稿基线冲突；请保留工程副本并核对差异');
+    if(await digest(f.bytes)!==draft.baseHash)throw new MessageError(msg("源文件已变化，源码草稿基线冲突；请保留工程副本并核对差异"));
     if(f.path.match(/\.ya?ml$/i))yamlDocument(draft.text);
     else if(f.path.match(/\.(xml|urdf|dae)$/i))xmlDocument(draft.text);
     fileModule(p,f)!.parse({...f,bytes:utf8.encode(draft.text),encoding:'utf-8'});
     getState().change(next=>{
       const current=fileById(next,id),buffer=next.editor.buffers[id];
       if(projectEpoch!==epoch||next.id!==p.id||!current||buffer?.text!==draft.text||buffer?.baseHash!==draft.baseHash||
-        current.bytes.length!==f.bytes.length||current.bytes.some((byte,i)=>byte!==f.bytes[i]))throw new Error('应用期间文件或草稿已变化，请重试');
+        current.bytes.length!==f.bytes.length||current.bytes.some((byte,i)=>byte!==f.bytes[i]))throw new MessageError(msg("应用期间文件或草稿已变化，请重试"));
       current.bytes=utf8.encode(draft.text);current.encoding='utf-8';delete next.editor.buffers[id];
     });
   },

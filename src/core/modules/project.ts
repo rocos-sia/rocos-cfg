@@ -1,4 +1,4 @@
-import { m as msg, messageFields, errorMessage, type MessageInput } from '../project/messages';
+import { m as msg, MessageError, messageFields, errorMessage, type MessageInput } from '../project/messages';
 import { modules } from './index';
 import type { ModuleRegistry } from './registry';
 import type { Project, ProjectFile, ModuleSnapshot, Diagnostic } from '../project/types';
@@ -33,7 +33,7 @@ export function readonlyFile(p: Project, file: ProjectFile, registry: ModuleRegi
   return file.role === 'eni' || !!state || !adapter || adapter.capabilities.readonly || adapter.capabilities.desktop && registry.platform !== 'desktop';
 }
 export function assertEditableFile(p: Project, file: ProjectFile) {
-  if (readonlyFile(p, file)) throw new Error(file.role === 'eni' ? 'ENI 始终只读' : '模块不受支持或文件只读，请保留原文件');
+  if (readonlyFile(p, file)) throw new MessageError(file.role === 'eni' ? msg('ENI 始终只读') : msg('模块不受支持或文件只读，请保留原文件'));
 }
 export function moduleRoots(p: Project, registry: ModuleRegistry = modules) {
   return moduleSnapshots(p, registry).flatMap(m => m.runtimeFileIds || (m.requiredForRuntime ? m.fileIds : []));
