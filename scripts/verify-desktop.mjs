@@ -128,7 +128,7 @@ try {
   browser=await chromium.launch({channel:process.env.PLAYWRIGHT_CHANNEL||'chrome',headless:true});const page=await browser.newPage();
   await page.route('**/*',route=>route.request().url().startsWith(webUrl)?route.continue():route.abort());
   await page.goto(webUrl);await page.locator('input[type=file]').first().setInputFiles(savedAs);await page.locator('.overview-grid input').fill('browser-return');await page.locator('.overview-grid input').blur();
-  const largeUrdf='<robot name="desktop-worker"><link name="base_link"><visual><geometry><box size="0.2 0.2 0.2"/></geometry></visual></link><link name="worker_tip"/><joint name="worker_fixed" type="fixed"><parent link="base_link"/><child link="worker_tip"/></joint></robot>\n<!--'+'padding '.repeat(36000)+'-->';
+  const largeUrdf='<robot name="desktop-worker"><link name="base_link"><visual><geometry><box size="0.3 0.3 0.05"/></geometry></visual></link><link name="worker_tip"><visual><origin xyz="0.5 0 0"/><geometry><box size="1 0.12 0.12"/></geometry></visual></link><joint name="worker_axis" type="revolute"><parent link="base_link"/><child link="worker_tip"/><origin xyz="0 0 0.1"/><axis xyz="0 0 1"/><limit lower="-1" upper="1" velocity="1" effort="10"/></joint></robot>\n<!--'+'padding '.repeat(36000)+'-->';
   await page.locator('input[type=file][multiple]').setInputFiles({name:'robot.urdf',mimeType:'application/xml',buffer:Buffer.from(largeUrdf)});
   await page.getByRole('button',{name:'确认导入',exact:true}).click();
   const downloaded=page.waitForEvent('download');await page.getByRole('button',{name:'下载工程',exact:true}).click();const returned=join(temp,'browser-return.rcproj');await(await downloaded).saveAs(returned);await browser.close();browser=undefined;
@@ -140,6 +140,23 @@ try {
   await wait(()=>script(`const c=document.querySelector('canvas[aria-label="机器人三维预览"]');return !!c&&c.width>0&&c.height>0&&c.getContext('webgl2')?.isContextLost()===false;`),'native WebGL model viewport');
   assert.equal((await text()).includes('模型预览失败'),false);
   await writeFile(join(artifacts,'desktop-model.png'),Buffer.from(await request('GET',`/session/${session}/screenshot`),'base64'));
+  await click('适应模型');
+  await script(`document.querySelector('.model-tree .ant-tree-switcher_open').click();`);
+  const center=await script(`const r=document.querySelector('canvas[aria-label="机器人三维预览"]').getBoundingClientRect();return {x:Math.round(r.x+r.width/2),y:Math.round(r.y+r.height/2)};`);
+  await request('POST',`/session/${session}/actions`,{actions:[{type:'pointer',id:'model-pick',parameters:{pointerType:'mouse'},actions:[{type:'pointerMove',origin:'viewport',duration:0,...center},{type:'pointerDown',button:0},{type:'pointerUp',button:0}]}]});
+  await wait(()=>script(`return document.querySelector('.robot-preview')?.dataset.selected==='link:worker_tip'&&document.querySelector('.model-tree .ant-tree-treenode-selected')?.textContent.includes('worker_tip');`),'native collapsed tree reveals picked link');
+  await script(`const e=[...document.querySelectorAll('.model-tree .ant-tree-title')].find(e=>e.textContent==='worker_axis [revolute]');e.click();`);
+  await click('正视');
+  await script(`document.querySelector('[role=slider][aria-label="关节预览位置"]').focus();`);xdotool('key','--clearmodifiers','End');
+  await wait(()=>script(`return document.querySelector('[role=slider]')?.getAttribute('aria-valuenow')==='1';`),'native preview pose');
+  for(const [upper,expected] of [['2','1'],['0.5','0.5']]){
+    await script(`document.querySelector('#joint-upper').focus();`);
+    xdotool('key','--clearmodifiers','ctrl+a');xdotool('type','--clearmodifiers',upper);xdotool('key','--clearmodifiers','Tab');
+    await wait(()=>script(`return document.querySelector('#joint-upper')?.value===arguments[0]&&document.querySelector('[role=slider]')?.getAttribute('aria-valuenow')===arguments[1];`,[upper,expected]),'native pose retained/clamped at upper '+upper);
+  }
+  await click('撤销');await wait(()=>script(`return document.querySelector('#joint-upper')?.value==='2'&&document.querySelector('[role=slider]')?.getAttribute('aria-valuenow')==='0.5';`),'native undo preserves local pose');
+  await click('重置姿态');await wait(()=>script(`return document.querySelector('[role=slider]')?.getAttribute('aria-valuenow')==='0';`),'native reset pose');
+  console.log('Desktop: 3D selection reveals collapsed tree; limit editing and undo retain/clamp local pose.');
   await rename('unsaved-close-check');
   const window=xdotool('search','--onlyvisible','--name','^ROCOS Configurator$').split('\n')[0];
   xdotool('windowactivate','--sync',window);xdotool('key','--clearmodifiers','alt+F4');await visibleText('当前工程有未保存修改');
@@ -232,7 +249,7 @@ try {
     status:'passed',applicationVersion:expectedVersion,platform:process.platform,architecture:process.arch,node:process.version,
     binary:{path:binary,sha256:createHash('sha256').update(await readFile(binary)).digest('hex')},
     scope:'Actual Linux WebKit application, native GTK dialogs and temporary files in an isolated display.',
-    checks:['displayed and archived application version','initial save and verified backup','bilingual overwrite-backup notification','external conflict with bilingual reason and difference view','save as','native directory import','same-ID copy and new-ID fork','browser and desktop archive roundtrip','background URDF analysis and WebGL viewport','bilingual unsaved-close confirmation and cancellation','damaged archive recovery and protected source','directory picker cancellation','bilingual directory-export success dialog','directory receipt and file hashes','ZIP and directory byte parity','retained project save target','both teaching examples archived and runtime-exported','keyboard device selection and isolated second-drive editing'],
+    checks:['displayed and archived application version','initial save and verified backup','bilingual overwrite-backup notification','external conflict with bilingual reason and difference view','save as','native directory import','same-ID copy and new-ID fork','browser and desktop archive roundtrip','background URDF analysis and WebGL viewport','collapsed model tree reveal and retained/clamped preview pose','bilingual unsaved-close confirmation and cancellation','damaged archive recovery and protected source','directory picker cancellation','bilingual directory-export success dialog','directory receipt and file hashes','ZIP and directory byte parity','retained project save target','both teaching examples archived and runtime-exported','keyboard device selection and isolated second-drive editing'],
     notExecuted:['Windows installation','independent offline computer','power loss or full disk','controller SDK or physical devices'],
   },null,2)+'\n');
 } catch(e) {

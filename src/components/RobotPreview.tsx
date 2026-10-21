@@ -10,6 +10,7 @@ import { resourceResolver } from '../core/project/resources';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js';
 import { ColladaLoader } from 'three/examples/jsm/loaders/ColladaLoader.js';
 import type { RobotModel } from '../core/documents/urdf';
+import { previewPose, type PreviewPose } from './previewPose';
 
 function disposeObject(object: THREE.Object3D) {
   object.traverse(node => {
@@ -34,19 +35,27 @@ interface Runtime {
   scene: THREE.Scene; renderer: THREE.WebGLRenderer; camera: THREE.PerspectiveCamera;
   controls: OrbitControls; model?: URDFRobot; highlight?: THREE.BoxHelper; fit: (view?: string) => void;
 }
-export function RobotPreview({ project, robot, selected = '', onSelect }: { project: Project; robot:RobotModel; selected?: string; onSelect?: (key: string) => void }) {
+interface PoseSnapshot extends PreviewPose { projectId: string; fileId: string }
+export function createPreviewState() {
+  return {
+    pose: { current: undefined as PoseSnapshot | undefined }, touched: { current: false }, joint: '',
+    camera: undefined as { position: number[]; target: number[]; far: number } | undefined,
+  };
+}
+export function RobotPreview({ project, robot, selected = '', onSelect, viewState }: { project: Project; robot:RobotModel; selected?: string; onSelect?: (key: string) => void; viewState?: ReturnType<typeof createPreviewState> }) {
   const locale=useLocale();
   const host = useRef<HTMLDivElement>(null), runtime = useRef<Runtime | null>(null);
+  const localState = useRef(createPreviewState()), memory = viewState || localState.current;
+  const previousPose = memory.pose, viewTouched = memory.touched;
   const select = useRef(onSelect); select.current = onSelect;
   const selection = useRef(selected); selection.current = selected;
-  const [error, setError] = useState<PreviewMessage>(''), [poseJoint, setPoseJoint] = useState(''), [pose, setPose] = useState<Record<string, number>>({});
+  const [error, setError] = useState<PreviewMessage>(''), [poseJoint, setPoseJoint] = useState(memory.joint), [pose, setPose] = useState<Record<string, number>>(previousPose.current?.values || {});
   const file = fileById(project, project.entrypoints.urdf), source = file ? textOf(file) : '';
   const joints=robot.joints.filter(j => ['revolute', 'continuous', 'prismatic'].includes(j.type) && !j.mimic);
   const current = joints.find(j => j.name === poseJoint) || joints.find(j => `joint:${j.name}` === selected) || joints[0];
   const min = current?.type === 'continuous' ? -Math.PI : Number(current?.lower);
   const max = current?.type === 'continuous' ? Math.PI : Number(current?.upper);
   const validLimits = !!current && (current.type === 'continuous' || !!current.lower && !!current.upper) && Number.isFinite(min) && Number.isFinite(max) && min < max;
-  const neutral = (j: typeof joints[number]) => j.type === 'continuous' ? 0 : Math.max(Number(j.lower) || 0, Math.min(Number(j.upper) || 0, 0));
   const highlight = () => {
     const r = runtime.current; if (!r) return;
     if (r.highlight) { r.scene.remove(r.highlight); disposeObject(r.highlight); r.highlight = undefined; }
@@ -74,7 +83,13 @@ export function RobotPreview({ project, robot, selected = '', onSelect }: { proj
       camera.position.copy(center).add(direction.normalize().multiplyScalar(size * 1.8)); camera.far = Math.max(1000, size * 20); camera.updateProjectionMatrix();
       controls.target.copy(center); controls.update();
     };
+    const touchView = () => { viewTouched.current = true; };
+    controls.addEventListener('start', touchView);
     runtime.current = { scene, renderer, camera, controls, fit };
+    if (memory.camera && previousPose.current?.projectId === project.id && previousPose.current?.fileId === file?.id) {
+      camera.position.fromArray(memory.camera.position); camera.far = memory.camera.far;
+      controls.target.fromArray(memory.camera.target); camera.updateProjectionMatrix(); controls.update();
+    }
     let down = new THREE.Vector2();
     const pointerDown = (event: PointerEvent) => { down.set(event.clientX, event.clientY); };
     const pointerUp = (event: PointerEvent) => {
@@ -90,11 +105,16 @@ export function RobotPreview({ project, robot, selected = '', onSelect }: { proj
     renderer.domElement.addEventListener('pointerdown', pointerDown); renderer.domElement.addEventListener('pointerup', pointerUp);
     const observer = new ResizeObserver(() => { const w = Math.max(node.clientWidth, 1), h = Math.max(node.clientHeight, 1); renderer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix(); }); observer.observe(node);
     renderer.setAnimationLoop(() => { runtime.current?.highlight?.update(); renderer.render(scene, camera); });
-    return () => { observer.disconnect(); renderer.setAnimationLoop(null); controls.dispose(); disposeObject(scene); renderer.dispose(); node.replaceChildren(); runtime.current = null; };
+    return () => {
+      memory.camera = { position: camera.position.toArray(), target: controls.target.toArray(), far: camera.far };
+      observer.disconnect(); renderer.setAnimationLoop(null); controls.removeEventListener('start', touchView); controls.dispose(); disposeObject(scene); renderer.dispose(); node.replaceChildren(); runtime.current = null;
+    };
   }, []);
   useEffect(() => {
     const r = runtime.current; if (!r || !file) return;
     let disposed = false; const urls: string[] = []; setError('');
+    const sameModel = previousPose.current?.projectId === project.id && previousPose.current?.fileId === file.id;
+    if (!sameModel) viewTouched.current = false;
     const resolve = resourceResolver(project);
     const managerFor = (sourceId: string) => {
       const manager = new THREE.LoadingManager();
@@ -104,7 +124,7 @@ export function RobotPreview({ project, robot, selected = '', onSelect }: { proj
         if (!asset) { if (!disposed) setError(msg('缺少或外部模型资源：{path}。结构编辑仍可继续。',{path:url})); return 'data:application/octet-stream;base64,'; }
         const blob = URL.createObjectURL(new Blob([new Uint8Array(asset.bytes).buffer])); urls.push(blob); return blob;
       });
-      manager.onLoad = () => { if (!disposed) { r.fit(); highlight(); } };
+      manager.onLoad = () => { if (!disposed) { if (!sameModel && !viewTouched.current) r.fit(); highlight(); } };
       manager.onError = () => { if (!disposed) setError('部分模型资源无法加载，请核对文件与路径。'); };
       return manager;
     };
@@ -131,24 +151,35 @@ export function RobotPreview({ project, robot, selected = '', onSelect }: { proj
         } catch (error) { if (!disposed) setError(previewError(error)); done(new THREE.Group(), error as Error); }
       };
       r.model = loader.parse(source);
-      const initial = Object.fromEntries(joints.map(j => [j.name, neutral(j)])); r.model.setJointValues(initial);
-      r.scene.add(r.model); r.fit(); highlight();
-      setPose(initial); setPoseJoint('');
+      const nextPose = previewPose(joints, sameModel ? previousPose.current : undefined);
+      r.model.setJointValues(nextPose.values);
+      previousPose.current = { ...nextPose, projectId: project.id, fileId: file.id };
+      r.scene.add(r.model); if (!sameModel) r.fit(); highlight();
+      setPose(nextPose.values);
+      memory.joint = sameModel && joints.some(j => j.name === memory.joint) ? memory.joint : '';
+      setPoseJoint(memory.joint);
     } catch (error) { setError(previewError(error)); }
     return () => {
       disposed = true; urls.forEach(url => URL.revokeObjectURL(url));
       if (r.highlight) { r.scene.remove(r.highlight); disposeObject(r.highlight); r.highlight = undefined; }
       if (r.model) { r.scene.remove(r.model); disposeObject(r.model); r.model = undefined; }
     };
-  }, [source, project.files, project.packageMap]);
+  }, [source, project.id, file?.id, project.files, project.packageMap]);
   useEffect(()=>{runtime.current?.renderer.domElement.setAttribute('aria-label',t('机器人三维预览'));},[locale]);
   useEffect(highlight, [selected]);
-  const setJoint = (name: string, value: number) => { runtime.current?.model?.setJointValue(name, value); setPose(p => ({ ...p, [name]: value })); };
+  const applyPose = (values: Record<string, number>) => {
+    viewTouched.current = true;
+    runtime.current?.model?.setJointValues(values);
+    if (previousPose.current) previousPose.current.values = values;
+    setPose(values);
+  };
+  const setJoint = (name: string, value: number) => applyPose({ ...pose, [name]: value });
+  const fitView = (view?: string) => { viewTouched.current = true; runtime.current?.fit(view); };
   return <>
     <div className="robot-preview" ref={host} data-selected={selected} />
     {error && <Alert type="warning" message={typeof error==='string'?t(error):diagnosticText(error)} />}
-    <Space wrap className="space-top"><Button size="small" onClick={() => runtime.current?.fit()}>{t("适应模型")}</Button>{[['front', t("正视")], ['side', t("侧视")], ['top', t("俯视")]].map(([key, label]) => <Button size="small" key={key} onClick={() => runtime.current?.fit(key)}>{label}</Button>)}<Button size="small" onClick={() => { const values = Object.fromEntries(joints.map(j => [j.name, neutral(j)])); runtime.current?.model?.setJointValues(values); setPose(values); }}>{t("重置姿态")}</Button></Space>
-    {!!joints.length && <div className="space-top"><Select aria-label={t("预览关节")} style={{ width: '100%' }} value={current?.name} options={joints.map(j => ({ value: j.name, label: `${j.name} · ${j.type === 'prismatic' ? 'm' : 'rad'}` }))} onChange={setPoseJoint} />
+    <Space wrap className="space-top"><Button size="small" onClick={() => fitView()}>{t("适应模型")}</Button>{[['front', t("正视")], ['side', t("侧视")], ['top', t("俯视")]].map(([key, label]) => <Button size="small" key={key} onClick={() => fitView(key)}>{label}</Button>)}<Button size="small" onClick={() => applyPose(previewPose(joints).values)}>{t("重置姿态")}</Button></Space>
+    {!!joints.length && <div className="space-top"><Select aria-label={t("预览关节")} style={{ width: '100%' }} value={current?.name} options={joints.map(j => ({ value: j.name, label: `${j.name} · ${j.type === 'prismatic' ? 'm' : 'rad'}` }))} onChange={name => { memory.joint = name; setPoseJoint(name); }} />
       <Slider ariaLabelForHandle={t("关节预览位置")} disabled={!validLimits} min={validLimits ? min : 0} max={validLimits ? max : 1} step={.001} value={pose[current?.name] ?? 0} onChange={value => current && setJoint(current.name, value)} />
       <small>{t("仅改变预览姿态，不写入 URDF 或驱动器参数。")}</small>
     </div>}
