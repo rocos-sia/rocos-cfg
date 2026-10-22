@@ -145,3 +145,24 @@ test('both bundled teaching examples remain editable and exportable after a cach
     await page.getByRole('menuitem',{name:'工程总览',exact:true}).click();
   }
 });
+
+test('Talon assets open offline at a repository base path before their first use', async ({page, context}, info) => {
+  await page.goto('./');
+  await expect(page.getByRole('status').filter({hasText: '已可离线使用'})).toBeVisible();
+  await context.setOffline(true);
+  await page.reload();
+  await page.getByRole('button', {name: '打开示例', exact: true}).click();
+  await page.getByRole('button', {name: '打开 Talon ECM 示例', exact: true}).click();
+  await expect(page.locator('.project-name strong')).toHaveText('Talon · ROCOS-ECM');
+  await page.getByRole('menuitem', {name: '机器人模型', exact: true}).click();
+  await expect(page.getByText('joint_7 [continuous]', {exact: true})).toBeVisible();
+  await expect(page.getByLabel('机器人三维预览', {exact: true})).toBeVisible();
+  await expect(page.getByRole('region', {name: '模型资源问题', exact: true})).toHaveCount(0);
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', {name: '下载工程', exact: true}).click();
+  const path = info.outputPath('Talon-offline.rcproj');
+  await (await download).saveAs(path);
+  const restored = await openProject(await readFile(path));
+  expect(restored.files.filter(f => /\.stl$/i.test(f.path))).toHaveLength(8);
+  expect(restored.targets.master.profile?.version).toBe(2);
+});

@@ -1305,5 +1305,18 @@
   "未找到同名 Mesh，导入后可补充。": "No matching Mesh found. You can add it after importing.",
   "存在同名文件，请选择": "Multiple files share this name; choose one",
   "请选择包含所选 URDF 的同级目录（文件内容须一致）。": "Choose the folder directly containing the selected URDF (its contents must match).",
-  "选择 URDF 所在目录，按文件名搜索同级及子目录中的 Mesh，忽略原引用路径。浏览器需要您选择目录后才能读取其中的文件。": "Choose the folder containing the URDF to find Mesh files by name in that folder and its subfolders, ignoring the original reference paths. The browser can read the folder only after you select it."
+  "选择 URDF 所在目录，按文件名搜索同级及子目录中的 Mesh，忽略原引用路径。浏览器需要您选择目录后才能读取其中的文件。": "Choose the folder containing the URDF to find Mesh files by name in that folder and its subfolders, ignoring the original reference paths. The browser can read the folder only after you select it.",
+  "Talon 七轴机械臂": "Talon seven-axis robot",
+  "Talon 示例": "Talon example",
+  "包含 7 个驱动器、完整关节绑定、URDF 与 8 个 STL 模型，以及 IgH / ECM 配置和原始 ENI。两种打开方式均保留全部文件。": "Includes 7 drives, complete joint bindings, a URDF and 8 STL meshes, plus IgH / ECM configurations and the original ENI. Both options retain every file.",
+  "APP 启动配置与空载参数已补齐；原始硬件映射待核对，ECM 许可证需自行填写。": "APP startup configuration and zero-payload defaults have been added. Review the original hardware mappings and supply your own ECM license.",
+  "打开 Talon ECM 示例": "Open Talon ECM example",
+  "打开 Talon IgH 示例": "Open Talon IgH example",
+  "Talon 示例文件缺失或损坏：{path}": "Talon example file is missing or damaged: {path}",
+  "无法加载 Talon 示例文件：{path}": "Unable to load Talon example file: {path}",
+  "Talon 示例保留原始硬件参数和信号映射，尚待人工核对。APP 启动配置、空载 payload、脚本目录和 HMI 占位页为示例补充；ECM 许可证已清空。": "The Talon example retains the original hardware parameters and signal mappings for manual review. APP startup configuration, a zero-payload default, a scripts directory and an HMI placeholder were added for this example; the ECM license was cleared.",
+  "选择目标控制器的链路驱动名称，区分大小写。RTL8169 仅支持轮询，且不支持链路层参考时钟。": "Select the case-sensitive link driver name for the target controller. RTL8169 supports polling only and has no link-layer reference clock.",
+  "link 必须为 I8254x、I8255x、IntelGbe、IntelGbeRec 或 RTL8169（区分大小写）": "link must be I8254x, I8255x, IntelGbe, IntelGbeRec or RTL8169 (case-sensitive)",
+  "RTL8169 仅支持轮询模式（mode: 1）": "RTL8169 supports polling mode only (mode: 1)",
+  "RTL8169 不提供链路层参考时钟（dcmmode: 3）": "RTL8169 does not provide a link-layer reference clock (dcmmode: 3)"
 }

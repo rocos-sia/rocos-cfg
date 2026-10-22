@@ -1,0 +1,14 @@
+# Added for this example; the supplied directory did not include APP startup configuration.
+http_host: 0.0.0.0
+http_port: 8080
+http_control_ttl_seconds: 300
+robot:
+  hardware_config: hardware_talon_config.yaml
+  ecat_id: 0
+  urdf: talon/robot.urdf
+  base_link: base_link
+  tip_link: link_7
+  joint_binding: joint_binding.yaml
+  payload: payload.yaml
+scripts: scripts
+web_root: ../web

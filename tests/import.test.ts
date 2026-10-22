@@ -22,7 +22,7 @@ describe('staged configuration imports', () => {
     expect(targetStatus(next,'master')).toMatchObject({supported:true,legacy:false});
     expect(next.files.some(f=>f.id===p.targets.master.profile?.fileId)).toBe(true);
     expect(fileById(next, next.entrypoints.master.fileId)?.path).toBe('two/config.yaml');
-    expect(next.targets.master).toMatchObject({ version: 'e0e5e32', configVersion: 1, abi: 'unverified',profile:{id:'rocos.ecm',version:1} });
+    expect(next.targets.master).toMatchObject({ version: 'd85a6f3', configVersion: 1, abi: 'unverified',profile:{id:'rocos.ecm',version:2} });
     expect(next.editor.confirmations).toEqual({});
     expect(p).toEqual(original);
   });

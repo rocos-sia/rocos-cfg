@@ -12,10 +12,10 @@ import { readYaml } from '../../src/core/documents/yaml';
 import { fileById, textOf, utf8 } from '../../src/core/project/types';
 import { modules } from '../../src/core/modules';
 const source=process.env.ROCOS_ECM_SOURCE;
-describe.skipIf(!source)('ECM e0e5e32 original startup loader (no SDK or hardware)',()=>{
+describe.skipIf(!source)('ECM d85a6f3 original startup loader (no SDK or hardware)',()=>{
   let temporary:string,executable:string;
   beforeAll(()=>{
-    verifySourceBaseline(source!,'e0e5e32',['Main/Common/EcConfig.cpp','Main/Common/EcConfig.h']);
+    verifySourceBaseline(source!,'d85a6f3',['Main/Common/EcConfig.cpp','Main/Common/EcConfig.h']);
     temporary=mkdtempSync(resolve(tmpdir(),'ecm-'));executable=resolve(temporary,'loader');
     execFileSync('g++',['-std=c++17','-O0','-I'+resolve(source!,'Main/Common'),'tests/consumer/ecm-loader.cpp',resolve(source!,'Main/Common/EcConfig.cpp'),'-lyaml-cpp','-o',executable],{timeout:60000});
     writeFileSync(resolve(temporary,'eni7.xml'),'<EtherCATConfig/>');writeFileSync(resolve(temporary,'eni.xml'),'<EtherCATConfig/>');
@@ -37,10 +37,16 @@ describe.skipIf(!source)('ECM e0e5e32 original startup loader (no SDK or hardwar
     if(native.status===0)expect(readYaml(native.stdout).ctloff).toBe(String(ours!.data.ctloff));
   });
   it.each(['{}','[]','state: typo','state: null','duration: -1','verbose: -1','auxclk: 1','cycle: 2147484','cycle: 0','id: 32','sp: 0','mbxsrv: 65536','flash: -1','eni: ""','eni: null','license: null','log: []','typo: 1','id: 0\nid: 1','license: "'+ '密'.repeat(22)+'"'])('rejects unsupported startup input %s',input=>{check(input);});
+  it.each(['I8254x','I8255x','IntelGbe','IntelGbeRec','RTL8169','intelgbe','IntelGbeLegacy','0','1','2','null','[]'])('matches named driver acceptance: %s', link => {
+    const {native,ours}=check(`link: ${link}`);
+    if(native.status===0)expect(readYaml(native.stdout).link).toBe(ours!.data.link);
+  });
+  it.each(['link: RTL8169\nmode: 0','link: RTL8169\ndcmmode: 3','link: RTL8169\nmode: 1\ndcmmode: 2','link: IntelGbeRec\nmode: 0\ndcmmode: 3'])('matches driver-specific constraints: %s', input => {check(input);});
   it('matches defaults, derived CPU index and optional null/missing services',()=>{
     const {native,ours}=check('id: 3\nstate: SAFEOP\nsp: null\nflash: 0');
     const n=readYaml(native.stdout);expect(n).toMatchObject({id:'3',cpuidx:'3',state:'safeop',has_sp:'false',has_flash:'true',has_mbxsrv:'false',flash:'0'});
-    expect(ours!.data).toMatchObject({cpuidx:3,state:'safeop',sp:null,flash:0,mbxsrv:null});
+    expect(n.link).toBe('IntelGbe');
+    expect(ours!.data).toMatchObject({link:'IntelGbe',cpuidx:3,state:'safeop',sp:null,flash:0,mbxsrv:null});
     expect(n.eni).toBe(resolve(temporary,'eni7.xml'));
   });
   it('keeps an octal anchor shared by integer and string fields through form edits and runtime path rewrites',()=>{

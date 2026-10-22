@@ -8,6 +8,7 @@ int main(int argc,char** argv) {
         const auto c=LoadEcConfig(argv[1]);
         YAML::Node n;
         n["id"]=c.id;n["cpuidx"]=c.cpuidx;n["cycle"]=c.cycle;
+        n["link"]=c.link;n["mode"]=c.mode;n["dcmmode"]=c.dcmmode;
         n["duration"]=c.duration;n["verbose"]=c.verbose;n["state"]=c.state;
         n["ctloff"]=c.ctloff;n["eni"]=c.eni;n["log"]=c.log;n["license"]=c.license;
         n["has_sp"]=c.has_sp;n["has_flash"]=c.has_flash;n["has_mbxsrv"]=c.has_mbxsrv;

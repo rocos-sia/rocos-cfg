@@ -1,5 +1,7 @@
 import { m as msg, messageFields, MessageError, type MessageInput, type MessageTemplate } from './messages';
-import definitions from '../../../templates/profiles/targets.v1.json' with {type:'json'};
+import legacyDefinitions from '../../../templates/profiles/targets.v1.json' with {type:'json'};
+import namedEcm from '../../../templates/profiles/ecm.v2.json' with {type:'json'};
+const definitions = {...legacyDefinitions, ecm: namedEcm};
 import { fileById, textOf, uid, utf8, type Diagnostic, type MasterKind, type Project, type TargetProfile } from './types';
 
 export type ProfileKind=MasterKind|'app';

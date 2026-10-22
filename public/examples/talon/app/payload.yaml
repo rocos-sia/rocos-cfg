@@ -1,0 +1,3 @@
+# Example default: no attached payload. Review for the actual tool.
+mass: 0
+com: [0, 0, 0]

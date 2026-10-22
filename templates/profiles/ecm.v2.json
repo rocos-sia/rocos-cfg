@@ -1,0 +1,32 @@
+{
+  "format": "rocos-target-profile",
+  "id": "rocos.ecm",
+  "version": 2,
+  "target": {
+    "version": "d85a6f3",
+    "configVersion": 1,
+    "abi": "unverified"
+  },
+  "rules": {
+    "maxSlaves": 50,
+    "variablesPerDirection": 25,
+    "variableNameBytes": 71,
+    "slaveNameBytes": 79,
+    "eniVersion": "1.3",
+    "firstSlaveAddress": 1001,
+    "linkDrivers": [
+      "I8254x",
+      "I8255x",
+      "IntelGbe",
+      "IntelGbeRec",
+      "RTL8169"
+    ],
+    "defaultLink": "IntelGbe",
+    "rtl8169PollingOnly": true,
+    "rtl8169LinkReferenceClock": false
+  },
+  "sources": [
+    "rocos-ecm@d85a6f3: Main/Common/EcConfig.cpp and EcConfig.h; ENI ProcessImage profile; include/rocos_ecm/shared_memory_config.hpp"
+  ],
+  "scope": "启动 YAML、已支持的 ENI 过程映像及默认共享结构约束；SDK 元数据和目标 ABI 仍需验证"
+}

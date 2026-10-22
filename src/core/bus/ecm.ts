@@ -3,14 +3,16 @@ import { isMap, isScalar, type Document } from 'yaml';
 import { yamlDocument } from '../documents/yaml';
 import { nativeInt, nativeNode } from '../hardware/schema';
 import { textOf, type ProjectFile } from '../project/types';
+import { ecmRules } from '../project/profiles';
+export const ecmLinkDrivers = ecmRules.linkDrivers;
 
-// rocos-ecm e0e5e32, Main/Common/EcConfig.cpp. Values are interpreted
+// rocos-ecm d85a6f3, Main/Common/EcConfig.cpp. Values are interpreted
 // using yaml-cpp's scalar rules, independently of YAML 1.2 JS conversion.
 export const ecmDefaults = { id:0, eni:'eni7.xml', duration:0, cycle:1000, verbose:3,
   cpuidx:0, perf:1, auxclk:0, sp:null, log:'', flash:null, dcmmode:1,
-  ctloff:false, link:2, instance:1, mode:1, state:'op', license:'',
+  ctloff:false, link:ecmRules.defaultLink, instance:1, mode:1, state:'op', license:'',
   maxbusslaves:256, mbxsrv:null };
-const ranges:Record<string,[number,number]>={id:[0,2147483647],duration:[0,2147483647],cycle:[1,2147483],verbose:[0,2147483647],cpuidx:[0,31],perf:[0,2],auxclk:[0,0],sp:[1,65535],flash:[0,65535],dcmmode:[0,5],link:[0,2],instance:[1,2147483647],mode:[0,1],maxbusslaves:[1,2147483647],mbxsrv:[1,65535]};
+const ranges:Record<string,[number,number]>={id:[0,2147483647],duration:[0,2147483647],cycle:[1,2147483],verbose:[0,2147483647],cpuidx:[0,31],perf:[0,2],auxclk:[0,0],sp:[1,65535],flash:[0,65535],dcmmode:[0,5],instance:[1,2147483647],mode:[0,1],maxbusslaves:[1,2147483647],mbxsrv:[1,65535]};
 const optional=new Set(['sp','flash','mbxsrv']);
 function scalar(doc:Document,key:string):string|undefined {
   const n=nativeNode(doc,[key]);return isScalar(n)&&n.value!==null?String(n.source??n.value):undefined;
@@ -34,9 +36,14 @@ export function ecmDocument(file:ProjectFile) {
     data[key]=nativeInt(doc,[key],fallback);
     if(!Number.isInteger(data[key])||data[key]<min||data[key]>max)report(key,msg("{v0} 必须为 {v1}–{v2} 范围内的原生整数", {v0:String(key), v1:String(min), v2:String(max)}));
   }
-  for(const key of ['eni','log','state','license'])if(Object.hasOwn(raw,key)) {
+  for(const key of ['eni','log','state','license','link'])if(Object.hasOwn(raw,key)) {
     data[key]=scalar(doc,key);
     if(data[key]===undefined)report(key,msg("{v0} 必须为非 null 标量", {v0:String(key)}));
+  }
+  if(!ecmLinkDrivers.includes(data.link))report('link',msg('link 必须为 I8254x、I8255x、IntelGbe、IntelGbeRec 或 RTL8169（区分大小写）'));
+  if(data.link==='RTL8169'){
+    if(data.mode!==1)report('mode',msg('RTL8169 仅支持轮询模式（mode: 1）'));
+    if(data.dcmmode===3)report('dcmmode',msg('RTL8169 不提供链路层参考时钟（dcmmode: 3）'));
   }
   if(Object.hasOwn(raw,'ctloff')) {
     data.ctloff=boolean(scalar(doc,'ctloff'));

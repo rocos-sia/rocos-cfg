@@ -1,0 +1,127 @@
+{
+  "format": "rocos-structured-template",
+  "id": "project.talon",
+  "version": 1,
+  "name": "Talon 七轴机械臂",
+  "kind": "project",
+  "profiles": [
+    "rocos.igh@1",
+    "rocos.ecm@2",
+    "rocos.app@1"
+  ],
+  "source": "用户提供的 talon.rcproj 目录（2026-10-22）；保留配置和模型字节，ECM license 清空，STL 移至 meshes 子目录以匹配 URDF。",
+  "defaults": {},
+  "data": {
+    "files": [
+      {
+        "path": "app/hardware_talon_config.yaml",
+        "role": "hardware",
+        "sourcePath": "app/hardware_talon_config.yaml",
+        "sha256": "14351732cb16fa9c7ba8e3636438a10e8d18be2898c3160d60d3d4596b375494"
+      },
+      {
+        "path": "app/joint_binding.yaml",
+        "role": "binding",
+        "sourcePath": "app/joint_binding.yaml",
+        "sha256": "402f58d189db1af211957bb547fd892204f9ee5a79a6e18789fb1f80e9bcc766"
+      },
+      {
+        "path": "app/talon/meshes/base_link.STL",
+        "role": "resource",
+        "sourcePath": "app/talon/base_link.STL",
+        "sha256": "55f0c3b4a0a7f5ebbf585d08922a1ebcfc1927e22ff1c84ee437a8ab9b2b8627"
+      },
+      {
+        "path": "app/talon/meshes/link_1.STL",
+        "role": "resource",
+        "sourcePath": "app/talon/link_1.STL",
+        "sha256": "52a1685cec9b109e7f080bf31675b50c2ef7efdf1af9fa5610dcd1ed38149e52"
+      },
+      {
+        "path": "app/talon/meshes/link_2.STL",
+        "role": "resource",
+        "sourcePath": "app/talon/link_2.STL",
+        "sha256": "299af9be857c1b08696fd8845baf7888ae65754639d6e9577591f9a3d086e647"
+      },
+      {
+        "path": "app/talon/meshes/link_3.STL",
+        "role": "resource",
+        "sourcePath": "app/talon/link_3.STL",
+        "sha256": "f7d31b432c6e0f44b038e5e97f5b332a68ac6ccfd77a8690332c92d695790e02"
+      },
+      {
+        "path": "app/talon/meshes/link_4.STL",
+        "role": "resource",
+        "sourcePath": "app/talon/link_4.STL",
+        "sha256": "d26ea8bf75d3161899e6a951e2ade8521544ff394e0c597f94aa81ea95f8c060"
+      },
+      {
+        "path": "app/talon/meshes/link_5.STL",
+        "role": "resource",
+        "sourcePath": "app/talon/link_5.STL",
+        "sha256": "e86834bb367697b5a11362b388acad8fa2cd141df9a21c8b3d802dae9583b605"
+      },
+      {
+        "path": "app/talon/meshes/link_6.STL",
+        "role": "resource",
+        "sourcePath": "app/talon/link_6.STL",
+        "sha256": "84e743730ec6d2e3ab631d01104285e802845f533a27b047dd454d050f31a8de"
+      },
+      {
+        "path": "app/talon/meshes/link_7.STL",
+        "role": "resource",
+        "sourcePath": "app/talon/link_7.STL",
+        "sha256": "7ca42585fb92cbdcf2191bd8c5e3a2a7528d7c4ca3d468b8ceec7da0b36a0d43"
+      },
+      {
+        "path": "app/talon/robot.urdf",
+        "role": "urdf",
+        "sourcePath": "app/talon/robot.urdf",
+        "sha256": "bc93a60f2b20502ec8a83ace6221bfd45315027edeb7f09d49578ac8e8e7d79d"
+      },
+      {
+        "path": "ecm/config.yaml",
+        "role": "ecm",
+        "sourcePath": "ecm/config.yaml",
+        "sha256": "8387b149c7587581c6d019b1f890713b104593c2c09aa8f046075957f0f7af58"
+      },
+      {
+        "path": "ecm/eni7.xml",
+        "role": "eni",
+        "sourcePath": "ecm/eni7.xml",
+        "sha256": "97389f7819b8bac814b07ec7d16ec3ecaf078844b8e49f31411b4cb844db40c7"
+      },
+      {
+        "path": "igh/talon_pdo.yaml",
+        "role": "igh",
+        "sourcePath": "igh/talon_pdo.yaml",
+        "sha256": "85d72571767084b313b01cbf573a82083b50b4091fb5a6394a52676c08d0c56d"
+      },
+      {
+        "path": "app/config.yaml",
+        "role": "app",
+        "sourcePath": null,
+        "sha256": "729eef0faf5065867502942ff9b62c5189c94905efdc51e9eb893085fc4a0afe"
+      },
+      {
+        "path": "app/payload.yaml",
+        "role": "app.payload",
+        "sourcePath": null,
+        "sha256": "b1e232d32ca569ed8f037cafc8f16f422876772226f10ffa329cf74b78306ae3"
+      },
+      {
+        "path": "app/scripts/README.txt",
+        "role": "resource",
+        "sourcePath": null,
+        "sha256": "718dadb3a471a1c414bebaded208098ec80be68e15c9fcb9db96924551744b7a"
+      },
+      {
+        "path": "web/index.html",
+        "role": "resource",
+        "sourcePath": null,
+        "sha256": "1f7c7992baa09cd39b0e8cc6fb94928e963c84eb2b7d5d1951b8dcbfc2944c68"
+      }
+    ]
+  },
+  "notice": "Talon 示例保留原始硬件参数和信号映射，尚待人工核对。APP 启动配置、空载 payload、脚本目录和 HMI 占位页为示例补充；ECM 许可证已清空。"
+}

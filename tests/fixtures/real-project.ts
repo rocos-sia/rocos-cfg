@@ -10,7 +10,7 @@ import { verifySourceBaseline } from '../consumer/source';
 export const realSourcesAvailable = !!(process.env.ROCOS_APP_SOURCE && process.env.ROCOS_IGH_SOURCE && process.env.ROCOS_ECM_SOURCE);
 export async function realProjectInputs(kind: MasterKind) {
   const app=process.env.ROCOS_APP_SOURCE!, master=kind==='igh'?process.env.ROCOS_IGH_SOURCE!:process.env.ROCOS_ECM_SOURCE!;
-  const masterProof=verifySourceBaseline(master,kind==='igh'?'3c92f2a':'e0e5e32',kind==='igh'?['src/pdo_config.cpp','src/pdo_config.hpp']:['Main/Common/EcConfig.cpp','Main/Common/EcConfig.h']);
+  const masterProof=verifySourceBaseline(master,kind==='igh'?'3c92f2a':'d85a6f3',kind==='igh'?['src/pdo_config.cpp','src/pdo_config.hpp']:['Main/Common/EcConfig.cpp','Main/Common/EcConfig.h']);
   const sourceProof={master:masterProof,app:verifySourceBaseline(app,'7093bcd',['src/app_config.hpp','src/hardware.cpp','src/joint_binding.cpp','src/model.cpp'])};
   const entries=new Map<string,Uint8Array>();
   const put=async(path:string,local:string)=>entries.set(path,new Uint8Array(await readFile(local)));

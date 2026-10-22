@@ -13,7 +13,7 @@ test('robot template parameters and immutable snapshots survive a fresh-context 
   await dialog.getByLabel('模型名称前缀',{exact:true}).fill('lab');await dialog.getByLabel('模板连杆长度',{exact:true}).fill('0.45');
   await dialog.getByRole('button',{name:'创建工程',exact:true}).click();
   await expect(page.getByText('快照已核对',{exact:true})).toHaveCount(2);
-  const row=page.getByRole('row').filter({hasText:'robot.two-axis v1'});await expect(row).toContainText('0.45');
+  const row=page.getByRole('row').filter({hasText:'robot.two-axis v2'});await expect(row).toContainText('0.45');
   await row.getByRole('button',{name:'查看模板快照'}).click();
   const preview=page.getByRole('dialog',{name:'规则与模板快照 · 只读'});await expect(preview).toContainText('教学模型');
   await preview.getByRole('button',{name:'关闭预览'}).click();
@@ -23,7 +23,7 @@ test('robot template parameters and immutable snapshots survive a fresh-context 
   const path=testInfo.outputPath('template.rcproj');await(await download).saveAs(path);
   const restored=await openProject(await readFile(path));expect(restored.editor.templateUses?.find(t=>t.templateId==='robot.two-axis')?.overrides).toEqual({prefix:'lab',linkLength:0.45});
   const context=await browser.newContext(),fresh=await context.newPage();await fresh.goto(uiOrigin);await fresh.locator('input[type=file]').first().setInputFiles(path);
-  await expect(fresh.getByRole('row').filter({hasText:'robot.two-axis v1'})).toContainText('0.45');
+  await expect(fresh.getByRole('row').filter({hasText:'robot.two-axis v2'})).toContainText('0.45');
   await fresh.getByRole('menuitem',{name:'机器人模型'}).click();await expect(fresh.locator('.model-tree')).toContainText('lab_joint_2');await context.close();
 });
 

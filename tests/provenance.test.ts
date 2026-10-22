@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import legacyProfiles from '../templates/profiles/targets.v1.json' with {type:'json'};
+import legacyStarter from '../templates/projects/starter.v1.json' with {type:'json'};
 import { createProject } from '../src/core/project/create';
 import { attachProfile, baseTarget, targetStatus, validateProfiles } from '../src/core/project/profiles';
 import { validateTemplates } from '../src/core/project/templates';
@@ -20,6 +22,23 @@ describe('versioned rules and structured template snapshots',()=>{
     expect([config.sp,config.flash,config.mbxsrv]).toEqual([null,null,null]);expect(config.license).toBe('');
     for(const file of p.files)expect(fileById(restored,file.id)?.bytes).toEqual(file.bytes);
     expect(restored.editor.templateUses).toEqual(p.editor.templateUses);
+  });
+  it('retains old ECM snapshots and numeric configuration until explicit retargeting',async()=>{
+    const p=createProject('legacy ECM','ecm');
+    const profile=fileById(p,p.targets.master.profile!.fileId)!, master=fileById(p,p.entrypoints.master.fileId)!;
+    profile.path='project-data/profiles/rocos.ecm.v1.json';profile.bytes=utf8.encode(JSON.stringify(legacyProfiles.ecm));
+    p.targets.master={...legacyProfiles.ecm.target,profile:{id:'rocos.ecm',version:1,fileId:profile.id}};
+    const use=p.editor.templateUses![0],template=fileById(p,use.snapshotFileId)!;
+    use.version=1;template.path='project-data/templates/project.starter.v1.json';template.bytes=utf8.encode(JSON.stringify(legacyStarter));
+    master.bytes=utf8.encode('eni: eni.xml\nlink: 2\n');
+    const restored=await openProject(await saveProject(p));
+    expect(targetStatus(restored,'master').supported).toBe(false);expect(validateTemplates(restored)).toEqual([]);
+    expect(textOf(fileById(restored,master.id)!)).toBe('eni: eni.xml\nlink: 2\n');
+    expect(buildBusCatalog(restored).signals).toEqual([]);
+    expect(()=>prepareRuntime(restored)).toThrow();
+    restored.targets.master=baseTarget('ecm');attachProfile(restored,'master',true);
+    expect(fileById(restored,profile.id)!.bytes).toEqual(profile.bytes);
+    expect(buildBusCatalog(restored).diagnostics.some(d=>d.code==='ecm.startup'&&d.field==='link')).toBe(true);
   });
   it('generates an editable robot from data, records parameter overrides and never reapplies a template on reopen',async()=>{
     const p=createProject('arm','igh',{robotTemplate:'robot.two-axis',parameters:{prefix:'test',linkLength:0.6}}),urdf=fileById(p,p.entrypoints.urdf)!;
@@ -48,7 +67,7 @@ describe('versioned rules and structured template snapshots',()=>{
   });
   it('keeps unknown template versions as history without using them to regenerate files or exporting any tool snapshots',async()=>{
     const p=resourceProject(),use=p.editor.templateUses![0],file=fileById(p,use.snapshotFileId)!;
-    const template=JSON.parse(textOf(file));template.version=2;template.data.robot.name='should-not-run';use.version=2;file.bytes=utf8.encode(JSON.stringify(template));
+    const template=JSON.parse(textOf(file));template.version=999;template.data.robot.name='should-not-run';use.version=999;file.bytes=utf8.encode(JSON.stringify(template));
     const restored=await openProject(await saveProject(p));expect(validateTemplates(restored)[0].message).toContain('不在当前库');
     expect(fileById(restored,p.entrypoints.urdf)?.bytes).toEqual(fileById(p,p.entrypoints.urdf)?.bytes);
     const runtime=prepareRuntime(restored);expect(runtime.plan.files.some(f=>f.path.startsWith('project-data/'))).toBe(false);

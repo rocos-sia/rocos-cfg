@@ -12,7 +12,7 @@ const descriptions: Record<string, string> = {
   "ecm.eni": "相对于启动配置文件的 ENI XML 路径；ENI 决定总线拓扑和过程数据布局，在本工具中只读。",
   "ecm.duration": "主站运行时长，单位 ms；0 表示持续运行。",
   "ecm.cpuidx": "运行主站任务的 CPU 索引。",
-  "ecm.link": "选择当前配置兼容基线支持的链路驱动编号；需与目标控制器的驱动一致。",
+  "ecm.link": "选择目标控制器的链路驱动名称，区分大小写。RTL8169 仅支持轮询，且不支持链路层参考时钟。",
   "ecm.instance": "所选链路驱动使用的网卡实例编号，从 1 开始。",
   "ecm.mode": "链路运行模式：0 为中断，1 为轮询。",
   "ecm.dcmmode": "分布式时钟管理模式编号；需按目标 EC-Master SDK 和 ENI 的同步方案选择。",

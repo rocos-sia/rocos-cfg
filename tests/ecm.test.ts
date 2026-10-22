@@ -36,3 +36,19 @@ it('collects the consumer default ENI dependency when eni is absent and rejects 
   expect(collectReferences(p).find(r=>r.sourceFileId===f.id)).toMatchObject({original:'eni7.xml',targetFileId:eni.id,state:'internal'});
   expect(()=>ecmDocument({...f,bytes:utf8.encode('{}')})).toThrow('非空映射');
 });
+
+it.each(['I8254x','I8255x','IntelGbe','IntelGbeRec','RTL8169'])('accepts named ECM driver %s and preserves it through edits',link=>{
+  const p=createProject('named','ecm'),file=p.files[0];file.bytes=utf8.encode(`eni: eni7.xml\nlink: ${link}\n`);
+  editProjectYaml(p,file.id,doc=>doc.setIn(['cycle'],2000));
+  expect(ecmDocument(file)).toMatchObject({data:{link,cycle:2000},diagnostics:[]});
+});
+it.each(['0','1','2','"2"','intelgbe','IntelGbeLegacy','null','[]'])('rejects unsupported or numeric driver %s',link=>{
+  expect(ecmDocument(makeFile('ecm.yaml','ecm',`link: ${link}`)).diagnostics.some(d=>d.field==='link')).toBe(true);
+});
+it('uses the native default and checks RTL8169 mode and reference-clock restrictions',()=>{
+  expect(ecmDocument(makeFile('ecm.yaml','ecm','id: 0')).data.link).toBe('IntelGbe');
+  const parse=(text:string)=>ecmDocument(makeFile('ecm.yaml','ecm',text));
+  expect(parse('link: RTL8169\nmode: 0\ndcmmode: 3').diagnostics.map(d=>d.field)).toEqual(['mode','dcmmode']);
+  expect(parse('link: RTL8169\nmode: 1\ndcmmode: 2').diagnostics).toEqual([]);
+  expect(parse('link: IntelGbeRec\nmode: 0\ndcmmode: 3').diagnostics).toEqual([]);
+});

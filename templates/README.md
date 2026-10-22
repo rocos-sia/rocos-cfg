@@ -6,9 +6,10 @@
 
 | 定义 | 使用入口 | 参数及边界 |
 | --- | --- | --- |
-| `projects/teaching.v1.json` | 打开示例 → IgH / EC-Master | 一套单轴、显式 PDO/ENI、Hardware/Binding 与 APP 的完整教学工程；默认待人工确认，详见 [示例说明](../docs/EXAMPLES.md) |
-| `projects/starter.v1.json` | 新建 IgH / EC-Master 工程 | 初始化主站、APP、硬件与绑定配置；ENI 必须另行导入 |
-| `robots/two-axis.v1.json` | 新建工程 → 双关节演示模型 | 名称前缀与连杆长度；生成两个旋转关节及盒体外观，设置 APP 控制链端点 |
+| `projects/talon.v1.json` | 打开示例 → Talon IgH / ECM | 用户提供的七轴 Talon 完整配置、只读 ENI 与 8 个 STL；资源清单、来源和整理说明见 [示例说明](../docs/EXAMPLES.md#talon-七轴完整配置示例) |
+| `projects/teaching.v2.json` | 打开示例 → IgH / EC-Master | 一套单轴、显式 PDO/ENI、Hardware/Binding 与 APP 的完整教学工程；默认待人工确认，详见 [示例说明](../docs/EXAMPLES.md) |
+| `projects/starter.v2.json` | 新建 IgH / EC-Master 工程 | 初始化主站、APP、硬件与绑定配置；ENI 必须另行导入 |
+| `robots/two-axis.v2.json` | 新建工程 → 双关节演示模型 | 名称前缀与连杆长度；生成两个旋转关节及盒体外观，设置 APP 控制链端点 |
 | `devices/igh-discovery.v1.json` | 主站配置 → 新增从站 | 从站名称及可手动配置的空 PDO 条目；不推断驱动器机械参数或绑定 |
 
 产品 PDO 模板采用 JSON 文件，按 `deviceType` 分组、按品牌/型号/配置变体搜索；新建 ROCOS-IGH 工程与“新增从站”共用同一库。新建时选空白保持空总线，选产品模板创建一个从站；已有工程只追加从站，随后可继续编辑 PDO，支持撤销。ROCOS-ECM 的 PDO 仍来自只读 ENI。
@@ -34,7 +35,7 @@
 
 ## 目标规则快照
 
-`profiles/targets.v1.json` 固定当前消费端基线和部分容量、名称长度、PDO、ENI 与控制链限制：IgH `3c92f2a`、EC-Master `e0e5e32`、APP `7093bcd`。完整解析行为还由编译期 TypeScript 适配器实现；JSON 不是通用规则解释语言，也不能独立代表完整消费端验证。目标构建 ABI、EC-Master SDK 与设备配对仍标记为未验证。
+`profiles/targets.v1.json` 保存 IgH `3c92f2a`、APP `7093bcd` 和历史 ECM v1 规则；当前 ECM 使用 `profiles/ecm.v2.json`，消费端基线为 `d85a6f3`。规则包含部分容量、名称长度、PDO、ENI 与控制链限制。完整解析行为还由编译期 TypeScript 适配器实现；JSON 不是通用规则解释语言，也不能独立代表完整消费端验证。目标构建 ABI、EC-Master SDK 与设备配对仍标记为未验证。
 
 创建工程时，所选主站和 APP 规则分别保存到 `project-data/profiles/`，并由工程目标字段引用。打开时核对目标版本、配置版本、ABI 标记、规则 ID / 版本与完整 JSON 内容；忽略 JSON 空白和键顺序，不能忽略规则内容差异。快照校验不一致、丢失或没有对应适配器时，阻止自动生成相关配置和运行包导出，原配置仍可查看、编辑与存档。
 
@@ -43,3 +44,9 @@
 早期工程的目标恰好匹配内置基线但没有快照时，可使用该适配器并提示“未留存快照”。用户可显式补存规则；这只是声明所选目标，不是证明原文件的生产版本。切换到受支持规则也需要确认：保留已有配置和旧快照，追加新规则快照，清除机械参数与绑定的人工确认，然后重新校验。工程打开和保存均不自动执行此转换。
 
 规则改变需要新版本及对应适配器，不能通过编辑工程内快照启用新能力。归档 SHA-256 用于完整性核对，不证明模板作者或规则来源可信。
+
+### ECM 字符链路驱动（v2）
+
+按 `rocos-ecm@d85a6f3` 的 `Main/Common/EcConfig.cpp` / `.h`，`link` 为区分大小写的名称：`I8254x`、`I8255x`、`IntelGbe`、`IntelGbeRec`、`RTL8169`，缺省为 `IntelGbe`。RTL8169 仅允许 `mode: 1`，且不允许 `dcmmode: 3`。数字形式不自动转换为驱动名称。
+
+新建工程与教学工程使用 starter / teaching v2；双关节模型 v2 声明兼容 ECM 规则 v2，几何默认值不变。v1 定义保持原文，仍可核对历史模板快照。旧 ECM v1 工程可以原样打开、查看源码及保存；因目标规则已变更，需在工程总览显式改用当前规则并选择实际驱动名称，才重新启用结构化主站校验和运行包导出。此操作保留旧规则和配置文件，不隐式转换数字 `link` 或确认机械参数。
