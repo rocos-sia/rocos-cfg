@@ -21,7 +21,7 @@ export function RecoveryFiles({replace,disabled}:{replace:(p:Project)=>Promise<v
   const remove=async(row:RecoverySummary)=>{
     setBusy(true);try{await discardRecovery(row.key);setRows(await listRecovery());}catch(e){message.error(()=>(errorText(e,true)));}finally{setBusy(false);}
   };
-  return <><Button disabled={disabled||busy} onClick={()=>void refresh()}>{t("本机恢复草稿")}</Button>
+  return <><Button disabled={disabled} loading={busy} onClick={()=>void refresh()}>{t("本机恢复草稿")}</Button>
     <Modal title={t("本机恢复草稿")} open={open} width={900} onCancel={()=>{if(!busy)setOpen(false);}} footer={<Button disabled={busy} onClick={()=>setOpen(false)}>{t("暂不恢复")}</Button>}>
       <Alert type="info" showIcon message={t("每次打开工程分别保留草稿，相同工程的不同副本不会互相覆盖。缓存只在本机可用，不能代替 .rcproj 文件。")}/>
       <Table<RecoverySummary> rowKey="key" loading={busy} dataSource={rows} pagination={{pageSize:5}} scroll={{x:720}} locale={{emptyText:t("暂无可恢复草稿")}} columns={[

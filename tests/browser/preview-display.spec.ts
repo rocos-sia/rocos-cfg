@@ -73,6 +73,8 @@ for (const { name, touch, viewport } of [{name:'keyboard',touch:false,viewport:{
   test('retains canvas, confines focus, exits with Escape/button and follows dark English UI', async ({ page }, info) => {
     await open(page); const before = await snapshot(page), canvas = page.locator('.robot-preview canvas');
     await canvas.evaluate(el => el.setAttribute('data-canvas-identity', 'retained'));
+    const more = page.getByRole('button', { name: '更多操作', exact: true });
+    if (await more.isVisible()) await more.click();
     await page.getByRole('button', { name: '切换主题', exact: true }).click();
     await page.getByRole('button', { name: '切换语言', exact: true }).click();
     await page.getByRole('menuitem', { name: 'English', exact: true }).click();
@@ -81,7 +83,7 @@ for (const { name, touch, viewport } of [{name:'keyboard',touch:false,viewport:{
     if (touch) await trigger.tap(); else await trigger.click();
     const dialog = page.getByRole('dialog', { name: 'Expanded model view', exact: true }); await expect(dialog).toBeVisible();
     const exit = dialog.getByRole('button', { name: 'Exit expanded view', exact: true }); await expect(exit).toBeFocused();
-    expect(await page.locator('.sidebar').evaluate(el => (el as HTMLElement).inert)).toBe(true);
+    expect(await page.locator('.sidebar').evaluate(el => !!el.closest('[inert]'))).toBe(true);
     await expect(page.locator('canvas')).toHaveCount(1); await expect(canvas).toHaveAttribute('data-canvas-identity', 'retained');
     const bounds = (await canvas.boundingBox())!; expect(bounds.width).toBeGreaterThan(Math.min(viewport.width - 50, 1300));
     const exitBounds = (await exit.boundingBox())!; expect(exitBounds.height).toBeGreaterThanOrEqual(44); expect(exitBounds.y + exitBounds.height).toBeLessThanOrEqual(page.viewportSize()!.height);
@@ -96,8 +98,8 @@ for (const { name, touch, viewport } of [{name:'keyboard',touch:false,viewport:{
     await dialog.locator('.ant-select-item-option[title="Visual"]').click();
     await page.screenshot({ path: info.outputPath('expanded-dark-english.png') });
     await page.keyboard.press('Escape'); await expect(dialog).not.toBeVisible(); await expect(trigger).toBeFocused();
-    expect(await page.locator('.sidebar').evaluate(el => (el as HTMLElement).inert)).toBe(false);
-    await expect(page.locator('.sidebar')).not.toHaveAttribute('aria-hidden', 'true');
+    expect(await page.locator('.sidebar').evaluate(el => !!el.closest('[inert]'))).toBe(false);
+    expect(await page.locator('.sidebar').evaluate(el => !!el.closest('[aria-hidden=true]'))).toBe(false);
     await expect(canvas).toHaveAttribute('data-canvas-identity', 'retained');
     await canvas.screenshot({ path: info.outputPath('restored-canvas.png') });
     await expect.poll(async () => Buffer.compare(normal, await renderedFrame(canvas))).toBe(0);

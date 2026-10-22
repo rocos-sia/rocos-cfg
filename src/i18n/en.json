@@ -1129,5 +1129,10 @@
   "显示属性": "Show properties",
   "收起属性": "Hide properties",
   "重置面板布局": "Reset panel layout",
-  "拖动分隔条，或聚焦后用方向键调整宽度；Shift 加速，Home / End 到边界。": "Drag a separator or focus it and use the arrow keys. Shift speeds up; Home / End moves to the limits."
+  "拖动分隔条，或聚焦后用方向键调整宽度；Shift 加速，Home / End 到边界。": "Drag a separator or focus it and use the arrow keys. Shift speeds up; Home / End moves to the limits.",
+  "工程导航": "Project navigation",
+  "关闭导航": "Close navigation",
+  "展开导航": "Expand navigation",
+  "收起导航": "Collapse navigation",
+  "更多操作": "More actions"
 }
