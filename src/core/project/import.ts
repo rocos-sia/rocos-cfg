@@ -1,3 +1,4 @@
+import { configure } from './configuration';
 import { m as msg, MessageError } from './messages';
 import { type Project, type ProjectFile, type FileRole, type TargetProfile, uid } from './types';
 import { modules } from '../modules';
@@ -83,7 +84,7 @@ export function applyImport(p: Project, plan: ImportPlan, selection = defaultImp
     if (slot === 'master') {
       const kind = file.role as 'igh' | 'ecm';
       const changedKind=kind!==next.entrypoints.master.kind;
-      if (changedKind) next.targets.master = masterProfile(kind);
+      if (changedKind) {configure(next).masters[next.entrypoints.master.kind]={entry:structuredClone(next.entrypoints.master),target:structuredClone(next.targets.master)};next.targets.master = masterProfile(kind);next.entrypoints.master.eniFileId=null;}
       next.entrypoints.master.kind = kind; next.entrypoints.master.fileId = id;
       if(changedKind)attachProfile(next,'master');
     } else if (slot === 'eni') next.entrypoints.master.eniFileId = id;

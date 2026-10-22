@@ -1,3 +1,4 @@
+import { configuration } from '../project/configuration';
 import { m as msg, messageFields, MessageError, errorMessage, type MessageInput } from '../project/messages';
 import { buildIghCatalog } from './igh';
 import { type Project, type BusCatalog, type Diagnostic, fileById, textOf } from '../project/types';
@@ -8,6 +9,7 @@ import { busRules, ecmRules, targetStatus } from '../project/profiles';
 
 export function buildBusCatalog(p: Project): BusCatalog {
   const result: BusCatalog = { slaves: [], signals: [], diagnostics: [] };
+  if(!configuration(p).enabled.bus)return result;
   const source = fileById(p, p.entrypoints.master.fileId);
   let origin=source?.id;
   const report = (code: string, message: MessageInput, severity: Diagnostic['severity'] = 'error',fileId=origin,field?:string) => result.diagnostics.push({ code, ...messageFields(message), severity, fileId,field });

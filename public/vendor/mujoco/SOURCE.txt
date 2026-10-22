@@ -1,0 +1,6 @@
+MuJoCo 3.4.0 (Apache-2.0)
+https://github.com/google-deepmind/mujoco
+Vendored from rocos-mujoco/third_party/mujoco-3.4.0/wasm:
+  mujoco_wasm.js
+  mujoco_wasm.wasm
+See LICENSE and THIRD_PARTY_NOTICES. Loaded locally; no CDN required.

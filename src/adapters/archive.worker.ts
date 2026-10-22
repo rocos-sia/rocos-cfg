@@ -1,3 +1,4 @@
+import { validateSimulation } from './mujoco';
 import { inspectProjectArchive, saveProject } from '../core/project/archive';
 import { inspectProjectRecovery } from '../core/project/recover';
 import type { ArchiveRequest, ArchiveResponse } from './archive-protocol';
@@ -5,6 +6,8 @@ import { analyzeProject } from '../core/project/analysis';
 import { validateProject } from '../core/validation';
 import { planRuntime, prepareRuntime } from '../core/export';
 import { errorMessage, messageFields, MessageError, m as msg } from '../core/project/messages';
+
+async function validateAll(project:import('../core/project/types').Project){const diagnostics=validateProject(project);if(!diagnostics.some(d=>d.severity==='error'))diagnostics.push(...await validateSimulation(project));return diagnostics;}
 
 // One job per worker. Termination can interrupt even synchronous ZIP/XML work.
 const send=(message:ArchiveResponse)=>self.postMessage(message);
@@ -17,14 +20,14 @@ self.onmessage=async(event:MessageEvent<ArchiveRequest>)=>{
       case 'inspect':result={type:'result',result:await inspectProjectArchive(request.bytes,undefined,undefined,progress)};break;
       case 'recover':result={type:'result',result:await inspectProjectRecovery(request.bytes,undefined,undefined,request.version,progress)};break;
       case 'analyze':result={type:'result',result:analyzeProject(request.project,request.workspaceEpoch)};break;
-      case 'validate':progress(10);result={type:'result',result:validateProject(request.project)};progress(100);break;
+      case 'validate':progress(10);result={type:'result',result:await validateAll(request.project)};progress(100);break;
       case 'runtimeDirectory':{
-        progress(10);const diagnostics=validateProject(request.project);progress(50);
+        progress(10);const diagnostics=await validateAll(request.project);progress(50);
         const prepared=diagnostics.some(d=>d.severity==='error')?undefined:{plan:planRuntime(request.project)};
         result={type:'result',result:{diagnostics,prepared}};progress(100);break;
       }
       case 'runtime':{
-        progress(10);const diagnostics=validateProject(request.project);progress(50);
+        progress(10);const diagnostics=await validateAll(request.project);progress(50);
         const output=diagnostics.some(d=>d.severity==='error')?undefined:prepareRuntime(request.project);
         // The UI needs the ZIP and a reviewable file list, not a second copy of
         // every uncompressed mesh and attachment in the export plan.

@@ -60,6 +60,16 @@ export class BrowserFileAccess implements FileAccess {
   async open(options:TransferOptions={}){const files=await pick('.rcproj,.zip');return files?.[0]?readBrowserFile(files[0],options):undefined;}
   async import(directory:boolean,options:TransferOptions={}){check(options);return pick(undefined,directory,true);}
   async write(bytes:Uint8Array,name:string,options:WriteOptions={}):Promise<WriteResult>{check(options);browserDownload(bytes,name);return {kind:'downloaded'};}
+  async writeDirectory(files:DirectoryFile[],name:string,options:TransferOptions={}):Promise<DirectoryWritten|undefined>{
+    const picker=(window as unknown as {showDirectoryPicker?:()=>Promise<any>}).showDirectoryPicker;
+    if(!picker)throw new Error('当前浏览器不支持目录导出，请使用桌面版或下载 ZIP 文件夹');
+    checkPaths(files.map(f=>f.path));
+    let parent:any;try{parent=await picker();}catch(e){if(e instanceof DOMException&&e.name==='AbortError')return;throw e;}
+    const folder=(name.replace(/[\\/:*?"<>|]/g,'_').trim()||'rocos')+'-'+crypto.randomUUID();
+    const root=await parent.getDirectoryHandle(folder,{create:true});let completed=0;
+    for(const file of files){check(options);const parts=file.path.split('/');let dir=root;for(const part of parts.slice(0,-1))dir=await dir.getDirectoryHandle(part,{create:true});const handle=await dir.getFileHandle(parts.at(-1),{create:true}),writer=await handle.createWritable();try{await writer.write(new Uint8Array(file.bytes));await writer.close();}catch(e){await writer.abort();throw e;}options.progress?.(++completed,files.length);}
+    return {displayPath:folder,files:completed};
+  }
   async read():Promise<OpenedFile>{throw new MessageError(msg("此浏览器使用文件选择与下载，不持有磁盘写入授权"));}
   async refresh():Promise<OpenedFile>{throw new MessageError(msg("请重新选择磁盘文件"));}
   async release(){}

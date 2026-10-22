@@ -1,3 +1,4 @@
+import { configuration, masterKinds, masterProject } from './configuration';
 import { fileById, type Project, type FileReference } from './types';
 import { resourcePath } from './paths';
 export { elements } from '../documents/xml';
@@ -37,7 +38,8 @@ export function activeFileIds(p: Project, refs = collectReferences(p), registry:
   const owners = new Map(snapshots.flatMap(m => m.fileIds.map(id => [id, m] as const)));
   const moduleQueue = snapshots.filter(m => m.requiredForRuntime || m.runtimeFileIds?.length).map(moduleInstanceKey), seenModules = new Set<string>();
   const roots = snapshots.flatMap(m => m.runtimeFileIds || (m.requiredForRuntime ? m.fileIds : []));
-  const active = new Set<string>(); const queue = [p.entrypoints.master.fileId, p.entrypoints.app, ...roots].filter((id): id is string => !!id);
+  const config=configuration(p);
+  const active = new Set<string>(); const queue = [...(config.enabled.bus?masterKinds(p).map(k=>masterProject(p,k).entrypoints.master.fileId):[]), ...(config.enabled.app?[p.entrypoints.app]:[]), ...(config.enabled.simulation?[config.simulationFileId]:[]), ...roots].filter((id): id is string => !!id);
   while (queue.length || moduleQueue.length) {
     if (moduleQueue.length) {
       const key = moduleQueue.shift()!; if (seenModules.has(key)) continue; seenModules.add(key);

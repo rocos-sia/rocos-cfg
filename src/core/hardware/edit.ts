@@ -1,3 +1,4 @@
+import { configuration, applicationProject } from '../project/configuration';
 import { m as msg, MessageError, type DiagnosticMessage } from '../project/messages';
 import { makeFile } from '../project/create';
 import { targetStatus } from '../project/profiles';
@@ -35,10 +36,10 @@ export function planHardware(p:Project,action:{kind:'add';type:HardwareType;id:n
   const target=targetStatus(p,'app');if(!target.supported)throw new MessageError(target);
   const next=structuredClone(p),file=fileById(next,next.entrypoints.hardware);
   if(!file)throw new MessageError(msg("缺少 Hardware 文件"));
-  const {devices}=hardwareDocument(file),bus=buildBusCatalog(next),impacts:DiagnosticMessage[]=[];
+  const {devices}=hardwareDocument(file),bus=buildBusCatalog(applicationProject(next)),impacts:DiagnosticMessage[]=[];
   if(devices.some(d=>!isRecord(d)||!Number.isInteger(d.id)))throw new MessageError(msg("请先修复无效硬件条目或 ID"));
   if(action.kind==='add'||action.kind==='id') {
-    if(!bus.slaves.some(s=>s.id===action.id))throw new MessageError(msg("请选择实际存在的主站从站"));
+    if(!Number.isInteger(action.id)||action.id!<0||configuration(p).enabled.bus&&!bus.slaves.some(s=>s.id===action.id))throw new MessageError(msg("请选择实际存在的主站从站"));
     if(devices.some((d,i)=>d.id===action.id&&(action.kind==='add'||i!==action.index)))throw new MessageError(msg("该从站已被 Hardware 使用"));
   }
   if(action.kind==='add') {
@@ -51,7 +52,7 @@ export function planHardware(p:Project,action:{kind:'add';type:HardwareType;id:n
       const n=(s?:string)=>s!==undefined&&s!==''&&Number.isFinite(Number(s))?Number(s):null;
       Object.assign(d,{joint_name:joint?.name??'',torque_source:'load_torque',transform:{ratio:null,offset_pos_cnt:null,cnt_per_unit:null,torque_per_unit:null,user_unit_name:joint?.type==='prismatic'?'m':'rad'},limit:{lower:n(joint?.lower),upper:n(joint?.upper),vel:n(joint?.velocity),effort:n(joint?.effort),acc:null,jerk:null}});
       for(const group of ['inputs','outputs'] as const)for(const spec of signals.driver[group]) {
-        const candidates=bus.signals.filter(s=>s.slaveId===action.id&&s.direction===(group==='inputs'?'input':'output')&&s.resolution==='resolved'&&s.storageBytes===spec.bytes&&s.bitLength===spec.bytes*8&&!signalTypeProblem(s.dataType,spec)&&(spec.index!==undefined&&s.index===spec.index&&s.subIndex===0||s.runtimeName===spec.key));
+        const candidates=bus.signals.filter(s=>s.slaveId===action.id&&s.direction===(group==='inputs'?'input':'output')&&s.resolution==='resolved'&&s.storageBytes===spec.bytes&&s.bitLength===spec.bytes*8&&!signalTypeProblem(s.dataType,spec)&&(spec.index!==undefined&&s.index===spec.index&&s.subIndex===0||s.runtimeName.replace(/[^a-z0-9]/gi,'').toLowerCase()===spec.key.replace(/_/g,'').toLowerCase()));
         if(candidates.length===1){d[group][spec.key]=candidates[0].runtimeName;impacts.push(msg("{v0}.{v1} → {v2}（候选，需复核）", {v0:String(group), v1:String(spec.key), v2:String(candidates[0].runtimeName)}));}
       }
       impacts.push(msg("换算比例、零点、力矩系数、acc / jerk 保持未配置；需要人工核对后才能导出运行包。"));
@@ -113,4 +114,23 @@ export function planLegacyBinding(p:Project) {
   for(const k of Object.keys(next.editor.confirmations))if(k.startsWith('drive:'))delete next.editor.confirmations[k];
   const impactMessages=[msg('新增显式绑定文件 {path}，同步 APP 引用。',{path}),...suggested.map(b=>msg('{joint} → Drive {id}（来源：Hardware YAML 中 Driver 的顺序）',{joint:b.joint_name,id:b.drive_id}))];
   return {project:next,impacts:impactMessages.map(issue=>issue.message),impactMessages};
+}
+
+/** Fill only empty fields with a single compatible PDO; keep explicit mappings. */
+export function fillHardwareMappings(p:Project):number {
+ const file=fileById(p,p.entrypoints.hardware);if(!file)throw new Error('缺少硬件配置');
+ const bus=buildBusCatalog(applicationProject(p));if(bus.diagnostics.some(d=>d.severity==='error'))throw new Error('请先修复 PDO 来源主站');
+ const {devices}=hardwareDocument(file);let count=0;
+ const normalize=(v:string)=>v.replace(/[^a-z0-9]/gi,'').toLowerCase();
+ editProjectYaml(p,file.id,doc=>{
+  devices.forEach((d,i)=>{
+   const definitions=signals[d.type as HardwareType];if(!definitions)return;
+   for(const group of ['inputs','outputs'] as const)for(const spec of definitions[group]){
+    if(d[group]?.[spec.key])continue;
+    const candidates=bus.signals.filter(s=>s.slaveId===d.id&&s.direction===(group==='inputs'?'input':'output')&&s.resolution==='resolved'&&s.storageBytes===spec.bytes&&s.bitLength===spec.bytes*8&&!signalTypeProblem(s.dataType,spec)&&((spec.index!==undefined&&s.index===spec.index&&s.subIndex===0)||normalize(s.runtimeName)===normalize(spec.key)));
+    if(candidates.length===1){doc.setIn(['hardware',i,group,spec.key],candidates[0].runtimeName);count++;}
+   }
+  });
+ });
+ return count;
 }

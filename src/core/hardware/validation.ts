@@ -1,3 +1,4 @@
+import { configuration } from '../project/configuration';
 import { m as msg, messageFields, type MessageInput, type DiagnosticMessage } from '../project/messages';
 import { fileById, type BusCatalog, type Diagnostic, type Project } from '../project/types';
 import type { RobotJoint } from '../documents/urdf';
@@ -27,7 +28,7 @@ export function validateHardware(p:Project,bus:BusCatalog,chain?:RobotJoint[]):D
     const path=`hardware.${i}`;
     if(!isRecord(d)){add('schema',msg("设备条目必须为映射"),path);continue;}
     const id=d.id;
-    if(!Number.isInteger(id)||ids.has(id)||!bus.slaves.some(s=>s.id===id))add('id',msg("Hardware ID {v0} 必须为唯一、存在于主站的 int32 从站 ID", {v0:String(id)}),path+'.id');ids.add(id);
+    if(!Number.isInteger(id)||ids.has(id)||id<0||(configuration(p).enabled.bus&&!bus.slaves.some(s=>s.id===id)))add('id',msg("Hardware ID {v0} 必须为唯一、存在于主站的 int32 从站 ID", {v0:String(id)}),path+'.id');ids.add(id);
     if(!hardwareTypes.includes(d.type)){add('type',msg("APP 会忽略不支持的硬件类型 {v0}", {v0:String(String(d.type))}),path+'.type');continue;}
     const type=d.type as HardwareType;
     const allowed=['id','type',...(type==='driver'?['joint_name','torque_source','transform','limit','inputs','outputs']:type==='ft_sensor'?['inputs','offset']:['inputs','outputs',...channels])];
@@ -59,6 +60,7 @@ export function validateHardware(p:Project,bus:BusCatalog,chain?:RobotJoint[]):D
         }
         if(typeof value!=='string'){add('signal',msg("{v0} 必须为非空 PDO 变量名", {v0:String(spec.key)}),field);continue;}
         if(assigned.has(value))add('shared-signal',msg("{v0} 与 {v1} 共用变量 {v2}", {v0:String(spec.key), v1:String(assigned.get(value)), v2:String(value)}),field,group==='outputs'?'error':'warning');assigned.set(value,spec.key);
+        if(!configuration(p).enabled.bus)continue;
         const matches=bus.signals.filter(s=>s.slaveId===id&&s.direction===(group==='inputs'?'input':'output')&&s.runtimeName===value&&s.resolution==='resolved');
         if(matches.length!==1){add('signal',msg("设备 {v0} {v1}.{v2} 无法唯一映射：{v3}", {v0:String(id), v1:String(group), v2:String(spec.key), v3:String(value)}),field);continue;}
         const s=matches[0];

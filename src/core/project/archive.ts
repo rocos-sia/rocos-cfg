@@ -1,3 +1,4 @@
+import { validConfiguration } from './configuration';
 import { m as msg, MessageError, messageFields, type MessageInput, type MessageTemplate } from './messages';
 import { packZip, unpackZip, LIMITS, type ArchiveLimits } from './zip';
 import { digest, uid, utf8, type Project, type ProjectFile, type FileRole, type ModuleSnapshot } from './types';
@@ -151,6 +152,7 @@ export async function inspectProjectArchive(bytes: Uint8Array, limits: ArchiveLi
   const stateFile = files.find(f => f.id === manifest.editorStateFileId)!;
   const editor = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(stateFile.bytes));
   assert(object(editor) && object(editor.buffers) && object(editor.confirmations), msg("编辑状态无效"));
+  assert(validConfiguration(editor.configuration,files,manifest.entrypoints.master),msg('模块配置状态无效'));
   if(editor.templateUses!==undefined)assert(Array.isArray(editor.templateUses)&&editor.templateUses.every(validTemplateUse),msg("模板使用记录无效"));
   if (editor.notices !== undefined) assert(Array.isArray(editor.notices) && editor.notices.every((n: unknown) => object(n) && files.some(f => f.id === n.fileId) && typeof n.message === 'string'), msg("复核记录无效"));
   for (const [id, buffer] of Object.entries(editor.buffers)) assert(files.some(f => f.id === id && f.role !== 'eni') && object(buffer) && typeof buffer.text === 'string' && typeof buffer.baseHash === 'string', msg("编辑缓冲区无效"));

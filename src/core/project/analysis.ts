@@ -15,10 +15,10 @@ export function analysisInput(p:Project):Project {
   const ids=new Set([p.entrypoints.master.fileId,p.entrypoints.master.eniFileId,p.entrypoints.urdf,p.entrypoints.app,p.targets.master.profile?.fileId,p.targets.app.profile?.fileId]);
   return {id:p.id,revision:p.revision,snapshotId:p.snapshotId,name:p.name,description:'',createdAt:p.createdAt,modifiedAt:p.modifiedAt,
     entrypoints:p.entrypoints,targets:p.targets,files:p.files.filter(file=>ids.has(file.id)),
-    packageMap:{},references:[],editor:{buffers:{},confirmations:{}}};
+    packageMap:{},references:[],editor:{buffers:{},confirmations:{},configuration:p.editor.configuration}};
 }
 export function sameAnalysisInput(a:Project,b:Project):boolean {
-  if(a.id!==b.id||JSON.stringify(a.entrypoints)!==JSON.stringify(b.entrypoints)||JSON.stringify(a.targets)!==JSON.stringify(b.targets)||a.files.length!==b.files.length)return false;
+  if(JSON.stringify(a.editor.configuration)!==JSON.stringify(b.editor.configuration)||a.id!==b.id||JSON.stringify(a.entrypoints)!==JSON.stringify(b.entrypoints)||JSON.stringify(a.targets)!==JSON.stringify(b.targets)||a.files.length!==b.files.length)return false;
   return a.files.every((file,index)=>{
     const other=b.files[index];
     return file.id===other.id&&file.path===other.path&&file.role===other.role&&file.owner===other.owner&&file.encoding===other.encoding&&

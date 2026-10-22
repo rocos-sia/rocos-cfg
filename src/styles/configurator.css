@@ -214,3 +214,6 @@
 .field-boolean .field-heading label{flex:initial}
 .field-switch{min-height:44px;display:flex;align-items:center}
 .field-switch .ant-switch{align-self:auto}
+
+.module-subnav{margin:16px 0; padding:12px; border:1px solid var(--config-border);border-radius:10px;background:var(--config-card)}
+.mjcf-preview canvas{display:block;max-width:100%;border-radius:8px}

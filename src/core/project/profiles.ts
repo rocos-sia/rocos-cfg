@@ -43,8 +43,8 @@ export function attachProfile(p:Project,slot:'app'|'master',separate=false){
   }else{file={id:uid(),path,role:'profile',owner:'profile',encoding:'utf-8',bytes:utf8.encode(JSON.stringify(definition,null,2)+'\n')};p.files.push(file);}
   p.targets[slot].profile={id:definition.id,version:definition.version,fileId:file.id};
 }
-export function validateProfiles(p:Project):Diagnostic[]{
-  return (['app','master'] as const).flatMap(slot=>{
+export function validateProfiles(p:Project,slots: ('app'|'master')[]=['app','master']):Diagnostic[]{
+  return slots.flatMap(slot=>{
     const status=targetStatus(p,slot);
     return status.supported&&!status.legacy?[]:[{code:status.supported?'target.snapshot.missing':'target.unsupported',severity:status.supported?'warning':'error',...messageFields(status),fileId:p.targets[slot]?.profile?.fileId}];
   });

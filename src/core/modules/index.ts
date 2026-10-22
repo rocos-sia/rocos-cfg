@@ -1,5 +1,6 @@
+import { simulationModules } from './simulation';
 import { ModuleRegistry } from './registry';
 import { nativeModules } from './builtin';
 import { payloadModule } from './payload';
 // Only bundled code is registered. Project archives never supply executable modules.
-export const modules = new ModuleRegistry([...nativeModules, payloadModule]);
+export const modules = new ModuleRegistry([...nativeModules, payloadModule, ...simulationModules]);

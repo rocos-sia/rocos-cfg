@@ -1,3 +1,4 @@
+import { configuration, masterKinds, masterProject, applicationProject } from './project/configuration';
 import { m as msg, messageFields, errorMessage, type MessageInput } from './project/messages';
 import { validateHardware } from './hardware/validation';
 import { modules } from './modules';
@@ -11,38 +12,43 @@ import { fileById, textOf, type Project, type Diagnostic } from './project/types
 import { targetStatus, validateProfiles } from './project/profiles';
 import { validateTemplates } from './project/templates';
 export function validateProject(p: Project, registry: ModuleRegistry = modules): Diagnostic[] {
-  const bus = buildBusCatalog(p); const diagnostics = [...bus.diagnostics,...validateProfiles(p),...validateTemplates(p)];
+  const config=configuration(p), bus=buildBusCatalog(applicationProject(p));
+  const diagnostics:Diagnostic[]=[...validateTemplates(p)];
+  if(config.enabled.bus)for(const kind of masterKinds(p))diagnostics.push(...buildBusCatalog(masterProject(p,kind)).diagnostics);
+  if(config.enabled.app)diagnostics.push(...validateProfiles(p,['app']));
+  if(config.enabled.bus)for(const kind of masterKinds(p))diagnostics.push(...validateProfiles(masterProject(p,kind),['master']));
   const add = (code: string, message: MessageInput, fileId?: string, field?: string, severity: Diagnostic['severity']='error') => diagnostics.push({code,...messageFields(message),fileId,field,severity});
+  if(!Object.values(config.enabled).some(Boolean))add('configuration.empty','请至少启用一个配置模块');
   const references = collectReferences(p, registry), active = activeFileIds(p, references, registry);
-  const expected = [{id:p.entrypoints.app,role:'app'}, {id:p.entrypoints.urdf,role:'urdf'}, {id:p.entrypoints.hardware,role:'hardware'}, {id:p.entrypoints.binding,role:'binding'}];
+  const expected = config.enabled.app?[{id:p.entrypoints.app,role:'app'}, {id:p.entrypoints.urdf,role:'urdf'}, {id:p.entrypoints.hardware,role:'hardware'}, {id:p.entrypoints.binding,role:'binding'}]:[];
   for (const {id,role} of expected) if (!fileById(p,id) || fileById(p,id)?.role !== role) add('entrypoint.missing',msg("缺少有效的 {v0} 入口", {v0:String(role)}),id||undefined);
   diagnostics.push(...validateModules(p, active, registry));
   for(const notice of p.editor.notices || []) add('editor.review',notice,notice.fileId,undefined,'warning');
   for(const id of Object.keys(p.editor.buffers).filter(id => active.has(id))) add('editor.pending',msg("存在未应用的源码草稿"),id);
   for(const ref of references.filter(r => active.has(r.sourceFileId))) if(ref.state!=='internal') add('reference.'+ref.state,msg("{v0}：{v1} {v2}", {v0:String(ref.field), v1:String(ref.original), v2:(ref.state==='external' ? msg("由目标环境提供").text : msg("未找到").text)}),ref.sourceFileId,ref.field,ref.state==='external'?'warning':'error');
-  for (const [sourceId, field, targetId] of [[p.entrypoints.app,'robot.urdf',p.entrypoints.urdf], [p.entrypoints.app,'robot.hardware_config',p.entrypoints.hardware], [p.entrypoints.app,'robot.joint_binding',p.entrypoints.binding], ...(p.entrypoints.master.kind==='ecm'?[[p.entrypoints.master.fileId,'eni',p.entrypoints.master.eniFileId]]:[])] as (string|null)[][]) {
+  for (const [sourceId, field, targetId] of [...(config.enabled.app?[[p.entrypoints.app,'robot.urdf',p.entrypoints.urdf], [p.entrypoints.app,'robot.hardware_config',p.entrypoints.hardware], [p.entrypoints.app,'robot.joint_binding',p.entrypoints.binding]]:[]), ...(config.enabled.bus?masterKinds(p).filter(k=>k==='ecm').map(k=>{const m=masterProject(p,k).entrypoints.master;return [m.fileId,'eni',m.eniFileId];}):[])] as (string|null)[][]) {
     const ref=references.find(r=>r.sourceFileId===sourceId&&r.field===field);
     if(!ref||ref.state!=='internal'||ref.targetFileId!==targetId) add('reference.entrypoint',msg("{v0} 必须引用当前工程入口配置", {v0:String(field)}),sourceId||undefined,field||undefined);
   }
   let app:Record<string,any>|undefined;
   const appFile=fileById(p,p.entrypoints.app);
-  try{if(appFile)app=appDocument(appFile).data;}catch{ /* Module validation reports malformed startup files. */ }
-  if(app&&fileById(p,p.entrypoints.master.fileId)&&app.robot.ecat_id!==bus.masterId)add('app.master-id',msg("APP ecat_id 与主站 ID 不一致"),p.entrypoints.app!,'robot.ecat_id');
+  try{if(config.enabled.app&&appFile)app=appDocument(appFile).data;}catch{ /* Module validation reports malformed startup files. */ }
+  if(config.enabled.bus&&app&&fileById(p,p.entrypoints.master.fileId)&&app.robot.ecat_id!==bus.masterId)add('app.master-id',msg("APP ecat_id 与主站 ID 不一致"),p.entrypoints.app!,'robot.ecat_id');
   // APP 7093bcd Hardware::scanForEcatBus recognizes a bus only when slave 0
   // has manually configured variables in both directions.
-  if(targetStatus(p,'app').supported && bus.slaves.length && !bus.diagnostics.some(d=>d.severity==='error')) {
-    const first=bus.slaves[0],master=p.entrypoints.master;
+  if(config.enabled.app&&targetStatus(p,'app').supported && bus.slaves.length && !bus.diagnostics.some(d=>d.severity==='error')) {
+    const first=bus.slaves[0],master=applicationProject(p).entrypoints.master;
     const absent=(['input','output'] as const).filter(direction=>!bus.signals.some(s=>s.slaveId===first.id&&s.direction===direction));
     const fileId=(master.kind==='ecm'?master.eniFileId:master.fileId)||undefined;
     if(absent.length) add('app.bus-location',msg("当前 APP 要求首个从站同时具有输入和输出变量，否则无法可靠定位总线；请核对主站配置与目标 APP 版本"),fileId);
   }
   const urdf=fileById(p,p.entrypoints.urdf);
-  if(urdf && app) try {
+  if(config.enabled.app && urdf && app) try {
     const chain=controlChain(textOf(urdf),app.robot?.base_link,app.robot?.tip_link);
     if(!chain.length) add('binding.empty',msg("控制链没有可动关节"),urdf.id);
     diagnostics.push(...validateHardware(p,bus,chain));
   } catch(e) { add('binding.chain',errorMessage(e,true),urdf.id); diagnostics.push(...validateHardware(p,bus)); }
-  else diagnostics.push(...validateHardware(p,bus));
+  else if(config.enabled.app)diagnostics.push(...validateHardware(p,bus));
   add('validation.runtime',msg("消费端、SDK 与实机检查尚未执行"),undefined,undefined,'info');
   if(p.targets.app.abi==='unverified'||p.targets.master.abi==='unverified') add('target.abi',msg("主站与 APP 的 ABI 配对尚未验证"),undefined,undefined,'warning');
   return diagnostics;

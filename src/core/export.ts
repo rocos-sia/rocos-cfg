@@ -1,3 +1,4 @@
+import { configuration } from './project/configuration';
 import { m as msg, MessageError } from './project/messages';
 import { type Project, type ProjectFile, type FileReference, fileById, textOf, utf8 } from './project/types';
 import { packZip } from './project/zip';
@@ -19,8 +20,8 @@ export function planRuntime(project: Project, registry: ModuleRegistry = modules
   if (errors.length) throw new MessageError(msg("运行配置仍有 {v0} 项错误，请先修复。", {v0:String(errors.length)}));
   const plan: RuntimePlan = { files: [], rewrites: [], external: refs.filter(r => active.has(r.sourceFileId) && r.state === 'external') };
   const paths = new Map(p.files.map(f => [f.id, f.path]));
-  const master = fileById(p, p.entrypoints.master.fileId)!;
-  paths.set(master.id, `${master.path.split('/').slice(0, -1).join('/')}${master.path.includes('/') ? '/' : ''}${p.entrypoints.master.kind}.yaml`);
+  const master = configuration(p).enabled.bus?fileById(p, p.entrypoints.master.fileId):undefined;
+  if(master)paths.set(master.id, `${master.path.split('/').slice(0, -1).join('/')}${master.path.includes('/') ? '/' : ''}${p.entrypoints.master.kind}.yaml`);
   for (const file of p.files.filter(f => active.has(f.id))) {
     if (toolRoles.has(file.role) || file.path.startsWith('project-data/')) throw new MessageError(msg("运行依赖指向工具元数据：{v0}", {v0:String(file.path)}));
     const changes: { ref: FileReference; value: string }[] = [];
@@ -42,7 +43,7 @@ export function planRuntime(project: Project, registry: ModuleRegistry = modules
       plan.files.push(output);
     }
   }
-  const notes = ['ROCOS 运行配置包', '', `主站：${paths.get(master.id)}`, `APP：${paths.get(p.entrypoints.app!)}`, '',
+  const notes = ['ROCOS 运行配置包', '', `主站：${master?paths.get(master.id):'未启用'}`, `APP：${paths.get(p.entrypoints.app!)}`, '',
     '配置路径按文件所在目录解析。请按消费端启动参数指定主站配置文件。',
     '仅通过静态检查；消费端、SDK 和实机检查仍需在目标环境执行。',
     ...(plan.external.length ? ['', '以下资源由目标环境提供，必须按原路径准备：', ...plan.external.map(r => `${paths.get(r.sourceFileId)} | ${r.field} | ${r.original}`)] : ['', '已纳入所有已识别的活动资源依赖。']),

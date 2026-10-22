@@ -16,6 +16,7 @@ export interface EntryPoints {
 }
 export interface FileReference { sourceFileId: string; field: string; original: string; targetFileId?: string; targetPath?: string; kind?: 'file' | 'directory'; uri?: boolean; state: 'internal' | 'external' | 'missing' }
 export interface EditorState {
+  configuration?: import("./configuration").Configuration;
   templateUses?:{id:string;templateId:string;version:number;snapshotFileId:string;appliedAt:string;parameters:Record<string,string|number>;overrides:Record<string,string|number>;outputs:string[]}[];
   notices?: { fileId: string; message: string; text?: import('./messages').MessageTemplate }[];
   buffers: Record<string, { text: string; baseHash: string }>;
