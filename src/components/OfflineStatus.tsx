@@ -58,9 +58,12 @@ export function OfflineStatus() {
       registration?.removeEventListener('updatefound', watchUpdate);
     };
   }, []);
-  return <Space size={4}><Tooltip title={isDesktop()?t("应用资源已随桌面程序打包；工程需单独保存为 .rcproj。"):waiting
+  const color = ['已可离线使用', '桌面离线版'].includes(status) ? 'green'
+    : ['离线缓存不可用', '离线缓存更新失败'].includes(status) ? 'red'
+    : waiting || ['离线缓存不完整', '离线缓存待检查'].includes(status) ? 'orange' : 'blue';
+  return <Space size={8}><Tooltip title={isDesktop()?t("应用资源已随桌面程序打包；工程需单独保存为 .rcproj。"):waiting
     ? t("新版本已缓存。请先下载工程，然后关闭本应用所有窗口；再次打开时使用新版本。")
     : t("离线缓存仅保存应用资源；工程请单独下载 .rcproj 留存。浏览器清理缓存后需重新联网缓存。")}>
-    <Tag role="status" color={status === '已可离线使用' ? 'green' : 'default'}>{waiting ? `${t(status)} · ${t('有更新')}` : t(status)}</Tag>
-  </Tooltip>{['离线缓存不完整', '离线缓存待检查'].includes(status) && <Button size="small" onClick={() => repair.current()}>{t("修复缓存")}</Button>}</Space>;
+    <Tag className="topbar-status" role="status" color={color}>{waiting ? `${t(status)} · ${t('有更新')}` : t(status)}</Tag>
+  </Tooltip>{['离线缓存不完整', '离线缓存待检查'].includes(status) && <Button onClick={() => repair.current()}>{t("修复缓存")}</Button>}</Space>;
 }
