@@ -184,3 +184,22 @@
 .slave-order-help{font-size:12px;margin:0 0 10px}.slave-drag-handle{margin-right:6px;color:var(--config-muted);cursor:grab}.slave-table tr[draggable=true]{cursor:grab}.slave-table .slave-drop-target>td{box-shadow:inset 0 2px 0 var(--config-primary);background:var(--config-workspace)!important}.slave-table .ant-btn{min-width:28px;min-height:28px}
 .bus-topology{height:240px;min-width:0;border:1px solid var(--config-border);border-radius:10px;overflow:hidden}.bus-topology-card .ant-card-body>p{font-size:12px;margin:0 0 12px}.bus-topology .react-flow{--xy-background-color:var(--config-workspace);--xy-node-background-color:var(--config-card);--xy-node-color:var(--config-text);--xy-node-border:1px solid var(--config-border);--xy-edge-stroke:var(--config-primary);--xy-controls-button-background-color:var(--config-card);--xy-controls-button-color:var(--config-text)}.bus-topology .react-flow__node{width:180px;min-height:66px;border-radius:10px;padding:12px;font-family:inherit}.bus-topology .react-flow__node-input{border-color:var(--config-primary);font-weight:600}.bus-topology .react-flow__node span,.bus-topology .react-flow__node small{display:block;overflow-wrap:anywhere}.bus-topology .react-flow__node small{color:var(--config-muted)}
 @media(pointer:coarse){.slave-table .ant-btn{min-width:44px;min-height:44px}}
+
+/* Local viewport tools: hover/focus reveal, independent display switches and gizmo. */
+.model-viewport-content{container-type:inline-size}
+.preview-view-tools{position:absolute;z-index:3;top:64px;left:50%;transform:translateX(-50%);padding:14px;max-width:100%;width:max-content}
+.preview-icon-bar{display:flex;align-items:center;justify-content:center;gap:6px;width:max-content;max-width:100%;padding:4px;border:1px solid var(--config-border);border-radius:10px;background:color-mix(in srgb,var(--config-card) 92%,transparent);box-shadow:0 4px 14px #0f172a12}
+.model-viewport .preview-icon-button{width:32px;height:32px;min-width:32px;padding:0;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;color:var(--config-muted)}
+.preview-icon-button svg{width:18px;height:18px}.model-viewport .preview-icon-button[aria-pressed=true]{color:var(--config-primary);border-color:var(--config-primary);background:color-mix(in srgb,var(--config-primary) 12%,var(--config-card))}
+.preview-view-tools .preview-icon-bar{transition:opacity 180ms ease}
+@media(hover:hover) and (pointer:fine){.preview-view-tools .preview-icon-bar{opacity:0}.preview-view-tools:hover .preview-icon-bar,.preview-view-tools:has(:focus-visible) .preview-icon-bar{opacity:1}}
+@media(prefers-reduced-motion:reduce){.preview-view-tools .preview-icon-bar{transition:none}}
+.preview-controls{left:50%;right:auto;transform:translateX(-50%);width:min(480px,calc(100% - 224px));padding:16px 6px 8px;border-radius:12px;text-align:center}
+.preview-toggles{margin:auto;pointer-events:auto}.preview-controls .preview-joint-tools{gap:6px}.preview-joint-tools .ant-select{flex-basis:130px}.preview-controls>small{display:block;font-size:11px;color:var(--config-muted)}
+.preview-gizmo{position:absolute;left:12px;bottom:16px;width:88px;height:88px;z-index:2;touch-action:none;pointer-events:auto;border-radius:12px}
+.preview-gizmo:focus-visible,.preview-icon-button:focus-visible{outline:2px solid var(--config-focus);outline-offset:2px}
+.preview-top-overlay .preview-axis-status{margin-top:0}.preview-top-overlay:has(.preview-axis-status)~.preview-view-tools{top:84px}
+@container(max-width:560px){.preview-controls{width:calc(100% - 24px)}.preview-gizmo{bottom:130px}}
+@media(pointer:coarse){.model-viewport .preview-icon-button{width:44px;height:44px;min-width:44px}.preview-view-tools{padding:8px}}
+
+.preview-tool-tooltip{pointer-events:none}

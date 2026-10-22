@@ -53,7 +53,7 @@ test('resource inventory includes corrupt meshes and every missing DAE image, in
   await expect(problems).toContainText('STL 不包含有效三角形'); expect(await snapshot(page)).toBe(before);
 });
 
-test('joint arrows render for movable joints, follow transformed parents and disappear for fixed joints', async ({ page }, info) => {
+test('joint arrows follow transformed parents and can be hidden independently of selection', async ({ page }, info) => {
   const project = axisPreviewProject();
   await open(page, project); const before = await snapshot(page);
   await page.getByText('joint_1 [revolute]', { exact: true }).click();
@@ -64,6 +64,8 @@ test('joint arrows render for movable joints, follow transformed parents and dis
   await expect(page.getByRole('tooltip')).not.toBeVisible(); await expect.poll(async () => Buffer.compare(original, await canvas.screenshot())).not.toBe(0);
   await page.getByText('mount [fixed]', { exact: true }).click();
   await expect(page.getByRole('status', { name: '选中关节轴向', exact: true })).toContainText('没有单一运动轴');
+  await expect.poll(() => orangePixels(page)).toBeGreaterThan(10);
+  await page.getByRole('button', { name: '显示关节轴', exact: true }).click();
   await expect.poll(() => orangePixels(page)).toBe(0);
   expect(await snapshot(page)).toBe(before); await page.screenshot({ path: info.outputPath('joint-axis.png') });
 });

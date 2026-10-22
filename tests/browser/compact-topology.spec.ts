@@ -98,8 +98,8 @@ test('preview canvas fills the card behind compact gradients, with reachable con
   await page.screenshot({ path: info.outputPath('compact-preview.png') });
   await page.getByRole('button', { name: '展开视图', exact: true }).click();
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.locator('.ant-select[aria-label="模型显示"]').click();
-  await page.getByTitle('碰撞（Collision）', { exact: true }).click();
+  await page.getByRole('button', { name: '显示 Collision', exact: true }).click();
+  await page.getByRole('button', { name: '显示 Visual', exact: true }).click();
   await expect(page.locator('.robot-preview')).toHaveAttribute('data-geometry', 'collision');
   await page.getByRole('slider', { name: '关节预览位置', exact: true }).focus(); await page.keyboard.press('End');
   await expect(page.getByRole('slider', { name: '关节预览位置', exact: true })).toHaveAttribute('aria-valuenow', '1');

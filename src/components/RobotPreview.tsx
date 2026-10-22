@@ -1,7 +1,10 @@
 import { m as msg, MessageError, errorMessage, messageFields, joinMessages, type MessageInput } from '../core/project/messages';
 import { diagnosticText, t, useLocale } from '../i18n';
 import { useEffect, useRef, useState } from 'react';
-import { Alert, Button, Select, Slider, Space } from 'antd';
+import { Alert, Button, Select, Slider, Space, Tooltip } from 'antd';
+import { AimOutlined, BorderBottomOutlined, DeploymentUnitOutlined, ExpandOutlined, ShrinkOutlined, ScanOutlined, UndoOutlined, EyeOutlined, BlockOutlined } from '@ant-design/icons';
+import { ViewportGizmo } from 'three-viewport-gizmo';
+import { PreviewButton, ViewIcon } from './PreviewButton';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import URDFLoader, { type URDFRobot, type URDFJoint } from 'urdf-loader';
@@ -17,11 +20,30 @@ import { ModelViewport } from './ModelViewport';
 import { disposeObject, visibleBounds, previewBounds, fitPreviewCamera, hasJointAxis, missingMeshPlaceholder, normalizePlaceholders, validMeshGeometry, updateJointAxis, updateJointConnection } from './previewGeometry';
 import { previewMeshReferences, uniqueOwners, type PreviewResourceProblem, type GeometryOwner } from './previewResources';
 
-function applyGeometry(model: THREE.Object3D, mode: GeometryMode) {
+// URDF and the scene use Z-up; the gizmo also reads Three's shared up convention.
+THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
+
+type Display = ReturnType<typeof createPreviewState>['display'];
+function applyGeometry(model: THREE.Object3D, display: Display) {
   model.traverse(node => {
-    if ('isURDFVisual' in node) node.visible = mode === 'visual';
-    if ('isURDFCollider' in node) node.visible = mode === 'collision';
+    if ('isURDFVisual' in node) node.visible = display.visual;
+    if ('isURDFCollider' in node) {
+      node.visible = display.collision;
+      // Wireframe overlay keeps the visual surface readable when both are enabled.
+      node.traverse(part => {
+        if (part instanceof THREE.Mesh) for (const material of Array.isArray(part.material) ? part.material : [part.material])
+          if (material instanceof THREE.MeshPhongMaterial || material instanceof THREE.MeshStandardMaterial) material.wireframe = display.visual;
+      });
+    }
   });
+}
+function jointArrow() {
+  const axis = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(), .1, 0xd97706);
+  for (const part of [axis.line, axis.cone]) {
+    for (const material of Array.isArray(part.material) ? part.material : [part.material]) { material.depthTest = false; material.transparent = true; material.opacity = .95; }
+    part.renderOrder = 999;
+  }
+  axis.visible = false; return axis;
 }
 function isVisible(object: THREE.Object3D) {
   for (let node: THREE.Object3D | null = object; node; node = node.parent) if (!node.visible) return false;
@@ -37,18 +59,21 @@ const previewError=(error:unknown):PreviewMessage=>{
 };
 interface Runtime {
   scene: THREE.Scene; renderer: THREE.WebGLRenderer; camera: THREE.PerspectiveCamera;
-  grid: THREE.GridHelper; axis: THREE.ArrowHelper; connection: THREE.Line; axisJoint?: URDFJoint; axisLength: number;
+  grid: THREE.GridHelper; axes: THREE.AxesHelper; gizmo: ViewportGizmo; jointAxes: Map<URDFJoint, THREE.ArrowHelper>; axis: THREE.ArrowHelper; connection: THREE.Line; axisJoint?: URDFJoint; axisLength: number;
   controls: OrbitControls; model?: URDFRobot; highlight?: THREE.Box3Helper; highlightTarget?: THREE.Object3D; fit: (view?: string) => void;
 }
 export function RobotPreview({ project, robot, selected = '', onSelect, onExpandedChange, viewState, dark = false }: { project: Project; robot:RobotModel; selected?: string; onSelect?: (key: string) => void; onExpandedChange?: (expanded: boolean) => void; viewState?: ReturnType<typeof createPreviewState>; dark?: boolean }) {
   const locale=useLocale();
+  const gizmoHost = useRef<HTMLDivElement>(null);
   const host = useRef<HTMLDivElement>(null), runtime = useRef<Runtime | null>(null);
   const localState = useRef(createPreviewState()), memory = viewState || localState.current;
   const previousPose = memory.pose, viewTouched = memory.touched;
-  const [geometry, setGeometry] = useState<GeometryMode>(memory.geometry);
+  const [display, setDisplay] = useState(memory.display);
+  const setGeometry = (mode: GeometryMode) => setDisplay(value => ({ ...value, visual: mode === 'visual', collision: mode === 'collision' }));
+  const geometry = display.visual ? (display.collision ? 'both' : 'visual') : display.collision ? 'collision' : 'none';
   const [hasCollision, setHasCollision] = useState(true);
   const [problems, setProblems] = useState<PreviewResourceProblem[]>([]);
-  const geometryRef = useRef(geometry); geometryRef.current = geometry;
+  const displayRef = useRef(display); displayRef.current = display;
   const select = useRef(onSelect); select.current = onSelect;
   const selection = useRef(selected); selection.current = selected;
   const [error, setError] = useState<PreviewMessage>(''), [poseJoint, setPoseJoint] = useState(memory.joint), [pose, setPose] = useState<Record<string, number>>(previousPose.current?.values || {});
@@ -80,25 +105,25 @@ export function RobotPreview({ project, robot, selected = '', onSelect, onExpand
     renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); node.appendChild(renderer.domElement);
     scene.add(new THREE.HemisphereLight(0xffffff, 0x667788, 2.5));
     const light = new THREE.DirectionalLight(0xffffff, 3); light.position.set(3, 2, 5); scene.add(light);
-    const grid = new THREE.GridHelper(4, 40, 0xa9b8cb, 0xdce3ec); grid.rotation.x = Math.PI / 2; scene.add(grid); scene.add(new THREE.AxesHelper(.5).setColors(0xff0000, 0x00ff00, 0x0000ff));
+    const grid = new THREE.GridHelper(4, 40, 0xa9b8cb, 0xdce3ec); grid.rotation.x = Math.PI / 2; scene.add(grid);
+    const axes = new THREE.AxesHelper(.5).setColors(0xff0000, 0x00ff00, 0x0000ff); scene.add(axes);
+    const gizmo = new ViewportGizmo(camera, renderer, { container: gizmoHost.current!, size: 88, placement: 'bottom-left', offset: { left: 0, bottom: 0 }, background: { enabled: false }, font: { family: 'Arial, sans-serif' }, x: { color: '#e74c3c', labelColor: '#fff' }, y: { color: '#2ecc71', labelColor: '#fff' }, z: { color: '#3498db', labelColor: '#fff' } });
+    gizmo.attachControls(controls);
     const fit = (view = 'iso') => {
       const box = runtime.current?.model ? previewBounds(runtime.current.model) : new THREE.Box3();
-      const direction = view === 'front' ? new THREE.Vector3(0, -1, .0001) : view === 'side' ? new THREE.Vector3(1, 0, .0001) : view === 'top' ? new THREE.Vector3(.0001, 0, 1) : new THREE.Vector3(1, -1, .8);
+      const direction = view === 'front' ? new THREE.Vector3(0, -1, .0001) : view === 'side' ? new THREE.Vector3(1, 0, .0001) : view === 'top' ? new THREE.Vector3(.0001, 0, 1) : view === 'back' ? new THREE.Vector3(0, 1, .0001) : view === 'left' ? new THREE.Vector3(-1, 0, .0001) : view === 'bottom' ? new THREE.Vector3(.0001, 0, -1) : new THREE.Vector3(1, -1, .8);
       camera.aspect = Math.max(node.clientWidth, 1) / Math.max(node.clientHeight, 1);
       const center = fitPreviewCamera(camera, box, direction);
       controls.target.copy(center); controls.update();
     };
     const touchView = () => { viewTouched.current = true; };
-    controls.addEventListener('start', touchView);
-    const axis = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(), .1, 0xd97706);
-    for (const part of [axis.line, axis.cone]) {
-      for (const material of Array.isArray(part.material) ? part.material : [part.material]) { material.depthTest = false; material.transparent = true; material.opacity = .95; }
-      part.renderOrder = 999;
-    }
-    axis.visible = false; scene.add(axis);
+    controls.addEventListener('start', touchView); gizmo.addEventListener('start', touchView);
+    const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+    const motionChanged = () => { gizmo.animated = !reducedMotion.matches; }; motionChanged(); reducedMotion.addEventListener('change', motionChanged);
+    const axis = jointArrow(); scene.add(axis);
     const connection = new THREE.Line(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(6), 3)), new THREE.LineBasicMaterial({ color: 0x2563eb, depthTest: false, transparent: true, opacity: .85 }));
     connection.visible = false; connection.frustumCulled = false; connection.renderOrder = 998; scene.add(connection);
-    runtime.current = { scene, renderer, camera, controls, grid, axis, connection, axisLength: .1, fit };
+    runtime.current = { scene, renderer, camera, controls, grid, axes, gizmo, jointAxes: new Map(), axis, connection, axisLength: .1, fit };
     if (memory.camera && previousPose.current?.projectId === project.id && previousPose.current?.fileId === file?.id) {
       camera.position.fromArray(memory.camera.position); camera.far = memory.camera.far;
       controls.target.fromArray(memory.camera.target); camera.updateProjectionMatrix(); controls.update();
@@ -116,16 +141,22 @@ export function RobotPreview({ project, robot, selected = '', onSelect, onExpand
       }
     };
     renderer.domElement.addEventListener('pointerdown', pointerDown); renderer.domElement.addEventListener('pointerup', pointerUp);
-    const observer = new ResizeObserver(() => { const w = Math.max(node.clientWidth, 1), h = Math.max(node.clientHeight, 1); renderer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix(); }); observer.observe(node);
+    const observer = new ResizeObserver(() => { const w = Math.max(node.clientWidth, 1), h = Math.max(node.clientHeight, 1); renderer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix(); gizmo.update(false); }); observer.observe(node); observer.observe(gizmoHost.current!);
+    const reposition = () => gizmo.domUpdate(); document.addEventListener('scroll', reposition, true);
     renderer.setAnimationLoop(() => {
       const r = runtime.current;
       if (r?.highlight && r.highlightTarget) { r.highlight.box.copy(visibleBounds(r.highlightTarget)); r.highlight.visible = !r.highlight.box.isEmpty(); }
-      if (r) { updateJointAxis(r.axis, r.axisJoint, r.axisLength); updateJointConnection(r.connection, r.axisJoint); }
+      if (r) {
+        updateJointAxis(r.axis, r.axisJoint, r.axisLength); updateJointConnection(r.connection, r.axisJoint);
+        r.axis.visible &&= displayRef.current.jointAxes; r.connection.visible &&= displayRef.current.jointAxes;
+        for (const [joint, arrow] of r.jointAxes) { updateJointAxis(arrow, joint, r.axisLength); arrow.visible &&= displayRef.current.jointAxes && joint !== r.axisJoint; }
+      }
       renderer.render(scene, camera);
+      if (node.clientWidth && node.clientHeight) gizmo.render();
     });
     return () => {
       memory.camera = { position: camera.position.toArray(), target: controls.target.toArray(), far: camera.far };
-      observer.disconnect(); renderer.setAnimationLoop(null); controls.removeEventListener('start', touchView); controls.dispose(); disposeObject(scene); renderer.dispose(); node.replaceChildren(); runtime.current = null;
+      observer.disconnect(); document.removeEventListener('scroll', reposition, true); reducedMotion.removeEventListener('change', motionChanged); renderer.setAnimationLoop(null); gizmo.removeEventListener('start', touchView); gizmo.dispose(); controls.removeEventListener('start', touchView); controls.dispose(); disposeObject(scene); renderer.dispose(); node.replaceChildren(); runtime.current = null;
     };
   }, []);
   useEffect(() => {
@@ -206,7 +237,7 @@ export function RobotPreview({ project, robot, selected = '', onSelect, onExpand
           } else throw new PreviewError('预览支持 STL / DAE，当前资源仅保留：{path}',{path:asset.path});
         } catch (error) { report(file.id, url, 'mesh', previewError(error)); done(missingMeshPlaceholder()); }
       };
-      r.model = loader.parse(document); normalizePlaceholders(r.model); applyGeometry(r.model, geometryRef.current);
+      r.model = loader.parse(document); normalizePlaceholders(r.model); applyGeometry(r.model, displayRef.current);
       let collision = false; r.model.traverse(node => { if ('isURDFCollider' in node) collision = true; }); setHasCollision(collision);
       // Use the canonical URDF axis (including whitespace/default handling) for
       // the renderer as well as the form and diagnostics.
@@ -217,12 +248,17 @@ export function RobotPreview({ project, robot, selected = '', onSelect, onExpand
       const nextPose = previewPose(joints, sameModel ? previousPose.current : undefined);
       r.model.setJointValues(nextPose.values);
       previousPose.current = { ...nextPose, projectId: project.id, fileId: file.id };
+      for (const joint of Object.values(r.model.joints)) if (hasJointAxis(joint.jointType)) {
+        const arrow = jointArrow();
+        r.jointAxes.set(joint, arrow); r.scene.add(arrow);
+      }
       r.scene.add(r.model); if (!sameModel) { r.fit(); requestAnimationFrame(() => { if (!disposed && !viewTouched.current) r.fit(); }); } highlight();
       setPose(nextPose.values);
       memory.joint = sameModel && joints.some(j => j.name === memory.joint) ? memory.joint : '';
       setPoseJoint(memory.joint);
     } catch (error) { setError(previewError(error)); }
     return () => {
+      for (const arrow of r.jointAxes.values()) { r.scene.remove(arrow); disposeObject(arrow); } r.jointAxes.clear();
       disposed = true; r.axisJoint = undefined; r.axis.visible = false; r.connection.visible = false; urls.forEach(url => URL.revokeObjectURL(url));
       if (r.highlight) { r.scene.remove(r.highlight); disposeObject(r.highlight); r.highlight = undefined; r.highlightTarget = undefined; }
       if (r.model) { r.scene.remove(r.model); disposeObject(r.model); r.model = undefined; }
@@ -230,9 +266,10 @@ export function RobotPreview({ project, robot, selected = '', onSelect, onExpand
   }, [source, project.id, file?.id, project.files, project.packageMap]);
   useEffect(()=>{runtime.current?.renderer.domElement.setAttribute('aria-label',t('机器人三维预览'));},[locale]);
   useEffect(() => {
-    const r = runtime.current; if (r?.model) applyGeometry(r.model, geometry);
-    memory.geometry = geometry; highlight();
-  }, [geometry]);
+    const r = runtime.current; if (r?.model) applyGeometry(r.model, display);
+    if (r) { r.axes.visible = display.axes; r.grid.visible = display.grid; }
+    memory.display = display; highlight();
+  }, [display]);
   useEffect(() => {
     const r = runtime.current; if (!r) return;
     r.scene.background = new THREE.Color(dark ? '#111318' : '#f8f9fa');
@@ -265,22 +302,36 @@ export function RobotPreview({ project, robot, selected = '', onSelect, onExpand
         <Space wrap>{problem.owners.map(owner => <Button size="small" key={JSON.stringify(owner)} disabled={!onSelect} onClick={() => { setGeometry(owner.mode); select.current?.(`link:${owner.link}`); }}>{t('定位 {link} · {mode}', { link: owner.link, mode: owner.mode === 'visual' ? t('外观（Visual）') : t('碰撞（Collision）') })}</Button>)}</Space>
       </li>)}</ul>
     </section>}
-    {geometry === 'collision' && !hasCollision && <Alert type="info" message={t('当前模型没有碰撞几何，可切换至外观显示。')} />}
+    {display.collision && !hasCollision && <Alert type="info" message={t('当前模型没有碰撞几何，可切换至外观显示。')} />}
     </div>
     <div className="preview-top-overlay">
-      <div className="preview-heading"><strong>{robot.name || t('模型预览')}</strong><Button size="small" ref={buttonRef} onClick={toggle}>{expanded ? t('退出展开视图') : t('展开视图')}</Button></div>
+      <div className="preview-heading"><strong>{robot.name || t('模型预览')}</strong><Tooltip classNames={{ root: 'preview-tool-tooltip' }} title={expanded ? t('退出展开视图') : t('展开视图')} trigger={['hover', 'focus']}><Button size="small" className="preview-icon-button" ref={buttonRef} aria-label={expanded ? t('退出展开视图') : t('展开视图')} aria-expanded={expanded} icon={expanded ? <ShrinkOutlined /> : <ExpandOutlined />} onClick={toggle} /></Tooltip></div>
       <small>{t('配置预览 · m / rad · 拖动旋转，滚轮缩放')}</small>
     {selectedJoint && <div className="preview-axis-status" role="status" aria-label={t('选中关节轴向')}>
       <strong>{selectedJoint.name} · {selectedJoint.type}</strong> · {hasJointAxis(selectedJoint.type) ? (selectedJoint.type === 'planar' ? t('局部平面法向：{axis}；橙色箭头随当前预览姿态变换。', { axis: selectedJoint.axis }) : t('局部轴向：{axis}；橙色箭头随当前预览姿态变换。', { axis: selectedJoint.axis })) : t('该关节没有单一运动轴。')}
       <div>{t('蓝线：{parent} → {child}，连接父 Link 原点与当前关节坐标系。', { parent: selectedJoint.parent, child: selectedJoint.child })}</div>
     </div>}
     </div>
-    <div className="preview-controls">
-      <div className="preview-display-tools"><Select size="small" showSearch optionFilterProp="label" aria-label={t('模型显示')} value={geometry} getPopupContainer={trigger => trigger.parentElement!} options={[{value:'visual',label:t('外观（Visual）')},{value:'collision',label:t('碰撞（Collision）')}]} onChange={setGeometry} />
-    <Space wrap className="preview-view-tools"><Button size="small" onClick={() => fitView()}>{t("适应模型")}</Button>{[['front', t("正视")], ['side', t("侧视")], ['top', t("俯视")]].map(([key, label]) => <Button size="small" key={key} onClick={() => fitView(key)}>{label}</Button>)}<Button size="small" onClick={() => applyPose(previewPose(joints).values)}>{t("重置姿态")}</Button></Space>
+    <div className="preview-view-tools" role="group" aria-label={t('视角调整')}>
+      <div className="preview-icon-bar">
+        {[['iso', t('轴测视图')], ['front', t('正视')], ['side', t('侧视')], ['top', t('俯视')]].map(([view, label]) => <PreviewButton key={view} label={label} icon={<ViewIcon view={view} />} onClick={() => fitView(view)} />)}
+        <PreviewButton label={t('适应模型')} icon={<ScanOutlined />} onClick={() => fitView()} />
+      </div>
     </div>
+    <div className="preview-gizmo" ref={gizmoHost} role="group" tabIndex={0} aria-label={t('视角 Gizmo')} title={t('点击或拖动旋转视角；键盘 X/Y/Z，Shift 切换反方向。')} onKeyDown={event => {
+      const view = ({ x: event.shiftKey ? 'left' : 'side', y: event.shiftKey ? 'front' : 'back', z: event.shiftKey ? 'bottom' : 'top' } as Record<string, string>)[event.key.toLowerCase()];
+      if (view) { event.preventDefault(); event.stopPropagation(); fitView(view); }
+    }} />
+    <div className="preview-controls">
+      <div className="preview-icon-bar preview-toggles" role="group" aria-label={t('显示选项')}>
+        {([
+          ['axes', t('显示坐标轴'), <DeploymentUnitOutlined />], ['jointAxes', t('显示关节轴'), <AimOutlined />],
+          ['collision', t('显示 Collision'), <BlockOutlined />], ['visual', t('显示 Visual'), <EyeOutlined />], ['grid', t('显示网格'), <BorderBottomOutlined />],
+        ] as const).map(([key, label, icon]) => <PreviewButton key={key} label={label} icon={icon} pressed={display[key]} onClick={() => setDisplay(value => ({ ...value, [key]: !value[key] }))} />)}
+      </div>
     {!!joints.length && <div className="preview-joint-tools"><Select size="small" showSearch optionFilterProp="label" aria-label={t("预览关节")} value={current?.name} getPopupContainer={trigger => trigger.parentElement!} options={joints.map(j => ({ value: j.name, label: `${j.name} · ${j.type === 'prismatic' ? 'm' : 'rad'}` }))} onChange={name => { memory.joint = name; setPoseJoint(name); }} />
       <Slider ariaLabelForHandle={t("关节预览位置")} disabled={!validLimits} min={validLimits ? min : 0} max={validLimits ? max : 1} step={.001} value={pose[current?.name] ?? 0} onChange={value => current && setJoint(current.name, value)} />
+      <PreviewButton label={t('重置姿态')} icon={<UndoOutlined />} onClick={() => applyPose(previewPose(joints).values)} />
     </div>}
       <small>{t("仅改变预览姿态，不写入 URDF 或驱动器参数。")}</small>
     </div>

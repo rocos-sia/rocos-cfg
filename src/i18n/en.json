@@ -1274,5 +1274,15 @@
   "按 ENI 从站顺序展示，只读；此顺序视图不推断物理端口分支。": "Read-only ENI slave sequence; this view does not infer physical port branches.",
   "放大拓扑": "Zoom in topology",
   "缩小拓扑": "Zoom out topology",
-  "适应拓扑": "Fit topology"
+  "适应拓扑": "Fit topology",
+  "视角调整": "Camera views",
+  "轴测视图": "Isometric view",
+  "视角 Gizmo": "View gizmo",
+  "点击或拖动旋转视角；键盘 X/Y/Z，Shift 切换反方向。": "Click or drag to rotate. Keyboard X/Y/Z; Shift selects the opposite direction.",
+  "显示选项": "Display options",
+  "显示坐标轴": "Show world axes",
+  "显示关节轴": "Show joint axes",
+  "显示 Collision": "Show Collision",
+  "显示 Visual": "Show Visual",
+  "显示网格": "Show grid"
 }

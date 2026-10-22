@@ -7,7 +7,7 @@ export function createPreviewState() {
   return {
     pose: { current: undefined as PoseSnapshot | undefined }, touched: { current: false }, joint: '',
     camera: undefined as { position: number[]; target: number[]; far: number } | undefined,
-    geometry: 'visual' as GeometryMode,
+    display: { visual: true, collision: false, axes: true, jointAxes: true, grid: true },
   };
 }
 export interface StructureViewState {

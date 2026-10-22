@@ -12,8 +12,8 @@ async function open(page: Page) {
   await page.getByRole('button', { name: '适应模型', exact: true }).click();
 }
 async function collision(page: Page) {
-  await page.locator('.ant-select[aria-label="模型显示"]').click();
-  await page.locator('.ant-select-item-option[title="碰撞（Collision）"]').click();
+  if (await page.getByRole('button', { name: '显示 Collision', exact: true }).getAttribute('aria-pressed') === 'false') await page.getByRole('button', { name: '显示 Collision', exact: true }).click();
+  if (await page.getByRole('button', { name: '显示 Visual', exact: true }).getAttribute('aria-pressed') === 'true') await page.getByRole('button', { name: '显示 Visual', exact: true }).click();
   await expect(page.locator('.robot-preview')).toHaveAttribute('data-geometry', 'collision');
 }
 
@@ -78,13 +78,13 @@ for (const { name, touch, viewport } of [{name:'keyboard',touch:false,viewport:{
     const exitBounds = (await exit.boundingBox())!; expect(exitBounds.height).toBeGreaterThanOrEqual(touch ? 44 : 32); expect(exitBounds.y + exitBounds.height).toBeLessThanOrEqual(page.viewportSize()!.height);
     for (const control of await dialog.getByRole('button').all()) expect((await control.boundingBox())!.height).toBeGreaterThanOrEqual(touch ? 44 : 32);
     for (let i = 0; i < 14; i++) { await page.keyboard.press('Tab'); expect(await page.evaluate(() => !!document.activeElement?.closest('[role=dialog]'))).toBe(true); }
-    await dialog.locator('.ant-select[aria-label="Model display"]').click();
-    await dialog.locator('.ant-select-item-option[title="Collision"]').click();
+    await dialog.getByRole('button', { name: 'Show Collision', exact: true }).click();
+    await dialog.getByRole('button', { name: 'Show Visual', exact: true }).click();
     await expect(page.locator('.robot-preview')).toHaveAttribute('data-geometry', 'collision');
     await dialog.locator('.ant-select[aria-label="Preview joint"]').click();
     await dialog.locator('.ant-select-item-option').filter({ hasText: 'joint_1' }).click();
-    await dialog.locator('.ant-select[aria-label="Model display"]').click();
-    await dialog.locator('.ant-select-item-option[title="Visual"]').click();
+    await dialog.getByRole('button', { name: 'Show Collision', exact: true }).click();
+    await dialog.getByRole('button', { name: 'Show Visual', exact: true }).click();
     await page.screenshot({ path: info.outputPath('expanded-dark-english.png') });
     await page.keyboard.press('Escape'); await expect(dialog).not.toBeVisible(); await expect(trigger).toBeFocused();
     expect(await page.locator('.sidebar').evaluate(el => !!el.closest('[inert]'))).toBe(false);

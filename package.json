@@ -39,6 +39,7 @@
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "three": "^0.180.0",
+    "three-viewport-gizmo": "2.2.0",
     "urdf-loader": "^0.12.6",
     "xml-formatter": "3.7.0",
     "yaml": "^2.8.1",
@@ -56,5 +57,5 @@
     "vite": "^7.1.0",
     "vitest": "^3.2.0"
   },
-  "version": "0.1.0-rc.21"
+  "version": "0.1.0-rc.22"
 }

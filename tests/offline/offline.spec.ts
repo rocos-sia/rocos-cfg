@@ -120,6 +120,9 @@ test('both bundled teaching examples remain editable and exportable after a cach
     await page.getByRole('menuitem',{name:'主站配置',exact:true}).click();
     await expect(page.locator('.bus-topology .react-flow__node')).toHaveCount(2);
     await page.getByRole('menuitem',{name:'机器人模型',exact:true}).click();
+    await expect(page.locator('.preview-gizmo>div')).toHaveCount(1);
+    await page.getByRole('button',{name:'显示 Collision',exact:true}).click();
+    await expect(page.locator('.robot-preview')).toHaveAttribute('data-geometry','both');
     await page.getByRole('button',{name:'格式化 URDF',exact:true}).click();
     await expect(page.getByRole('button',{name:'放弃草稿',exact:true})).toBeVisible();
     await page.getByRole('button',{name:'应用修改',exact:true}).click();

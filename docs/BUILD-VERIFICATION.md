@@ -2,6 +2,21 @@
 
 本记录按版本保留本地验证结果，不代表正式发布或完整首版验收。产物位于本机 `artifacts/`，不随 Git 提交；后续源码修改不会自动更新这些包或本记录。无版本后缀的静态离线 ZIP 及 `test-results/` 会被后续构建/验证替换，应按哈希对应记录。
 
+## 0.1.0-rc.22
+
+2026-10-22，继续局部优化模型预览；开始时工作区干净，上轮代码已保存在 `5f5d285`，无需额外暂存。新增一个运行依赖 `three-viewport-gizmo` 2.2.0，复用 Three.js 渲染器、OrbitControls 和现有会话状态，不修改工程或运行配置格式。
+
+| 产物 | SHA-256 |
+| --- | --- |
+| `artifacts/rocos-configurator-0.1.0-rc.22-offline.zip` | `7265e877936c1f5c2d449dddbf1d1ac1871f1d5940930c6ceaec4edabe3504bd` |
+
+- 核对 GitHub 与本机 [rocos-viz v3](https://github.com/rocos-sia/rocos-viz/tree/6d35ae512b4a4cf32bb919817ace25909ce552bf)，参考其 `Robot3DCard` 视角图标与 `SceneToggles` 交互。顶部居中视角栏支持 180ms 悬停渐显/离开渐隐、键盘焦点显示、触屏常显及减少动态效果偏好；展开/复位改为图标并保留 Tooltip 和辅助技术名称。
+- 底部选中态按钮独立控制世界坐标轴、全部可动关节轴、Collision、Visual 和网格。Visual/Collision 可同时显示或同时隐藏，同时显示采用碰撞线框；缺少碰撞几何时仍给出提示。显示状态只保留于当前工作区会话，切页保持、重开工程重置，归档不变。
+- 左下角 [three-viewport-gizmo](https://github.com/Fennec-hub/three-viewport-gizmo) 使用球形 XYZ 导航，按其 [Z-up 约定](https://fennec-hub.github.io/three-viewport-gizmo/examples/z-up.html) 对齐机器人场景；支持指针旋转和 X/Y/Z、Shift 反方向键盘操作。尺寸/滚动变化更新位置，窄窗避开底部控制区，卸载清理资源。ResizeObserver 仅更新 Gizmo 几何位置及朝向，不额外调用 OrbitControls 改变相机。
+- 最终 Chrome 仓库内回归 **117 项全部通过**：`npm run test:ui -- --grep-invert 'local real .* Talon|actual Talon meshes' --workers=2`。明确排除 3 项外部真实工程，不计为通过。新增场景覆盖渐显/焦点、减少动画、独立开关和文件不变、Gizmo 鼠标/键盘旋转及展开/窄窗；原有模型、资源、源码、绑定和归档流程保持通过。首轮定向检查发现的提示气泡挡按钮、普通关节轴被遮挡及 resize 额外更新相机均已修复。
+- `preview-geometry.test.ts`、`preview-pose.test.ts`、`model-layout.test.ts` 共 14 项通过；TypeScript 及生产构建通过。Chrome 子路径离线 4 项通过，包括断网后首次加载 Gizmo、显示开关与保存/导出。静态 ZIP 实际解压冷启动、字体与声明、无外网编辑保存及文件哈希检查通过；`dist/` 保留相对路径离线构建。
+- 已查看桌面和窄窗浅/深色截图，触控命中区、展开焦点和相机恢复回归通过。本轮未验证其他浏览器、Tauri 或外部消费端；按 UI UX Pro Max 的焦点、图标标签、触控和减少动态效果建议做局部调整。六处版本清单同步为 `0.1.0-rc.22`，内部 rc 不打正式 tag。
+
 ## 0.1.0-rc.21
 
 2026-10-22，本轮以局部组件改动完成 3D 紧凑覆盖层、URDF 格式化、IgH 从站行操作及配置顺序拓扑。复用现有工程事务、影响确认、撤销和 Ant Design 样式，不变更 `.rcproj` 或运行配置契约。仅验证 Chrome，未构建或运行 Tauri。
