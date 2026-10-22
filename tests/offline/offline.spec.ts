@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { openProject, saveProject } from '../../src/core/project/archive';
 import { packZip, unpackZip } from '../../src/core/project/zip';
 import { fileById, textOf, utf8 } from '../../src/core/project/types';
+import { assertBundledFonts } from '../browser/helpers/fonts';
 
 test('complete precache supports unopened pages and project roundtrip offline under repository path', async ({ page, context }, testInfo) => {
   const errors: string[] = [];
@@ -80,12 +81,32 @@ test('cache completeness is rechecked instead of claiming offline readiness afte
   await page.evaluate(async () => {
     const names = await caches.keys();
     const cache = await caches.open(names.find(name => name.startsWith('rocos-shell:'))!);
-    await cache.delete(new URL('icon.svg', location.href).href);
+    const font = (await cache.keys()).find(request => request.url.endsWith('.woff2'));
+    if (!font) throw Error('Missing precached font');
+    await cache.delete(font);
     document.dispatchEvent(new Event('visibilitychange'));
   });
   await expect(page.getByRole('status').filter({ hasText: '离线缓存不完整' })).toBeVisible();
   await page.getByRole('button', { name: '修复缓存', exact: true }).click();
   await expect(page.getByRole('status').filter({ hasText: '已可离线使用' })).toBeVisible();
+});
+
+test('all font weights and notices survive an offline restart without HTTP cache', async ({ page, context }) => {
+  await page.goto('./'); await expect(page.getByRole('status').filter({ hasText: '已可离线使用' })).toBeVisible();
+  const cached = await page.evaluate(async () => {
+    const cache = await caches.open((await caches.keys()).find(name => name.startsWith('rocos-shell:'))!);
+    return (await cache.keys()).map(request => request.url);
+  });
+  expect(cached.filter(url => url.endsWith('.woff2'))).toHaveLength(4);
+  expect(cached.some(url => url.endsWith('/licenses/AlibabaPuHuiTi-3.0.txt'))).toBe(true);
+  expect(cached.some(url => url.endsWith('/licenses/font-sources.json'))).toBe(true);
+  const cdp = await context.newCDPSession(page); await cdp.send('Network.clearBrowserCache'); await cdp.detach();
+  await context.setOffline(true); await page.close();
+  const offline = await context.newPage(), fonts = new Set<string>();
+  offline.on('response', response => { if (response.url().endsWith('.woff2') && response.fromServiceWorker()) fonts.add(response.url()); });
+  await offline.goto('./'); await assertBundledFonts(offline); expect(fonts.size).toBe(4);
+  const notice = await offline.evaluate(async () => (await fetch('./licenses/AlibabaPuHuiTi-3.0.txt')).text());
+  expect(notice).toContain('《阿里巴巴普惠体3.0版》法律声明'); expect(notice).toContain('Legal Notice for Alibaba PuHuiTi 3.0');
 });
 
 test('both bundled teaching examples remain editable and exportable after a cached restart offline',async({page,context},info)=>{

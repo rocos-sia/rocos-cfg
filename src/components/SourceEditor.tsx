@@ -42,7 +42,7 @@ function DecodedSourceEditor({ file, source, reveal }: { file: ProjectFile; sour
           basicSetup, syntax === 'yaml' ? yaml() : syntax === 'xml' ? xml() : [],
           EditorState.readOnly.of(readonly), EditorView.editable.of(!readonly),
           attributes.current.of(EditorView.contentAttributes.of({ 'aria-label': readonly ? file.role === 'eni' ? t("ENI 只读源码") : t("模块只读源码") : t("配置源码") })),
-          EditorView.theme({ '&': { height: '350px', fontSize: '14px' }, '.cm-scroller': { overflow: 'auto', fontFamily: 'inherit' } }),
+          EditorView.theme({ '&': { height: '350px', fontSize: '14px', fontFamily: 'var(--config-font-family)' }, '.cm-scroller': { overflow: 'auto', fontFamily: 'inherit' } }),
           EditorView.updateListener.of(update => {
             if (update.docChanged && !readonly && !syncing.current) {
               void useProject.getState().buffer(file.id, update.state.doc.toString())

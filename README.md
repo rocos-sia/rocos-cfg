@@ -112,6 +112,8 @@ Talon 浏览器测试从指定源码目录读取 URDF 和八个 STL，检查实�
 
 静态离线包不附带 Node.js、Python 或浏览器。请勿直接双击 `file://index.html`。Service Worker 使用 HTTPS 或 localhost 安全上下文，参见 [MDN Service Worker 说明](https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API/Using_Service_Workers)。
 
+界面字体随包分发，四个字重合计约 20.8 MiB，全部纳入离线缓存；不需要电脑预装字体，也没有运行时字体 CDN 请求。来源和验证范围见[本地字体分发](docs/FONTS.md)。项目代码采用 MIT 许可；第三方字体遵循其[独立声明](THIRD_PARTY_NOTICES.md)。
+
 新版本完成缓存后显示更新提示；先下载工程，再关闭所有应用窗口，重新打开使用新版本。应用不会强制刷新正在编辑的页面。
 
 ## 桌面离线版

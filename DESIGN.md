@@ -1,6 +1,6 @@
 # ROCOS Configurator 设计规范
 
-> 版本：V1.2；更新日期：2026-10-22。
+> 版本：V1.3；更新日期：2026-10-22。
 > 适用于 ROCOS Configurator 的 GitHub Pages 网页、浏览器离线模式与桌面版。当前项目处于开发测试阶段，本文规定目标界面与交互；已执行范围与剩余门槛见[验收跟踪](docs/ACCEPTANCE.md)。
 > 功能范围、配置格式、消费端约束和开发阶段以[软件设计文档](<docs/ROCOS Configurator 软件设计文档.md>)为依据；本文维护视觉、布局和用户交互规范。
 
@@ -101,6 +101,8 @@ XYZ 使用红、绿、蓝轴色并保留字母，轴色不作为校验状态色�
 ## 4. 字体、数值与文案
 
 所有 UI 文本使用本地 `AlibabaPuHuiTi`，覆盖中英文、表单、表格、编辑器和 3D 标签；字体资源随应用分发，配置 `font-display: swap` 和系统字体回退。编辑器需验证缩进、光标和字符选择位置，不仅设置外层 DOM 字体。
+
+现已接入普惠体 3.0 的 400/500/600/700 原始 WOFF2，字体及完整声明随静态和桌面构建分发；来源、体积、字符后备和验证入口见[本地字体分发](docs/FONTS.md)。
 
 | 层级 | 变量 | 字号 | 用途 |
 | --- | --- | --- | --- |
@@ -315,13 +317,13 @@ UI 实现和后续变更至少覆盖以下场景：
 | --- | --- |
 | 工作台令牌、布局与断点 | `src/styles/configurator.css` |
 | Ant Design 主题映射 | `src/App.tsx` 中的 `ConfigProvider` |
-| 字号与基础字体 | `src/styles/configurator.css`、`src/components/SourceEditor.tsx`；本地字体资源及 `@font-face` 尚未接入 |
+| 字号与基础字体 | `src/styles/configurator.css`、`src/styles/fonts.css`、`src/components/SourceEditor.tsx` |
 | 工作台与通用卡片 | `src/App.tsx`、`src/components/` |
 | 树、表单、映射表与诊断 | `src/components/` |
 | 页面和 Hash 路由 | `src/pages/`、`src/App.tsx` |
 | 模块的领域能力与校验 | `src/core/modules/`、`src/core/` |
 | 双语资源 | `src/i18n/` |
-| 离线视觉资源 | `public/`；字体分发仍待补齐 |
+| 离线视觉资源与声明 | `public/`、`public/licenses/`、`src/assets/fonts/` |
 | 浏览器流程与视觉验收 | `tests/browser/` |
 
 新增配置模块沿用工作台、表单、来源标记、诊断和导出交互，通过 APP 配置的分组入口接入；独立一级页面需由任务规模决定，不为每个文件类型增设导航。只读、可编辑和可导出能力由领域模块声明，页面不能自行放宽。

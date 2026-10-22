@@ -1,2 +1,7 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+src/assets/fonts/*.woff2 binary
+# Preserve the copied third-party notice, including its original whitespace.
+public/licenses/AlibabaPuHuiTi-3.0.txt -text -whitespace
+public/licenses/font-sources.json -text

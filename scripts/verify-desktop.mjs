@@ -91,6 +91,13 @@ try {
   const created=await request('POST','/session',{capabilities:{alwaysMatch:{'tauri:options':{application:binary}}}});session=created.sessionId;
   await visibleText('新建工程');assert.equal(await script('return window.isSecureContext && !!window.crypto.subtle'),true);
   assert.equal(await script("return document.querySelector('.sidebar-bottom small').textContent"),expectedVersion);
+  await script(`window.nativeFontsReady=false;Promise.all([400,500,600,700].map(async weight=>(await document.fonts.load(weight+' 14px AlibabaPuHuiTi','中文 ROCOS')).map(font=>({family:font.family,status:font.status,weight:font.weight})))).then(faces=>window.nativeFontsReady=faces);`);
+  const nativeFonts=await wait(()=>script(`return window.nativeFontsReady;`),'native bundled font decoding');
+  assert.deepEqual(nativeFonts,[400,500,600,700].map(weight=>[{family:'AlibabaPuHuiTi',status:'loaded',weight:String(weight)}]));
+  const expectedFontSources=JSON.parse(await readFile('public/licenses/font-sources.json','utf8'));
+  await script(`window.nativeFontNotice=false;(async()=>{const sources=await(await fetch('licenses/font-sources.json')).json();const notice=await(await fetch('licenses/'+sources.notice.file)).arrayBuffer();const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',notice)),b=>b.toString(16).padStart(2,'0')).join('');window.nativeFontNotice={sources,hash};})();`);
+  const nativeNotice=await wait(()=>script(`return window.nativeFontNotice;`),'native font source and notice');
+  assert.deepEqual(nativeNotice.sources,expectedFontSources);assert.equal(nativeNotice.hash,expectedFontSources.notice.sha256);
   await visibleText('桌面离线版');await click('新建工程');await click('创建工程');await visibleText('工程总览');await rename('desktop-original');
   const original=join(temp,'original.rcproj'),savedAs=join(temp,'saved-as.rcproj'),copy=join(temp,'copy.rcproj');
   await click('保存工程');await picker(original,'Save File');await visibleText('已保存工程文件');
@@ -323,7 +330,7 @@ try {
     status:'passed',applicationVersion:expectedVersion,platform:process.platform,architecture:process.arch,node:process.version,
     binary:{path:binary,sha256:createHash('sha256').update(await readFile(binary)).digest('hex')},
     scope:'Actual Linux WebKit application, native GTK dialogs and temporary files in an isolated display.',
-    checks:['displayed and archived application version','initial save and verified backup','bilingual overwrite-backup notification','external conflict with bilingual reason and difference view','save as','native directory import','same-ID copy and new-ID fork','browser and desktop archive roundtrip','background URDF analysis and WebGL viewport','collapsed model tree reveal and retained/clamped preview pose','bilingual unsaved-close confirmation and cancellation','damaged archive recovery and protected source','directory picker cancellation','bilingual directory-export success dialog','directory receipt and file hashes','ZIP and directory byte parity','retained project save target','both teaching examples archived and runtime-exported','keyboard device selection and isolated second-drive editing','geometry display and model page state','expanded canvas, focus cycle and Escape','selected joint axis and missing mesh inventory/location','malformed URDF occurrence selection and source navigation'],
+    checks:['displayed and archived application version','initial save and verified backup','bilingual overwrite-backup notification','external conflict with bilingual reason and difference view','save as','native directory import','same-ID copy and new-ID fork','browser and desktop archive roundtrip','background URDF analysis and WebGL viewport','collapsed model tree reveal and retained/clamped preview pose','bilingual unsaved-close confirmation and cancellation','damaged archive recovery and protected source','directory picker cancellation','bilingual directory-export success dialog','directory receipt and file hashes','ZIP and directory byte parity','retained project save target','both teaching examples archived and runtime-exported','keyboard device selection and isolated second-drive editing','geometry display and model page state','expanded canvas, focus cycle and Escape','selected joint axis and missing mesh inventory/location','malformed URDF occurrence selection and source navigation','bundled fonts and complete original notice'],
     notExecuted:['Windows installation','independent offline computer','power loss or full disk','controller SDK or physical devices'],
   },null,2)+'\n');
 } catch(e) {

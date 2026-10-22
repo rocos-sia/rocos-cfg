@@ -15,6 +15,14 @@ try {
   const archive = unzipSync(new Uint8Array(await readFile('artifacts/rocos-configurator-offline.zip')));
   const version = (await readFile('VERSION', 'utf8')).trim();
   expect(new TextDecoder().decode(archive['rocos-configurator/VERSION']).trim()).toBe(version);
+  const fontSources = JSON.parse(new TextDecoder().decode(archive['rocos-configurator/dist/licenses/font-sources.json']));
+  const notice = archive['rocos-configurator/dist/licenses/' + fontSources.notice.file];
+  expect(createHash('sha256').update(notice).digest('hex')).toBe(fontSources.notice.sha256);
+  for (const font of fontSources.fonts) {
+    const paths = Object.keys(archive).filter(path => path.startsWith('rocos-configurator/dist/assets/' + font.file.replace('.woff2', '-')) && path.endsWith('.woff2'));
+    expect(paths).toHaveLength(1); const bytes = archive[paths[0]];
+    expect(bytes.length).toBe(font.bytes); expect(createHash('sha256').update(bytes).digest('hex')).toBe(font.sha256);
+  }
   for (const [name, data] of Object.entries(archive)) {
     const path = resolve(temporary, name);
     if (!path.startsWith(temporary + sep)) throw new Error('Invalid distribution entry');
@@ -48,6 +56,8 @@ try {
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.goto(address);
+  const fontFaces = await page.evaluate(async () => Promise.all([400,500,600,700].map(async weight => (await document.fonts.load(`${weight} 14px AlibabaPuHuiTi`, '中文 ROCOS')).map(font => font.status))));
+  expect(fontFaces).toEqual([['loaded'], ['loaded'], ['loaded'], ['loaded']]);
   await expect(page.locator('.sidebar-bottom small')).toHaveText(version);
   await expect(page.getByRole('button', { name: '新建工程', exact: true })).toBeVisible();
   await page.getByRole('button', { name: '新建工程', exact: true }).click();
@@ -71,7 +81,7 @@ try {
   }
   expect(external).toEqual([]);
   expect(errors).toEqual([]);
-  console.log(`Offline ZIP ${version} verified: cold start, persisted edit and archive hashes without external requests.`);
+  console.log(`Offline ZIP ${version} verified: bundled font bytes/notices, cold start, persisted edit and archive hashes without external requests.`);
 } finally {
   await browser?.close();
   server?.kill();
