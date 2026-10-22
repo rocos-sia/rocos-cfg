@@ -1,3 +1,4 @@
+import { projectSnapshot as snapshot } from './helpers/project';
 import { expect, test, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { resourceProject } from '../fixtures/resources';
@@ -73,10 +74,18 @@ for(const kind of ['hardware','slave','robot'] as const)test(`${kind} plan canno
   const name=kind==='hardware'?'确认硬件变更':kind==='slave'?'确认从站及绑定变更':'确认模型与引用变更';
   const dialog=page.getByRole('dialog',{name});await expect(dialog).toBeVisible();
   // Simulate a session replacement after preview; UUID/revision alone do not identify a workspace.
+  await snapshot(page);
   await page.evaluate(async()=>{const path='/src/store.ts';const {useProject}=await import(path);const next=structuredClone(useProject.getState().project);next.name='同 ID 新工程';useProject.getState().load(next);});
-  await dialog.getByRole('button',{name:kind==='robot'?'应用模型变更':'应用变更',exact:true}).click();
-  await expect(page.getByText(/工程已变化，请重新/)).toBeVisible();
-  await dialog.getByRole('button',{name:/^取\s*消$/}).click();
+  if(kind==='robot'){
+    // Robot's session key discards its pending plan together with the old view.
+    await expect(dialog).not.toBeVisible();
+  }else{
+    await dialog.getByRole('button',{name:'应用变更',exact:true}).click();
+    await expect(page.getByText(/工程已变化，请重新/)).toBeVisible();
+    await dialog.getByRole('button',{name:/^取\s*消$/}).click();
+  }
+  await expect(page.locator('.project-name strong')).toHaveText('同 ID 新工程');
+  await snapshot(page);
   const download=page.waitForEvent('download');await page.getByRole('button',{name:'下载工程',exact:true}).click();
   const path=info.outputPath('replacement.rcproj');await(await download).saveAs(path);const restored=await openProject(await readFile(path));
   expect(restored.name).toBe('同 ID 新工程');expect(restored.files).toEqual(p.files);expect(restored.editor).toEqual(p.editor);

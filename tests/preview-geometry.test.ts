@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import * as THREE from 'three';
 import { URDFJoint, URDFLink } from 'urdf-loader/src/URDFClasses.js';
-import { jointAxisFrame, missingMeshPlaceholder, normalizePlaceholders, validMeshGeometry, visibleBounds, previewBounds, updateJointConnection } from '../src/components/previewGeometry';
+import { fitPreviewCamera, jointAxisFrame, missingMeshPlaceholder, normalizePlaceholders, validMeshGeometry, visibleBounds, previewBounds, updateJointConnection } from '../src/components/previewGeometry';
 import { previewMeshReferences, uniqueOwners } from '../src/components/previewResources';
 import { xmlDocument } from '../src/core/documents/xml';
 
@@ -48,4 +48,18 @@ it('fits kinematic frames when geometry is absent and highlights the selected pa
   updateJointConnection(line, joint); expect(line.visible).toBe(true);
   const vertices = line.geometry.getAttribute('position'); close(new THREE.Vector3().fromBufferAttribute(vertices, 0), [2, 3, 4]); close(new THREE.Vector3().fromBufferAttribute(vertices, 1), [2, 13, 4]);
   updateJointConnection(line, undefined); expect(line.visible).toBe(false);
+});
+
+it('fits every bounds corner in portrait and wide viewports for standard views', () => {
+  const box = new THREE.Box3(new THREE.Vector3(-2, 3, -1), new THREE.Vector3(8, 3.2, 1));
+  for (const aspect of [.3, 1, 3.5]) for (const direction of [new THREE.Vector3(1, -1, .8), new THREE.Vector3(0, -1, .0001), new THREE.Vector3(1, 0, .0001), new THREE.Vector3(.0001, 0, 1)]) {
+    const camera = new THREE.PerspectiveCamera(40, aspect, .001, 1000); camera.up.set(0, 0, 1);
+    close(fitPreviewCamera(camera, box, direction), [3, 3.1, 0]);
+    for (const x of [box.min.x, box.max.x]) for (const y of [box.min.y, box.max.y]) for (const z of [box.min.z, box.max.z]) {
+      const ndc = new THREE.Vector3(x, y, z).project(camera);
+      expect(Math.abs(ndc.x)).toBeLessThanOrEqual(1 / 1.2 + 1e-8); expect(Math.abs(ndc.y)).toBeLessThanOrEqual(1 / 1.2 + 1e-8); expect(Math.abs(ndc.z)).toBeLessThan(1);
+    }
+  }
+  const camera = new THREE.PerspectiveCamera(40, 1, .001, 1000);
+  fitPreviewCamera(camera, new THREE.Box3(), new THREE.Vector3(1, -1, 1)); expect(camera.position.toArray().every(Number.isFinite)).toBe(true);
 });

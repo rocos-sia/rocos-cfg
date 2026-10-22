@@ -14,7 +14,7 @@ import type { RobotModel } from '../core/documents/urdf';
 import { previewPose } from './previewPose';
 import { createPreviewState, type GeometryMode } from './modelViewState';
 import { ModelViewport } from './ModelViewport';
-import { disposeObject, visibleBounds, previewBounds, hasJointAxis, missingMeshPlaceholder, normalizePlaceholders, validMeshGeometry, updateJointAxis, updateJointConnection } from './previewGeometry';
+import { disposeObject, visibleBounds, previewBounds, fitPreviewCamera, hasJointAxis, missingMeshPlaceholder, normalizePlaceholders, validMeshGeometry, updateJointAxis, updateJointConnection } from './previewGeometry';
 import { previewMeshReferences, uniqueOwners, type PreviewResourceProblem, type GeometryOwner } from './previewResources';
 
 function applyGeometry(model: THREE.Object3D, mode: GeometryMode) {
@@ -40,7 +40,7 @@ interface Runtime {
   grid: THREE.GridHelper; axis: THREE.ArrowHelper; connection: THREE.Line; axisJoint?: URDFJoint; axisLength: number;
   controls: OrbitControls; model?: URDFRobot; highlight?: THREE.Box3Helper; highlightTarget?: THREE.Object3D; fit: (view?: string) => void;
 }
-export function RobotPreview({ project, robot, selected = '', onSelect, viewState, dark = false }: { project: Project; robot:RobotModel; selected?: string; onSelect?: (key: string) => void; viewState?: ReturnType<typeof createPreviewState>; dark?: boolean }) {
+export function RobotPreview({ project, robot, selected = '', onSelect, onExpandedChange, viewState, dark = false }: { project: Project; robot:RobotModel; selected?: string; onSelect?: (key: string) => void; onExpandedChange?: (expanded: boolean) => void; viewState?: ReturnType<typeof createPreviewState>; dark?: boolean }) {
   const locale=useLocale();
   const host = useRef<HTMLDivElement>(null), runtime = useRef<Runtime | null>(null);
   const localState = useRef(createPreviewState()), memory = viewState || localState.current;
@@ -80,13 +80,12 @@ export function RobotPreview({ project, robot, selected = '', onSelect, viewStat
     renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); node.appendChild(renderer.domElement);
     scene.add(new THREE.HemisphereLight(0xffffff, 0x667788, 2.5));
     const light = new THREE.DirectionalLight(0xffffff, 3); light.position.set(3, 2, 5); scene.add(light);
-    const grid = new THREE.GridHelper(4, 40, 0xa9b8cb, 0xdce3ec); grid.rotation.x = Math.PI / 2; scene.add(grid); scene.add(new THREE.AxesHelper(.5));
+    const grid = new THREE.GridHelper(4, 40, 0xa9b8cb, 0xdce3ec); grid.rotation.x = Math.PI / 2; scene.add(grid); scene.add(new THREE.AxesHelper(.5).setColors(0xff0000, 0x00ff00, 0x0000ff));
     const fit = (view = 'iso') => {
       const box = runtime.current?.model ? previewBounds(runtime.current.model) : new THREE.Box3();
-      const center = box.isEmpty() ? new THREE.Vector3(0, 0, .3) : box.getCenter(new THREE.Vector3());
-      const size = box.isEmpty() ? 1 : Math.max(box.getSize(new THREE.Vector3()).length(), .2);
       const direction = view === 'front' ? new THREE.Vector3(0, -1, .0001) : view === 'side' ? new THREE.Vector3(1, 0, .0001) : view === 'top' ? new THREE.Vector3(.0001, 0, 1) : new THREE.Vector3(1, -1, .8);
-      camera.position.copy(center).add(direction.normalize().multiplyScalar(size * 1.8)); camera.far = Math.max(1000, size * 20); camera.updateProjectionMatrix();
+      camera.aspect = Math.max(node.clientWidth, 1) / Math.max(node.clientHeight, 1);
+      const center = fitPreviewCamera(camera, box, direction);
       controls.target.copy(center); controls.update();
     };
     const touchView = () => { viewTouched.current = true; };
@@ -218,7 +217,7 @@ export function RobotPreview({ project, robot, selected = '', onSelect, viewStat
       const nextPose = previewPose(joints, sameModel ? previousPose.current : undefined);
       r.model.setJointValues(nextPose.values);
       previousPose.current = { ...nextPose, projectId: project.id, fileId: file.id };
-      r.scene.add(r.model); if (!sameModel) r.fit(); highlight();
+      r.scene.add(r.model); if (!sameModel) { r.fit(); requestAnimationFrame(() => { if (!disposed && !viewTouched.current) r.fit(); }); } highlight();
       setPose(nextPose.values);
       memory.joint = sameModel && joints.some(j => j.name === memory.joint) ? memory.joint : '';
       setPoseJoint(memory.joint);
@@ -253,7 +252,7 @@ export function RobotPreview({ project, robot, selected = '', onSelect, viewStat
   };
   const setJoint = (name: string, value: number) => applyPose({ ...pose, [name]: value });
   const fitView = (view?: string) => { viewTouched.current = true; runtime.current?.fit(view); };
-  return <ModelViewport>{({ expanded, toggle, buttonRef }) => <>
+  return <ModelViewport onExpandedChange={onExpandedChange}>{({ expanded, toggle, buttonRef }) => <>
     <div className="robot-preview" ref={host} data-selected={selected} data-geometry={geometry} />
     {error && <Alert type="warning" message={typeof error==='string'?t(error):diagnosticText(error)} />}
     {problems.length > 0 && <section className="preview-resource-issues" aria-label={t('模型资源问题')} tabIndex={0}>

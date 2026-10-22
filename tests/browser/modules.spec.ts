@@ -1,3 +1,4 @@
+import { uiOrigin } from './helpers/origin';
 import { expect, test } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { resourceProject } from '../fixtures/resources';
@@ -34,7 +35,7 @@ test('a registered payload module mounts its editor, updates APP, validates and 
   const path = testInfo.outputPath('payload.rcproj'); await (await saved).saveAs(path);
   const restored = await openProject(await readFile(path)); expect(restored.modules?.filter(m => m.id === 'app.payload')).toHaveLength(1);
   const context = await browser.newContext(); const reopened = await context.newPage();
-  await reopened.goto('http://127.0.0.1:5173/'); await reopened.locator('input[type=file]').first().setInputFiles(path);
+  await reopened.goto(uiOrigin); await reopened.locator('input[type=file]').first().setInputFiles(path);
   await reopened.getByRole('menuitem', { name: 'APP 配置' }).click();
   await reopened.getByRole('button', { name: 'app/loads/tool.yaml', exact: true }).click();
   await expect(reopened.getByRole('dialog').getByRole('spinbutton', { name: '负载质量' })).toHaveValue('2.5');

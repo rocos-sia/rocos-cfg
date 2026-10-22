@@ -1,3 +1,4 @@
+import { projectSnapshot as snapshot } from './helpers/project';
 import { expect, test, type Page } from '@playwright/test';
 import { resourceProject } from '../fixtures/resources';
 import { saveProject } from '../../src/core/project/archive';
@@ -5,7 +6,6 @@ import { digest, fileById, textOf, utf8, type Project } from '../../src/core/pro
 async function locale(page:Page,value:'zh-CN'|'en-US'){
   await page.evaluate(async next=>{const path='/src/i18n/index.ts';const {setLocale}=await import(path);setLocale(next);},value);
 }
-async function snapshot(page:Page){return page.evaluate(async()=>{const path='/src/store.ts';const {useProject}=await import(path);return JSON.stringify(useProject.getState().project);});}
 async function open(page:Page,p:Project){
   await page.goto('/');await page.locator('input[type=file]').first().setInputFiles({name:'通知-{v0}.rcproj',mimeType:'application/zip',buffer:Buffer.from(await saveProject(p))});
   await expect(page.locator('.project-name strong')).toHaveText(p.name);

@@ -30,6 +30,22 @@ export function previewBounds(model: THREE.Object3D) {
   });
   return box;
 }
+/** Fit all eight bounds corners in the actual viewport, with 20% padding. */
+export function fitPreviewCamera(camera: THREE.PerspectiveCamera, bounds: THREE.Box3, direction: THREE.Vector3) {
+  const box = bounds.isEmpty() ? new THREE.Box3().setFromCenterAndSize(new THREE.Vector3(0, 0, .3), new THREE.Vector3(1, 1, 1)) : bounds;
+  const center = box.getCenter(new THREE.Vector3()), forward = direction.clone().normalize();
+  camera.position.copy(center).add(forward); camera.lookAt(center);
+  const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion), up = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
+  const vertical = Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2), horizontal = vertical * camera.aspect;
+  let distance = .36;
+  for (const x of [box.min.x, box.max.x]) for (const y of [box.min.y, box.max.y]) for (const z of [box.min.z, box.max.z]) {
+    const relative = new THREE.Vector3(x, y, z).sub(center);
+    distance = Math.max(distance, relative.dot(forward) + 1.2 * Math.max(Math.abs(relative.dot(right)) / horizontal, Math.abs(relative.dot(up)) / vertical));
+  }
+  camera.position.copy(center).addScaledVector(forward, distance);
+  camera.far = Math.max(1000, distance + box.getSize(new THREE.Vector3()).length() * 4); camera.updateProjectionMatrix(); camera.updateMatrixWorld(true);
+  return center;
+}
 export const hasJointAxis = (type: string) => ['revolute', 'continuous', 'prismatic', 'planar'].includes(type);
 export function jointAxisFrame(joint: URDFJoint) {
   if (!hasJointAxis(joint.jointType) || !Number.isFinite(joint.axis.lengthSq()) || joint.axis.lengthSq() === 0) return undefined;

@@ -1,3 +1,4 @@
+import { projectSnapshot as snapshot } from './helpers/project';
 import { expect, test, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { unzipSync } from 'fflate';
@@ -13,7 +14,6 @@ async function open(page: Page, source = malformedRobot) {
   await page.getByRole('menuitem', { name: '机器人模型', exact: true }).click();
   await expect(page.getByRole('tree', { name: '机器人结构树', exact: true })).toBeVisible();
 }
-const snapshot = (page: Page) => page.evaluate(async () => { const path = '/src/store.ts'; const { useProject } = await import(path); return JSON.stringify(useProject.getState().project); });
 const selectedLine = (page: Page) => page.evaluate(() => {
   const selection = window.getSelection(), node = selection?.anchorNode;
   return { text: selection?.toString(), line: (node instanceof Element ? node : node?.parentElement)?.closest('.cm-line')?.textContent };

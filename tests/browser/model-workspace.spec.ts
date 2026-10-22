@@ -1,3 +1,4 @@
+import { projectSnapshot as snapshot } from './helpers/project';
 import { expect, test, type Page } from '@playwright/test';
 import { createExample } from '../../src/core/project/examples';
 import { saveProject } from '../../src/core/project/archive';
@@ -11,7 +12,6 @@ async function open(page:Page, large=false){
   await expect(page.getByLabel('机器人三维预览')).toBeVisible();await page.getByRole('button',{name:'适应模型',exact:true}).click();
   return buffer;
 }
-const snapshot=(page:Page)=>page.evaluate(async()=>{const path='/src/store.ts';const {useProject}=await import(path);return JSON.stringify(useProject.getState().project);});
 async function pick(page:Page){const canvas=page.getByLabel('机器人三维预览'),box=(await canvas.boundingBox())!;await canvas.click({position:{x:box.width/2,y:box.height/2}});}
 
 test('3D selection reveals its path through collapsed ancestors and an obstructing tree filter',async({page},info)=>{

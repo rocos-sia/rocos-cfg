@@ -1,3 +1,4 @@
+import { uiOrigin } from './helpers/origin';
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { openProject, saveProject } from '../../src/core/project/archive';
@@ -21,7 +22,7 @@ test('robot template parameters and immutable snapshots survive a fresh-context 
   const download=page.waitForEvent('download');await page.getByRole('button',{name:'下载工程',exact:true}).click();
   const path=testInfo.outputPath('template.rcproj');await(await download).saveAs(path);
   const restored=await openProject(await readFile(path));expect(restored.editor.templateUses?.find(t=>t.templateId==='robot.two-axis')?.overrides).toEqual({prefix:'lab',linkLength:0.45});
-  const context=await browser.newContext(),fresh=await context.newPage();await fresh.goto('http://127.0.0.1:5173/');await fresh.locator('input[type=file]').first().setInputFiles(path);
+  const context=await browser.newContext(),fresh=await context.newPage();await fresh.goto(uiOrigin);await fresh.locator('input[type=file]').first().setInputFiles(path);
   await expect(fresh.getByRole('row').filter({hasText:'robot.two-axis v1'})).toContainText('0.45');
   await fresh.getByRole('menuitem',{name:'机器人模型'}).click();await expect(fresh.locator('.model-tree')).toContainText('lab_joint_2');await context.close();
 });

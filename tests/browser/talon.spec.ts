@@ -41,8 +41,13 @@ test('actual Talon meshes render with seven tree joints and opaque legacy hardwa
   // a canvas or resource request exists. The screenshot also supports visual QA.
   await expect.poll(()=>page.evaluate(expected=>expected.every(n=>(window as any).__talonDrawCounts.includes(n)),counts),{timeout:15000}).toBe(true);
   await page.getByText('joint_7 [continuous]',{exact:true}).click();
-  expect(await page.locator('.model-tree').evaluate(node=>node.scrollLeft)).toBe(0);
-  await expect(page.getByText('base_link [控制链端点]',{exact:true})).toBeInViewport();
+  const tree=page.locator('.model-tree'),last=page.getByText('joint_7 [continuous]',{exact:true}),root=page.getByText('base_link [控制链端点]',{exact:true});
+  expect(await tree.evaluate(node=>node.scrollLeft)).toBe(0);
+  // A bounded panel scrolls long chains vertically; both ends remain reachable.
+  await expect(last).toBeInViewport();expect(await tree.evaluate(node=>node.scrollTop)).toBeGreaterThan(0);
+  await root.scrollIntoViewIfNeeded();await expect(root).toBeInViewport();
+  await expect(tree.locator('.ant-tree-treenode-selected')).toContainText('joint_7');
+  expect(await tree.evaluate(node=>node.scrollLeft)).toBe(0);
   await expect(page.locator('.ant-alert').filter({hasText:'APP 模型有效限位'})).toHaveCount(0);
   await expect(page.getByText(/部分模型资源无法加载|缺少或外部模型资源|模型预览失败/)).toHaveCount(0);
   await page.screenshot({path:info.outputPath('talon-model.png'),fullPage:true});

@@ -1,3 +1,5 @@
+import { projectSnapshot as snapshot } from './helpers/project';
+import { uiOrigin } from './helpers/origin';
 import { expect, test, type Page } from '@playwright/test';
 import { missingPreviewProject, axisPreviewProject } from '../fixtures/diagnostics';
 import { saveProject } from '../../src/core/project/archive';
@@ -11,20 +13,20 @@ async function open(page: Page, project: Project) {
   await page.getByRole('menuitem', { name: '机器人模型', exact: true }).click();
   await expect(page.locator('.robot-preview canvas')).toBeVisible(); await page.getByRole('button', { name: '适应模型', exact: true }).click();
 }
-const snapshot = (page: Page) => page.evaluate(async () => { const path = '/src/store.ts'; const { useProject } = await import(path); return JSON.stringify(useProject.getState().project); });
 async function orangePixels(page: Page, blue = false) {
   const png = await page.locator('.robot-preview canvas').screenshot();
   return page.evaluate(async ({ base64, blue }) => {
     const img = new Image(); img.src = 'data:image/png;base64,' + base64; await img.decode();
     const canvas = document.createElement('canvas'); canvas.width = img.width; canvas.height = img.height;
     const context = canvas.getContext('2d')!; context.drawImage(img, 0, 0); const data = context.getImageData(0, 0, canvas.width, canvas.height).data;
-    let count = 0; for (let i = 0; i < data.length; i += 4) if (blue ? data[i] > 20 && data[i] < 100 && data[i + 1] > 50 && data[i + 1] < 160 && data[i + 2] > 170 : data[i] > 160 && data[i + 1] > 55 && data[i + 1] < 175 && data[i + 2] < 70) count++;
+    // Amber has more green than blue; antialiased red XYZ axes have equal G/B.
+    let count = 0; for (let i = 0; i < data.length; i += 4) if (blue ? data[i] > 20 && data[i] < 100 && data[i + 1] > 50 && data[i + 1] < 160 && data[i + 2] > 170 : data[i] > 160 && data[i + 1] > 55 && data[i + 1] < 175 && data[i + 2] < 70 && data[i + 1] > data[i + 2] * 1.5) count++;
     return count;
   }, { base64: png.toString('base64'), blue });
 }
 test('missing mesh inventory locates visual/collision placeholders, ignores legacy hardware and preserves the project', async ({ page }, info) => {
   const project = missingPreviewProject(), external: string[] = [];
-  page.on('request', r => { if (/^https?:/.test(r.url()) && !r.url().startsWith('http://127.0.0.1:5173')) external.push(r.url()); });
+  page.on('request', r => { if (/^https?:/.test(r.url()) && !r.url().startsWith(uiOrigin)) external.push(r.url()); });
   await open(page, project); const before = await snapshot(page), problems = page.getByRole('region', { name: '模型资源问题', exact: true });
   await expect(problems.locator('li')).toHaveCount(3); await expect(problems).not.toContainText('opaque-');
   await expect(problems).toContainText('missing-a.stl'); await expect(problems).toContainText('missing-b.dae'); await expect(problems).toContainText('https://example.invalid/remote.stl');

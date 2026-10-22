@@ -1,3 +1,4 @@
+import { projectSnapshot as snapshot } from './helpers/project';
 import { expect, test } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { multiaxisProject, axisNames } from '../fixtures/multiaxis';
@@ -5,7 +6,6 @@ import { openProject, saveProject } from '../../src/core/project/archive';
 import { fileById, textOf } from '../../src/core/project/types';
 import { readYaml } from '../../src/core/documents/yaml';
 import { activate, edit, navigate, tabTo } from './helpers/input';
-const snapshot=(page:import('@playwright/test').Page)=>page.evaluate(async()=>{const path='/src/store.ts';const {useProject}=await import(path);return JSON.stringify(useProject.getState().project);});
 async function english(page:import('@playwright/test').Page){
   await activate(page,page.getByRole('button',{name:'切换语言',exact:true}),'keyboard');
   const menu=page.getByRole('menu').filter({has:page.getByRole('menuitem',{name:'English',exact:true})});

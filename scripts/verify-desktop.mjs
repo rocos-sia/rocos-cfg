@@ -285,6 +285,22 @@ try {
   await wait(()=>script(`const p=document.querySelector('.robot-preview');return p?.dataset.selected==='joint:joint_1'&&p.dataset.geometry==='collision'&&document.querySelector('[role=slider]')?.getAttribute('aria-valuenow')==='1';`),'native navigation retains preview state');
   await wait(()=>script(`return document.querySelector('[role=status][aria-label="选中关节轴向"]')?.textContent.includes('0 0 1');`),'native selected joint axis');
   await writeFile(join(artifacts,'desktop-joint-axis.png'),Buffer.from(await request('GET',`/session/${session}/screenshot`),'base64'));
+  await wait(()=>script(`const e=document.querySelector('.model-resizer-tree');if(!e||e.hidden)return false;e.focus();return document.activeElement===e;`),'native model separator focus');
+  xdotool('key','--clearmodifiers','shift+Right');
+  await wait(()=>script(`return document.querySelector('.model-resizer-tree')?.getAttribute('aria-valuenow')==='330';`),'native keyboard panel resize');
+  assert.ok(await script(`return document.querySelector('.model-resizer-tree').getBoundingClientRect().width>=44;`));
+  await click('收起属性');await wait(()=>script(`return document.querySelector('.model-pane-properties')?.hidden;`),'native collapsed properties');
+  await click('显示属性');await menu('APP 配置');await menu('机器人模型');
+  await wait(()=>script(`return document.querySelector('.model-resizer-tree')?.getAttribute('aria-valuenow')==='330'&&!document.querySelector('.model-pane-properties').hidden;`),'native retained panel layout');
+  await writeFile(join(artifacts,'desktop-model-layout.png'),Buffer.from(await request('GET',`/session/${session}/screenshot`),'base64'));
+  await click('重置面板布局');await wait(()=>script(`return document.querySelector('.model-resizer-tree')?.getAttribute('aria-valuenow')==='280';`),'native reset panel layout');
+  await wait(()=>script(`const e=document.querySelector('input[aria-label="搜索模型节点"]');if(!e?.offsetParent)return false;e.focus();return document.activeElement===e;`),'native model search focus');
+  xdotool('type','--clearmodifiers','collision_only');
+  await wait(()=>script(`return document.querySelector('input[aria-label="搜索模型节点"]')?.value==='collision_only';`),'native model filter');
+  await menu('APP 配置');await menu('机器人模型');
+  await wait(()=>script(`return document.querySelector('.model-workspace-shell')?.dataset.mode==='wide'&&document.querySelector('input[aria-label="搜索模型节点"]')?.value==='collision_only';`),'native retained filter after measurement');
+  await script(`document.querySelector('input[aria-label="搜索模型节点"]').focus();`);xdotool('key','--clearmodifiers','ctrl+a','BackSpace');
+  await wait(()=>script(`return document.querySelector('input[aria-label="搜索模型节点"]')?.value==='';`),'native cleared model filter');
   await click('展开视图');
   await wait(()=>script(`const d=document.querySelector('.model-viewport-expanded');return d?.getAttribute('aria-modal')==='true'&&!!d.querySelector('canvas')&&document.querySelectorAll('canvas').length===1;`),'native expanded canvas');
   for(let i=0;i<14;i++){
@@ -330,7 +346,7 @@ try {
     status:'passed',applicationVersion:expectedVersion,platform:process.platform,architecture:process.arch,node:process.version,
     binary:{path:binary,sha256:createHash('sha256').update(await readFile(binary)).digest('hex')},
     scope:'Actual Linux WebKit application, native GTK dialogs and temporary files in an isolated display.',
-    checks:['displayed and archived application version','initial save and verified backup','bilingual overwrite-backup notification','external conflict with bilingual reason and difference view','save as','native directory import','same-ID copy and new-ID fork','browser and desktop archive roundtrip','background URDF analysis and WebGL viewport','collapsed model tree reveal and retained/clamped preview pose','bilingual unsaved-close confirmation and cancellation','damaged archive recovery and protected source','directory picker cancellation','bilingual directory-export success dialog','directory receipt and file hashes','ZIP and directory byte parity','retained project save target','both teaching examples archived and runtime-exported','keyboard device selection and isolated second-drive editing','geometry display and model page state','expanded canvas, focus cycle and Escape','selected joint axis and missing mesh inventory/location','malformed URDF occurrence selection and source navigation','bundled fonts and complete original notice'],
+    checks:['displayed and archived application version','initial save and verified backup','bilingual overwrite-backup notification','external conflict with bilingual reason and difference view','save as','native directory import','same-ID copy and new-ID fork','browser and desktop archive roundtrip','background URDF analysis and WebGL viewport','collapsed model tree reveal and retained/clamped preview pose','bilingual unsaved-close confirmation and cancellation','damaged archive recovery and protected source','directory picker cancellation','bilingual directory-export success dialog','directory receipt and file hashes','ZIP and directory byte parity','retained project save target','both teaching examples archived and runtime-exported','keyboard device selection and isolated second-drive editing','geometry display and model page state','expanded canvas, focus cycle and Escape','selected joint axis and missing mesh inventory/location','malformed URDF occurrence selection and source navigation','bundled fonts and complete original notice','keyboard model panel resizing, collapse and route persistence','model filter retained across route remounts'],
     notExecuted:['Windows installation','independent offline computer','power loss or full disk','controller SDK or physical devices'],
   },null,2)+'\n');
 } catch(e) {

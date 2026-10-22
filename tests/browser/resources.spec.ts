@@ -1,3 +1,4 @@
+import { uiOrigin } from './helpers/origin';
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { zipSync, strToU8, unzipSync } from 'fflate';
@@ -17,7 +18,7 @@ endsolid triangle`;
 test('resource import and mapping feed the preview, portable export and fresh-context project reopening', async ({ page, browser }, testInfo) => {
   const errors: string[] = [], external: string[] = [];
   page.on('pageerror', e => errors.push(e.message));
-  page.on('request', request => { if (/^https?:/.test(request.url()) && !request.url().startsWith('http://127.0.0.1:5173')) external.push(request.url()); });
+  page.on('request', request => { if (/^https?:/.test(request.url()) && !request.url().startsWith(uiOrigin)) external.push(request.url()); });
   const p = resourceProject();
   const model = fileById(p, p.entrypoints.urdf)!;
   model.bytes = utf8.encode(new TextDecoder().decode(model.bytes).replace('package://robot_description/meshes/part.dae', '/workstation/triangle.stl'));
@@ -49,7 +50,7 @@ test('resource import and mapping feed the preview, portable export and fresh-co
   const archived = page.waitForEvent('download'); await page.getByRole('button', { name: '下载工程', exact: true }).click();
   const project = testInfo.outputPath('mapped.rcproj'); await (await archived).saveAs(project);
   const fresh = await browser.newContext(); const reopened = await fresh.newPage();
-  await reopened.goto('http://127.0.0.1:5173/'); await reopened.locator('input[type=file]').first().setInputFiles(project);
+  await reopened.goto(uiOrigin); await reopened.locator('input[type=file]').first().setInputFiles(project);
   await reopened.getByRole('menuitem', { name: 'APP 配置' }).click();
   await expect(reopened.locator('.ant-select[aria-label="映射 mesh[0].filename"]')).toContainText('assets/triangle mesh.stl');
   await fresh.close();
@@ -65,7 +66,7 @@ test('DAE textures resolve through saved mappings and appear in the rendered mod
   moveResource(p, 'paint', 'assets/relocated paint.png');
   const errors: string[] = [], external: string[] = [];
   page.on('pageerror', e => errors.push(e.message));
-  page.on('request', r => { if (/^https?:/.test(r.url()) && !r.url().startsWith('http://127.0.0.1:5173')) external.push(r.url()); });
+  page.on('request', r => { if (/^https?:/.test(r.url()) && !r.url().startsWith(uiOrigin)) external.push(r.url()); });
   await page.goto('/');
   await page.locator('input[type=file]').first().setInputFiles({ name: 'texture.rcproj', mimeType: 'application/zip', buffer: Buffer.from(await saveProject(p)) });
   await page.getByRole('menuitem', { name: '机器人模型' }).click();

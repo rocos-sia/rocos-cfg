@@ -2,12 +2,13 @@ import { useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode, 
 import { t } from '../i18n';
 
 /** Keep controls in place; desktop WebKit and browsers share the same overlay. */
-export function ModelViewport({ children }: { children: (controls: {
+export function ModelViewport({ children, onExpandedChange }: { onExpandedChange?: (expanded: boolean) => void; children: (controls: {
   expanded: boolean; toggle: () => void; buttonRef: RefObject<HTMLButtonElement | null>;
 }) => ReactNode }) {
   const [expanded, setExpanded] = useState(false);
   const frame = useRef<HTMLDivElement>(null), button = useRef<HTMLButtonElement>(null);
   const isExpanded = useRef(expanded); isExpanded.current = expanded;
+  useLayoutEffect(() => { onExpandedChange?.(expanded); }, [expanded, onExpandedChange]);
   useLayoutEffect(() => {
     if (!expanded) return;
     const background: { node: HTMLElement; inert: boolean; hidden: string | null }[] = [];

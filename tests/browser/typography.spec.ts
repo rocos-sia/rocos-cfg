@@ -1,3 +1,4 @@
+import { uiOrigin } from './helpers/origin';
 import { expect, test } from '@playwright/test';
 import { createExample } from '../../src/core/project/examples';
 import { fileById, utf8 } from '../../src/core/project/types';
@@ -8,7 +9,7 @@ test('bundled weights render interface and source text with mixed-language curso
   const project = createExample('igh');
   const source = '<robot name="机器人A"><link name="base_link"/>\n  <link name="tool_link"/>\n  <joint name="joint_1" type="fixed"><parent link="base_link"/><child link="tool_link"/></joint>\n</robot>';
   fileById(project, project.entrypoints.urdf)!.bytes = utf8.encode(source);
-  const external: string[] = []; page.on('request', request => { if (/^https?:/.test(request.url()) && !request.url().startsWith('http://127.0.0.1:5173/')) external.push(request.url()); });
+  const external: string[] = []; page.on('request', request => { if (/^https?:/.test(request.url()) && !request.url().startsWith(uiOrigin)) external.push(request.url()); });
   await page.goto('/'); await assertBundledFonts(page);
   await page.locator('input[type=file]').first().setInputFiles({ name: 'font.rcproj', mimeType: 'application/zip', buffer: Buffer.from(await saveProject(project)) });
   await page.getByRole('menuitem', { name: '机器人模型', exact: true }).click();

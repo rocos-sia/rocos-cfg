@@ -1,3 +1,4 @@
+import { uiOrigin } from './helpers/origin';
 import { test, expect } from '@playwright/test';
 test('create, edit, archive, reopen and recover a project',async({page,browser},testInfo)=>{
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
@@ -8,7 +9,7 @@ test('create, edit, archive, reopen and recover a project',async({page,browser},
   await page.getByRole('button',{name:'新增从站',exact:true}).click();await expect(page.getByRole('cell',{name:'EtherCAT Drive',exact:true})).toBeVisible();
   const downloaded=page.waitForEvent('download');await page.getByRole('button',{name:'下载工程',exact:true}).click();const file=await downloaded;expect(file.suggestedFilename()).toBe('浏览器回归工程.rcproj');
   const archive=testInfo.outputPath('roundtrip.rcproj');await file.saveAs(archive);
-  const fresh=await browser.newContext();const reopened=await fresh.newPage();await reopened.goto('http://127.0.0.1:5173');
+  const fresh=await browser.newContext();const reopened=await fresh.newPage();await reopened.goto(uiOrigin);
   await reopened.locator('input[type=file]').first().setInputFiles(archive);
   await expect(reopened.getByText('浏览器回归工程',{exact:true})).toBeVisible();await reopened.getByRole('menuitem',{name:'主站配置'}).click();await expect(reopened.getByLabel('通信周期')).toHaveValue('2000');
   await reopened.screenshot({path:testInfo.outputPath('master.png'),fullPage:true});await fresh.close();
@@ -36,7 +37,7 @@ test('invalid source draft survives navigation, archive and reopening, then appl
   await (await downloaded).saveAs(archive);
   const fresh = await browser.newContext();
   const reopened = await fresh.newPage();
-  await reopened.goto('http://127.0.0.1:5173');
+  await reopened.goto(uiOrigin);
   await reopened.locator('input[type=file]').first().setInputFiles(archive);
   await reopened.getByRole('menuitem', { name: '主站配置' }).click();
   await reopened.getByRole('tab', { name: '源文件', exact: true }).click();

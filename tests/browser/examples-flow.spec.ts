@@ -1,3 +1,4 @@
+import { uiOrigin } from './helpers/origin';
 import { activate, edit, navigate, tabTo } from './helpers/input';
 import { expect, test } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
@@ -17,6 +18,11 @@ for(const kind of ['igh','ecm'] as const)for(const mode of ['keyboard','touch'] 
   await navigate(page,'机器人模型',mode);
   if(mode==='touch')await page.getByText('joint_1 [revolute]',{exact:true}).tap();
   else{await tabTo(page,page.locator('.model-tree .ant-tree'));await page.keyboard.press('Home');await page.keyboard.press('ArrowDown');await page.keyboard.press('Enter');}
+  const properties=page.getByRole('tab',{name:'属性',exact:true});
+  if(await properties.isVisible()){
+    if(mode==='touch')await properties.tap();
+    else{await tabTo(page,page.getByRole('tablist',{name:'模型面板',exact:true}));await page.keyboard.press('End');}
+  }
   await edit(page,page.getByRole('textbox',{name:'位置 xyz (m)',exact:true}),'0 0 0.1',mode);
   await navigate(page,'APP 配置',mode);await edit(page,page.getByRole('spinbutton',{name:'HTTP 端口',exact:true}),'8099',mode);
   await navigate(page,'硬件与绑定',mode);await edit(page,page.getByRole('spinbutton',{name:'ratio',exact:true}),'2',mode);
@@ -32,7 +38,7 @@ for(const kind of ['igh','ecm'] as const)for(const mode of ['keyboard','touch'] 
   const eni=kind==='ecm'?fileById(p,p.entrypoints.master.eniFileId)!.bytes:undefined;
   await context.close();
   // A separate storage/cache context on this host: this does not claim a second computer.
-  const fresh=await browser.newContext(opts),reopened=await fresh.newPage();await reopened.goto('http://127.0.0.1:5173/');
+  const fresh=await browser.newContext(opts),reopened=await fresh.newPage();await reopened.goto(uiOrigin);
   const choosing=reopened.waitForEvent('filechooser');await activate(reopened,reopened.getByRole('button',{name:'打开工程',exact:true}),mode);await(await choosing).setFiles(path);
   await expect(reopened.locator('.project-name strong')).toHaveText(p.name);
   await navigate(reopened,'主站配置',mode);await expect(reopened.getByRole('spinbutton',{name:/^通信周期/})).toHaveValue('2000');

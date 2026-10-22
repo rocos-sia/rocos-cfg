@@ -1,3 +1,4 @@
+import { projectSnapshot as snapshot } from './helpers/project';
 import { expect, test, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { unzipSync } from 'fflate';
@@ -9,9 +10,6 @@ import type { Project } from '../../src/core/project/types';
 
 async function locale(page:Page,value:'zh-CN'|'en-US'){
   await page.evaluate(async next=>{const path='/src/i18n/index.ts';const {setLocale}=await import(path);setLocale(next);},value);
-}
-async function snapshot(page:Page){
-  return page.evaluate(async()=>{const path='/src/store.ts';const {useProject}=await import(path);return JSON.stringify(useProject.getState().project);});
 }
 async function open(page:Page,p:Project){
   const initial=(await snapshot(page))==='null';

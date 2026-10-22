@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test';
+import { projectSnapshot as snapshot } from './helpers/project';
+import { expect, test, type Page, type Locator } from '@playwright/test';
 import { previewProject } from '../fixtures/preview';
 import { saveProject } from '../../src/core/project/archive';
 
@@ -9,7 +10,18 @@ async function open(page: Page) {
   await expect(page.getByLabel('机器人三维预览')).toBeVisible();
   await page.getByRole('button', { name: '适应模型', exact: true }).click();
 }
-const snapshot = (page: Page) => page.evaluate(async () => { const path = '/src/store.ts'; const { useProject } = await import(path); return JSON.stringify(useProject.getState().project); });
+// Element screenshots round fractional CSS bounds outwards and can include an
+// adjacent card-border row. Compare the complete rendered frame, not that row.
+async function renderedFrame(canvas: Locator) {
+  const base64 = await canvas.evaluate(el => new Promise<string>((resolve, reject) => requestAnimationFrame(() => {
+    const surface = el as HTMLCanvasElement, gl = surface.getContext('webgl2')!;
+    const pixels = new Uint8Array(surface.width * surface.height * 4); gl.readPixels(0, 0, surface.width, surface.height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+    let varied = false; for (let i = 4; i < pixels.length; i += 4) if (pixels[i] !== pixels[0] || pixels[i + 1] !== pixels[1] || pixels[i + 2] !== pixels[2]) { varied = true; break; }
+    if (!varied) { reject(Error('Expected a rendered model/grid frame, not an empty capture')); return; }
+    resolve(surface.toDataURL('image/png').split(',')[1]);
+  })));
+  return Buffer.from(base64, 'base64');
+}
 async function collision(page: Page) {
   await page.locator('.ant-select[aria-label="模型显示"]').click();
   await page.locator('.ant-select-item-option[title="碰撞（Collision）"]').click();
@@ -44,9 +56,15 @@ test('page navigation retains camera, pose, selected node, geometry mode, tree e
   await expect(page.getByText('joint_1 [revolute]', { exact: true })).not.toBeVisible();
   await expect.poll(async () => Buffer.compare(image, await canvas.screenshot())).toBe(0);
   const search = page.getByRole('searchbox', { name: '搜索模型节点' }); await search.fill('collision_only');
-  await page.getByRole('menuitem', { name: '主站配置', exact: true }).click();
-  await page.getByRole('menuitem', { name: '机器人模型', exact: true }).click();
   await expect(search).toHaveValue('collision_only');
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await page.getByRole('menuitem', { name: '主站配置', exact: true }).click();
+    await page.getByRole('menuitem', { name: '机器人模型', exact: true }).click();
+    await expect(page.locator('.model-workspace-shell')).toHaveAttribute('data-mode', 'wide');
+    await expect(search).toHaveValue('collision_only');
+    await expect(page.getByText('joint_1 [revolute]', { exact: true })).not.toBeVisible();
+    await expect(page.locator('.robot-preview')).toHaveAttribute('data-selected', 'joint:joint_1');
+  }
   expect(await snapshot(page)).toBe(before);
 });
 
@@ -58,7 +76,8 @@ for (const { name, touch, viewport } of [{name:'keyboard',touch:false,viewport:{
     await page.getByRole('button', { name: '切换主题', exact: true }).click();
     await page.getByRole('button', { name: '切换语言', exact: true }).click();
     await page.getByRole('menuitem', { name: 'English', exact: true }).click();
-    const normal = await canvas.screenshot(), trigger = page.getByRole('button', { name: 'Expand view', exact: true });
+    await canvas.screenshot({ path: info.outputPath('normal-canvas.png') });
+    const normal = await renderedFrame(canvas), trigger = page.getByRole('button', { name: 'Expand view', exact: true });
     if (touch) await trigger.tap(); else await trigger.click();
     const dialog = page.getByRole('dialog', { name: 'Expanded model view', exact: true }); await expect(dialog).toBeVisible();
     const exit = dialog.getByRole('button', { name: 'Exit expanded view', exact: true }); await expect(exit).toBeFocused();
@@ -80,7 +99,8 @@ for (const { name, touch, viewport } of [{name:'keyboard',touch:false,viewport:{
     expect(await page.locator('.sidebar').evaluate(el => (el as HTMLElement).inert)).toBe(false);
     await expect(page.locator('.sidebar')).not.toHaveAttribute('aria-hidden', 'true');
     await expect(canvas).toHaveAttribute('data-canvas-identity', 'retained');
-    await expect.poll(async () => Buffer.compare(normal, await canvas.screenshot())).toBe(0);
+    await canvas.screenshot({ path: info.outputPath('restored-canvas.png') });
+    await expect.poll(async () => Buffer.compare(normal, await renderedFrame(canvas))).toBe(0);
     if (touch) { await trigger.tap(); await exit.tap(); } else { await trigger.click(); await exit.click(); }
     await expect(dialog).not.toBeVisible(); expect(await snapshot(page)).toBe(before);
   });

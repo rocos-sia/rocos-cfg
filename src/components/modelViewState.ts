@@ -1,4 +1,5 @@
 import type { PreviewPose } from './previewPose';
+import { createModelLayoutState } from './modelLayout';
 
 export type GeometryMode = 'visual' | 'collision';
 interface PoseSnapshot extends PreviewPose { projectId: string; fileId: string }
@@ -14,6 +15,6 @@ export interface StructureViewState {
 }
 /** One workspace session only: never serialized into .rcproj or recovery data. */
 export function createModelViewState() {
-  return { preview: createPreviewState(), selected: '', search: '', tree: { topology: '', scrollTop: 0 } as StructureViewState };
+  return { preview: createPreviewState(), selected: '', search: '', tree: { topology: '', scrollTop: 0 } as StructureViewState, layout: createModelLayoutState() };
 }
 export type ModelViewState = ReturnType<typeof createModelViewState>;
