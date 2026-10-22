@@ -1,0 +1,230 @@
+{
+  "format": "rocos-structured-template",
+  "id": "device.igh-io-ax58200",
+  "version": 1,
+  "name": "IO · AX58200 GPIO",
+  "kind": "device",
+  "deviceType": "io",
+  "brand": "",
+  "model": "AX58200 GPIO",
+  "variant": "16DI / 16DO",
+  "profiles": [
+    "rocos.igh@1",
+    "rocos.app@1"
+  ],
+  "source": "用户提供的 AX58200 GPIO PDO 配置，16 路 Rx 和 16 路 Tx，每路 1 位。",
+  "defaults": {
+    "name": "AX58200 GPIO"
+  },
+  "data": {
+    "dc_ref": false,
+    "rx_pdos": [
+      {
+        "index": 5632,
+        "entries": [
+          {
+            "name": "RxPDO_1600_01",
+            "index": 28672,
+            "sub_index": 1,
+            "bit_length": 1
+          },
+          {
+            "name": "RxPDO_1600_02",
+            "index": 28672,
+            "sub_index": 2,
+            "bit_length": 1
+          },
+          {
+            "name": "RxPDO_1600_03",
+            "index": 28672,
+            "sub_index": 3,
+            "bit_length": 1
+          },
+          {
+            "name": "RxPDO_1600_04",
+            "index": 28672,
+            "sub_index": 4,
+            "bit_length": 1
+          },
+          {
+            "name": "RxPDO_1600_05",
+            "index": 28672,
+            "sub_index": 5,
+            "bit_length": 1
+          },
+          {
+            "name": "RxPDO_1600_06",
+            "index": 28672,
+            "sub_index": 6,
+            "bit_length": 1
+          },
+          {
+            "name": "RxPDO_1600_07",
+            "index": 28672,
+            "sub_index": 7,
+            "bit_length": 1
+          },
+          {
+            "name": "RxPDO_1600_08",
+            "index": 28672,
+            "sub_index": 8,
+            "bit_length": 1
+          },
+          {
+            "name": "RxPDO_1600_09",
+            "index": 28672,
+            "sub_index": 9,
+            "bit_length": 1
+          },
+          {
+            "name": "RxPDO_1600_10",
+            "index": 28672,
+            "sub_index": 10,
+            "bit_length": 1
+          },
+          {
+            "name": "RxPDO_1600_11",
+            "index": 28672,
+            "sub_index": 11,
+            "bit_length": 1
+          },
+          {
+            "name": "RxPDO_1600_12",
+            "index": 28672,
+            "sub_index": 12,
+            "bit_length": 1
+          },
+          {
+            "name": "RxPDO_1600_13",
+            "index": 28672,
+            "sub_index": 13,
+            "bit_length": 1
+          },
+          {
+            "name": "RxPDO_1600_14",
+            "index": 28672,
+            "sub_index": 14,
+            "bit_length": 1
+          },
+          {
+            "name": "RxPDO_1600_15",
+            "index": 28672,
+            "sub_index": 15,
+            "bit_length": 1
+          },
+          {
+            "name": "RxPDO_1600_16",
+            "index": 28672,
+            "sub_index": 16,
+            "bit_length": 1
+          }
+        ]
+      }
+    ],
+    "tx_pdos": [
+      {
+        "index": 6656,
+        "entries": [
+          {
+            "name": "TxPDO_1A00_01",
+            "index": 24576,
+            "sub_index": 1,
+            "bit_length": 1
+          },
+          {
+            "name": "TxPDO_1A00_02",
+            "index": 24576,
+            "sub_index": 2,
+            "bit_length": 1
+          },
+          {
+            "name": "TxPDO_1A00_03",
+            "index": 24576,
+            "sub_index": 3,
+            "bit_length": 1
+          },
+          {
+            "name": "TxPDO_1A00_04",
+            "index": 24576,
+            "sub_index": 4,
+            "bit_length": 1
+          },
+          {
+            "name": "TxPDO_1A00_05",
+            "index": 24576,
+            "sub_index": 5,
+            "bit_length": 1
+          },
+          {
+            "name": "TxPDO_1A00_06",
+            "index": 24576,
+            "sub_index": 6,
+            "bit_length": 1
+          },
+          {
+            "name": "TxPDO_1A00_07",
+            "index": 24576,
+            "sub_index": 7,
+            "bit_length": 1
+          },
+          {
+            "name": "TxPDO_1A00_08",
+            "index": 24576,
+            "sub_index": 8,
+            "bit_length": 1
+          },
+          {
+            "name": "TxPDO_1A00_09",
+            "index": 24576,
+            "sub_index": 9,
+            "bit_length": 1
+          },
+          {
+            "name": "TxPDO_1A00_10",
+            "index": 24576,
+            "sub_index": 10,
+            "bit_length": 1
+          },
+          {
+            "name": "TxPDO_1A00_11",
+            "index": 24576,
+            "sub_index": 11,
+            "bit_length": 1
+          },
+          {
+            "name": "TxPDO_1A00_12",
+            "index": 24576,
+            "sub_index": 12,
+            "bit_length": 1
+          },
+          {
+            "name": "TxPDO_1A00_13",
+            "index": 24576,
+            "sub_index": 13,
+            "bit_length": 1
+          },
+          {
+            "name": "TxPDO_1A00_14",
+            "index": 24576,
+            "sub_index": 14,
+            "bit_length": 1
+          },
+          {
+            "name": "TxPDO_1A00_15",
+            "index": 24576,
+            "sub_index": 15,
+            "bit_length": 1
+          },
+          {
+            "name": "TxPDO_1A00_16",
+            "index": 24576,
+            "sub_index": 16,
+            "bit_length": 1
+          }
+        ]
+      }
+    ],
+    "init_commands": []
+  },
+  "notice": "AX58200 GPIO：16 路输入和 16 路输出，每路 1 位；保留逐位映射，不自动合并为 APP 的 32 位数字量绑定。"
+}

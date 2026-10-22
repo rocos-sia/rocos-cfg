@@ -1,3 +1,4 @@
+import type { DevicePreset } from '../core/project/templates';
 import { ParameterHelp } from './ParameterHelp';
 import { parameterHelp } from './parameterHelp';
 import { DiagnosticField, useDiagnosticRequest } from './DiagnosticNavigation';
@@ -25,7 +26,7 @@ function TextCell({ label, value, commit, fileId, field }: { label: string; valu
 }
 const hex = (value: unknown) => typeof value === 'bigint' || typeof value === 'number' ? '0x' + value.toString(16).toUpperCase() : String(value ?? '');
 
-export function IghEditor({ p }: { p: Project }) {
+export function IghEditor({ p, preset = 'blank' }: { p: Project; preset?: DevicePreset }) {
   const message=useLocalizedMessage();
   const [pending,setPending]=useState<{plan:SlavePlan;revision:number;epoch:number}>();
   const [selected, setSelected] = useState(0);
@@ -78,7 +79,7 @@ export function IghEditor({ p }: { p: Project }) {
     <Space wrap className="section-tools">
       <Select aria-label={t("编辑从站")} style={{ minWidth: 230 }} value={slaves.length ? index : undefined} placeholder={t("请选择从站")}
         options={slaves.map((s: any, i: number) => ({ value: i, label: `${i} · ${s?.name ?? t("无名称")}` }))} onChange={setSelected} />
-      <Button onClick={() => changeSlave({ kind: 'add' })}>{t("新增从站")}</Button>
+      <Button onClick={() => changeSlave({ kind: 'add', preset })}>{t("新增从站")}</Button>
       <Button disabled={!slave} onClick={() => changeSlave({ kind: 'copy', index })}>{t("复制从站")}</Button>
       <Button disabled={!slave || !index} onClick={() => changeSlave({ kind: 'up', index })}>{t("从站上移")}</Button>
       <Button disabled={!slave || index === slaves.length - 1} onClick={() => changeSlave({ kind: 'down', index })}>{t("从站下移")}</Button>

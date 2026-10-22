@@ -1,0 +1,110 @@
+{
+  "format": "rocos-structured-template",
+  "id": "device.igh-drive-zeroerr",
+  "version": 1,
+  "name": "Drive · ZeroErr",
+  "kind": "device",
+  "deviceType": "drive",
+  "brand": "ZeroErr",
+  "model": "",
+  "variant": "ZeroErr6",
+  "profiles": [
+    "rocos.igh@1",
+    "rocos.app@1"
+  ],
+  "source": "rocos-igh/config/ZeroErr6.yaml 首个 ZeroErr Drive 的显式 PDO；型号未注明，保留字段顺序、名称与位宽。",
+  "defaults": {
+    "name": "ZeroErr Drive"
+  },
+  "data": {
+    "dc_ref": false,
+    "rx_pdos": [
+      {
+        "index": 5632,
+        "entries": [
+          {
+            "name": "Target Position",
+            "index": 24698,
+            "sub_index": 0,
+            "bit_length": 32
+          },
+          {
+            "name": "Target Velocity",
+            "index": 24831,
+            "sub_index": 0,
+            "bit_length": 32
+          },
+          {
+            "name": "Target Torque",
+            "index": 24689,
+            "sub_index": 0,
+            "bit_length": 16
+          },
+          {
+            "name": "Digital Outputs",
+            "index": 24830,
+            "sub_index": 0,
+            "bit_length": 32
+          },
+          {
+            "name": "Control Word",
+            "index": 24640,
+            "sub_index": 0,
+            "bit_length": 16
+          },
+          {
+            "name": "Mode of Operation",
+            "index": 24672,
+            "sub_index": 0,
+            "bit_length": 8
+          },
+          {
+            "name": "None",
+            "index": 0,
+            "sub_index": 0,
+            "bit_length": 8
+          }
+        ]
+      }
+    ],
+    "tx_pdos": [
+      {
+        "index": 6656,
+        "entries": [
+          {
+            "name": "Position Actual Value",
+            "index": 24676,
+            "sub_index": 0,
+            "bit_length": 32
+          },
+          {
+            "name": "Velocity Actual Value",
+            "index": 24684,
+            "sub_index": 0,
+            "bit_length": 32
+          },
+          {
+            "name": "Torque Actual Value",
+            "index": 24695,
+            "sub_index": 0,
+            "bit_length": 16
+          },
+          {
+            "name": "Digital Inputs",
+            "index": 24829,
+            "sub_index": 0,
+            "bit_length": 32
+          },
+          {
+            "name": "Status Word",
+            "index": 24641,
+            "sub_index": 0,
+            "bit_length": 16
+          }
+        ]
+      }
+    ],
+    "init_commands": []
+  },
+  "notice": "ZeroErr：采用 ZeroErr6.yaml 的 7 个 Rx 和 5 个 Tx 字段，含数字量及填充；具体型号与 PDO 分配需对照设备确认。"
+}

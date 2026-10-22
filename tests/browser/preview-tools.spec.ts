@@ -66,3 +66,20 @@ test('gizmo rotates with pointer and keyboard, follows expansion/resizing, and s
   await page.screenshot({ path: info.outputPath('gizmo-dark.png') });
   expect(await projectSnapshot(page)).toBe(before); expect(errors).toEqual([]);
 });
+
+test('translucency changes actual model pixels, restores them and persists only for the current session', async ({ page }, info) => {
+  await open(page); const before = await projectSnapshot(page), canvas = page.locator('.robot-preview canvas');
+  const button = page.getByRole('button', { name: '半透明显示', exact: true });
+  const original = await renderedFrame(canvas);
+  await button.focus(); await page.keyboard.press('Enter');
+  await expect(button).toHaveAttribute('aria-pressed', 'true');
+  await expect.poll(async () => Buffer.compare(original, await renderedFrame(canvas))).not.toBe(0);
+  await page.screenshot({ path: info.outputPath('translucent-arrows.png') });
+  await button.click(); await expect(button).toHaveAttribute('aria-pressed', 'false');
+  await expect.poll(async () => Buffer.compare(original, await renderedFrame(canvas))).toBe(0);
+  await button.click();
+  await page.getByRole('menuitem', { name: 'APP 配置', exact: true }).click();
+  await page.getByRole('menuitem', { name: '机器人模型', exact: true }).click();
+  await expect(button).toHaveAttribute('aria-pressed', 'true');
+  expect(await projectSnapshot(page)).toBe(before);
+});

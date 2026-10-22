@@ -1,0 +1,152 @@
+{
+  "format": "rocos-structured-template",
+  "id": "device.igh-ft-xjc",
+  "version": 1,
+  "name": "FT-sensor · XJC",
+  "kind": "device",
+  "deviceType": "ft-sensor",
+  "brand": "XJC",
+  "model": "",
+  "variant": "ZeroErr6",
+  "profiles": [
+    "rocos.igh@1",
+    "rocos.app@1"
+  ],
+  "source": "用户提供的 XJC FT Sensor 配置，与 rocos-igh/config/ZeroErr6.yaml 一致；两项同名 None 填充条目改名为 None_1 / None_2，索引、顺序和位宽不变。",
+  "defaults": {
+    "name": "XJC FT Sensor"
+  },
+  "data": {
+    "dc_ref": false,
+    "rx_pdos": [
+      {
+        "index": 5632,
+        "entries": [
+          {
+            "name": "Set Zero 1",
+            "index": 28672,
+            "sub_index": 1,
+            "bit_length": 8
+          },
+          {
+            "name": "Set Zero All",
+            "index": 28672,
+            "sub_index": 9,
+            "bit_length": 8
+          },
+          {
+            "name": "Set Zero PV 1",
+            "index": 28674,
+            "sub_index": 1,
+            "bit_length": 8
+          },
+          {
+            "name": "Set Zero PV All",
+            "index": 28674,
+            "sub_index": 9,
+            "bit_length": 8
+          },
+          {
+            "name": "Param Set",
+            "index": 28675,
+            "sub_index": 0,
+            "bit_length": 32
+          },
+          {
+            "name": "Set Value",
+            "index": 28676,
+            "sub_index": 0,
+            "bit_length": 32
+          }
+        ]
+      }
+    ],
+    "tx_pdos": [
+      {
+        "index": 6656,
+        "entries": [
+          {
+            "name": "fx",
+            "index": 24576,
+            "sub_index": 1,
+            "bit_length": 32
+          },
+          {
+            "name": "fy",
+            "index": 24577,
+            "sub_index": 1,
+            "bit_length": 32
+          },
+          {
+            "name": "fz",
+            "index": 24578,
+            "sub_index": 1,
+            "bit_length": 32
+          },
+          {
+            "name": "tx",
+            "index": 24579,
+            "sub_index": 1,
+            "bit_length": 32
+          },
+          {
+            "name": "ty",
+            "index": 24580,
+            "sub_index": 1,
+            "bit_length": 32
+          },
+          {
+            "name": "tz",
+            "index": 24581,
+            "sub_index": 1,
+            "bit_length": 32
+          },
+          {
+            "name": "ch7",
+            "index": 24582,
+            "sub_index": 1,
+            "bit_length": 32
+          },
+          {
+            "name": "ch8",
+            "index": 24583,
+            "sub_index": 1,
+            "bit_length": 32
+          },
+          {
+            "name": "zero fail 1",
+            "index": 24608,
+            "sub_index": 1,
+            "bit_length": 8
+          },
+          {
+            "name": "None_1",
+            "index": 0,
+            "sub_index": 0,
+            "bit_length": 8
+          },
+          {
+            "name": "save fail 1",
+            "index": 24609,
+            "sub_index": 1,
+            "bit_length": 8
+          },
+          {
+            "name": "None_2",
+            "index": 0,
+            "sub_index": 0,
+            "bit_length": 8
+          },
+          {
+            "name": "Param read",
+            "index": 24610,
+            "sub_index": 0,
+            "bit_length": 32
+          }
+        ]
+      }
+    ],
+    "init_commands": []
+  },
+  "notice": "XJC：保留 32 位测量值；两项 None 填充命名为 None_1 / None_2。当前 APP 的 FT 输入为 16 位，绑定前需核对消费端格式。"
+}

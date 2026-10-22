@@ -7,7 +7,7 @@ import { isMap, isScalar, isSeq, type Document, type YAMLSeq } from 'yaml';
 import { yamlDocument } from '../documents/yaml';
 import { fileById, textOf, utf8, type Project } from '../project/types';
 import { ighRules, targetStatus } from '../project/profiles';
-import { deviceTemplate, recordTemplate } from '../project/templates';
+import { deviceTemplate, recordTemplate, type DevicePreset } from '../project/templates';
 
 type Path = (string | number)[];
 export function editProjectYaml(p: Project, id: string, edit: (doc: Document) => void) {
@@ -47,7 +47,7 @@ export function modifySequence(doc: Document, path: Path, operation: 'add' | 're
     [list.items[index], list.items[target]] = [list.items[target], list.items[index]];
   }
 }
-export type SlaveAction = { kind: 'add' } | { kind: 'copy' | 'delete' | 'up' | 'down'; index: number } | { kind: 'move'; index: number; target: number };
+export type SlaveAction = { kind: 'add'; preset?: DevicePreset } | { kind: 'copy' | 'delete' | 'up' | 'down'; index: number } | { kind: 'move'; index: number; target: number };
 export interface SlavePlan { project: Project; impacts: string[]; impactMessages: DiagnosticMessage[]; selected: number }
 export function planSlaveChange(project: Project, action: SlaveAction): SlavePlan {
   const profile=targetStatus(project,'master');if(!profile.supported)throw new MessageError(profile);
@@ -62,7 +62,7 @@ export function planSlaveChange(project: Project, action: SlaveAction): SlavePla
     if (action.kind === 'add' || action.kind === 'copy') {
       if (slaves.items.length >= ighRules.maxSlaves) throw new MessageError(msg("当前目标最多支持 {v0} 个从站", {v0:String(ighRules.maxSlaves)}));
       if (action.kind === 'add') {
-        const template=deviceTemplate();
+        const template=deviceTemplate(action.preset);
         slaves.add(doc.createNode({id:slaves.items.length,name:template.defaults.name,...template.data}));
         recordTemplate(p,template,{name:template.defaults.name},[masterFileId(p)]);
         origins.push(-1); selected = slaves.items.length - 1;

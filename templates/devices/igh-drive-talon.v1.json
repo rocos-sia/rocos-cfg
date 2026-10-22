@@ -1,0 +1,98 @@
+{
+  "format": "rocos-structured-template",
+  "id": "device.igh-drive-talon",
+  "version": 1,
+  "name": "Drive · Talon",
+  "kind": "device",
+  "deviceType": "drive",
+  "brand": "Elmo",
+  "model": "Twitter",
+  "variant": "Talon",
+  "profiles": [
+    "rocos.igh@1",
+    "rocos.app@1"
+  ],
+  "source": "rocos-igh/config/talon_pdo.yaml，首个 Elmo Twitter Drive 的显式 PDO；保留名称、索引和位宽。",
+  "defaults": {
+    "name": "Elmo Twitter Drive"
+  },
+  "data": {
+    "dc_ref": false,
+    "rx_pdos": [
+      {
+        "index": 5639,
+        "entries": [
+          {
+            "name": "Control Word",
+            "index": 24640,
+            "sub_index": 0,
+            "bit_length": 16
+          },
+          {
+            "name": "Mode of Operation",
+            "index": 24672,
+            "sub_index": 0,
+            "bit_length": 8
+          },
+          {
+            "name": "Target Position",
+            "index": 24698,
+            "sub_index": 0,
+            "bit_length": 32
+          },
+          {
+            "name": "Target Velocity",
+            "index": 24831,
+            "sub_index": 0,
+            "bit_length": 32
+          },
+          {
+            "name": "Target Torque",
+            "index": 24689,
+            "sub_index": 0,
+            "bit_length": 16
+          }
+        ]
+      }
+    ],
+    "tx_pdos": [
+      {
+        "index": 6663,
+        "entries": [
+          {
+            "name": "Status Word",
+            "index": 24641,
+            "sub_index": 0,
+            "bit_length": 16
+          },
+          {
+            "name": "Position Actual Value",
+            "index": 24676,
+            "sub_index": 0,
+            "bit_length": 32
+          },
+          {
+            "name": "Velocity Actual Value",
+            "index": 24684,
+            "sub_index": 0,
+            "bit_length": 32
+          },
+          {
+            "name": "Torque Actual Value",
+            "index": 24695,
+            "sub_index": 0,
+            "bit_length": 16
+          },
+          {
+            "name": "Load Torque Value",
+            "index": 8352,
+            "sub_index": 0,
+            "bit_length": 32
+          }
+        ]
+      }
+    ],
+    "init_commands": []
+  },
+  "notice": "Talon Drive：预置 5 个 Rx 和 5 个 Tx 字段；Load Torque Value 为源文件中的 32 位，绑定时需核对 APP 位宽。"
+}

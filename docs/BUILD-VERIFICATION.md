@@ -2,6 +2,24 @@
 
 本记录按版本保留本地验证结果，不代表正式发布或完整首版验收。产物位于本机 `artifacts/`，不随 Git 提交；后续源码修改不会自动更新这些包或本记录。无版本后缀的静态离线 ZIP 及 `test-results/` 会被后续构建/验证替换，应按哈希对应记录。
 
+## 0.1.0-rc.25
+
+2026-10-22，模型预览增加整体半透明开关，关闭后恢复原材质的不透明度/透明/深度写入设置；世界坐标轴改为实体箭杆，关节旋转轴附加右手正方向弧形箭头，移动关节仅直线箭头。预览状态仅在工作区会话保存。几何与材质行为参考 [Three.js Material](https://threejs.org/docs/pages/Material.html)、[CylinderGeometry](https://threejs.org/docs/pages/CylinderGeometry.html) 和 [TubeGeometry](https://threejs.org/docs/pages/TubeGeometry.html)，使用现有依赖。
+
+产品 PDO 模板采用 JSON，不引入 SQLite/WASM 或新依赖。新增 Elmo/Talon、ZeroErr、XJC、AX58200 GPIO 四份模板，记录设备类型、品牌、型号、配置变体、来源与版本；未确认品牌/型号留空。选择框按设备类型分组，支持品牌/型号/变体搜索；新建 ROCOS-IGH 工程和追加从站共用模板。应用记录与 JSON 快照随 `.rcproj` 保存，旧模板定义不变；不自动创建 Hardware/Binding 或标记参数已确认。XJC 两个同名 None 填充只区分为 None_1 / None_2，顺序/索引/位宽不变。设备位宽与 APP 绑定要求的差异在模板说明中明确保留。
+
+来源核对：用户指定的 `rocos-igh/config/talon_pdo.yaml` SHA-256 为 `84f6baa88bc107273c07fa5f4e942836853c13a5c6fd24edecfb5ee61180fd71`；补充 ZeroErr 与 XJC 的 `config/ZeroErr6.yaml` 为 `aca7a9c6e1c782f31ecd7225d0432bac3f40283de358595f1f30199473ddcb15`。XJC 与 AX58200 另按用户提供的配置核对，AX58200 保留每方向 16 路、每路 1 位。
+
+| 产物 | SHA-256 |
+| --- | --- |
+| `artifacts/rocos-configurator-0.1.0-rc.25-offline.zip` | `60b20415c8e6a4cac9b263ee3e2d4f7b898ef24a0782e065d4fa623664530bf8` |
+
+- TypeScript、GitHub Pages 子路径生产构建和静态离线 ZIP 构建通过。
+- 单元回归 214 项通过；157 项外部消费端测试未配置环境而跳过。新增测试覆盖共享/多材质透明恢复、正轴箭头、弧形右手方向、平移关节、模板位宽/索引、追加/原工程隔离、历史快照与归档重开。
+- 最终 Chrome 仓库回归 122 项全部通过，排除 3 项外部真实 Talon 工程测试。新增模板用例初期命中隐藏 Modal/下拉和虚拟列表未渲染选项；限定可见下拉并通过品牌型号搜索后通过，未改变应用逻辑或放宽数据断言。预览定向检查和截图覆盖半透明、箭头、深色、窄窗及原有显示开关。
+- 静态产物挂载到仓库子路径后的离线测试 4 项通过，包含断网后首次选择产品模板、编辑、快照归档与恢复；实际 ZIP 解压冷启动、字体/声明哈希、保存和工程哈希检查通过，禁止外部请求。
+- 未验证其他浏览器、Tauri、独立电脑、远端 Pages、SDK 或实机。版本为内部测试 `0.1.0-rc.25`，不创建正式 tag。
+
 ## 0.1.0-rc.24
 
 2026-10-22，移除空 PDO 条目的运行时发现警告、编辑器提示和下载提示，信号通过手动配置。空 `[]` / `null` / `{}` 仍可原样导入与保存；完整 APP 校验要求首个从站已配置输入、输出信号，不再将缺少方向降为运行时待确认警告。重名、位宽及其它配置错误检查保留。

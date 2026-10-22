@@ -36,6 +36,9 @@ test('complete precache supports unopened pages and project roundtrip offline un
   await offline.getByRole('button',{name:'Change language',exact:true}).click();await offline.getByRole('menuitem',{name:'简体中文',exact:true}).click();
   await offline.getByRole('button', { name: '新建工程', exact: true }).click();
   await offline.getByRole('dialog').getByRole('textbox').fill('离线配置工程');
+  const preset = offline.getByRole('dialog').locator('.ant-select[aria-label="PDO 模板"]');
+  await preset.click(); await preset.getByRole('combobox').fill('Elmo');
+  await offline.locator('.ant-select-dropdown:visible').getByTitle('Elmo · Twitter · Talon', { exact: true }).click();
   await offline.getByRole('dialog').locator('.ant-select[aria-label="初始模型模板"]').click();
   await offline.getByTitle('双关节演示模型', { exact: true }).click();
   await offline.getByRole('button', { name: '创建工程', exact: true }).click();
@@ -55,6 +58,7 @@ test('complete precache supports unopened pages and project roundtrip offline un
   await (await downloaded).saveAs(archive);
   const saved = await openProject(await readFile(archive));
   expect(saved.editor.templateUses?.some(use => use.templateId === 'robot.two-axis')).toBe(true);
+  expect(saved.editor.templateUses?.some(use => use.templateId === 'device.igh-drive-talon')).toBe(true);
   expect(saved.files.filter(file => file.role === 'profile')).toHaveLength(2);
   const largeModel=fileById(saved,saved.entrypoints.urdf)!;largeModel.bytes=utf8.encode(textOf(largeModel)+'\n<!--'+'padding '.repeat(36000)+'-->');
   await offline.locator('input[type=file]').first().setInputFiles({name:'offline-large.rcproj',mimeType:'application/zip',buffer:Buffer.from(await saveProject(saved))});

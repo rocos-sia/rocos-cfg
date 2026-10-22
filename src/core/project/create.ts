@@ -2,16 +2,18 @@ import { m as msg, MessageError } from './messages';
 import { stringify } from 'yaml';
 import { masterProfile } from './import';
 import { attachProfile, baseTarget } from './profiles';
-import { recordTemplate, robotTemplate, starterData, starterTemplate } from './templates';
+import { recordTemplate, robotTemplate, starterData, starterTemplate, deviceTemplate, type DevicePreset } from './templates';
 import { xmlDocument, serializeXml } from '../documents/xml';
 import { uid, utf8, type Project, type FileRole, type MasterKind } from './types';
 export function makeFile(path: string, role: FileRole, text: string) {
   return { id: uid(), path, role, owner: role, bytes: utf8.encode(text), encoding: 'utf-8' };
 }
-export interface ProjectOptions { robotTemplate?:'robot.two-axis'; parameters?:{prefix?:string;linkLength?:number} }
+export interface ProjectOptions { pdoTemplate?: DevicePreset; robotTemplate?:'robot.two-axis'; parameters?:{prefix?:string;linkLength?:number} }
 export function createProject(name: string, kind: MasterKind, options:ProjectOptions={}): Project {
   const now = new Date().toISOString(),data=starterData();
-  const master = makeFile(`master/${kind}.yaml`, kind, stringify(data[kind]));
+  if(options.pdoTemplate && options.pdoTemplate!=='blank' && kind!=='igh')throw new MessageError(msg('PDO 模板仅适用于 ROCOS-IGH；ROCOS-ECM 请导入 ENI。'));
+  const preset=options.pdoTemplate&&options.pdoTemplate!=='blank'?deviceTemplate(options.pdoTemplate):undefined;
+  const master = makeFile(`master/${kind}.yaml`, kind, stringify(preset?{...data.igh,slaves:[{id:0,name:preset.defaults.name,...preset.data}]}:data[kind]));
   const robot = makeFile('models/robot.urdf', 'urdf', `<?xml version="1.0"?>\n<robot name="${data.robot.name}">\n  <link name="${data.robot.root}"/>\n</robot>\n`);
   const hardware = makeFile('app/hardware_config.yaml', 'hardware', stringify(data.hardware));
   const binding = makeFile('app/joint_binding.yaml', 'binding', stringify(data.binding));
@@ -19,6 +21,7 @@ export function createProject(name: string, kind: MasterKind, options:ProjectOpt
   const project:Project={ id: uid(), name, description: '', createdAt: now, modifiedAt: now, revision: 0, snapshotId: uid(), targets: { app: baseTarget('app'), master: masterProfile(kind) }, entrypoints: { master: { kind, fileId: master.id, eniFileId: null }, urdf: robot.id, hardware: hardware.id, binding: binding.id, app: app.id }, files: [master, robot, hardware, binding, app], references: [], packageMap: {}, editor: { buffers: {}, confirmations: {} } };
   attachProfile(project,'master');attachProfile(project,'app');
   recordTemplate(project,starterTemplate(),{},[master.id,robot.id,hardware.id,binding.id,app.id]);
+  if(preset)recordTemplate(project,preset,{name:preset.defaults.name},[master.id]);
   if(options.robotTemplate){
     const template=robotTemplate(),prefix=options.parameters?.prefix??template.defaults.prefix,length=options.parameters?.linkLength??template.defaults.linkLength;
     if(!/^[A-Za-z_][A-Za-z0-9_]{0,39}$/.test(prefix)||!Number.isFinite(length)||length<=0||length>10)throw new MessageError(msg("模型前缀须为字母/数字/下划线，连杆长度须在 0–10 m 之间且大于 0"));

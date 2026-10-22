@@ -9,7 +9,22 @@
 | `projects/teaching.v1.json` | 打开示例 → IgH / EC-Master | 一套单轴、显式 PDO/ENI、Hardware/Binding 与 APP 的完整教学工程；默认待人工确认，详见 [示例说明](../docs/EXAMPLES.md) |
 | `projects/starter.v1.json` | 新建 IgH / EC-Master 工程 | 初始化主站、APP、硬件与绑定配置；ENI 必须另行导入 |
 | `robots/two-axis.v1.json` | 新建工程 → 双关节演示模型 | 名称前缀与连杆长度；生成两个旋转关节及盒体外观，设置 APP 控制链端点 |
-| `devices/igh-discovery.v1.json` | 主站配置 → 新增从站 | 从站名称及待发现的空 PDO 条目；不推断驱动器机械参数或绑定 |
+| `devices/igh-discovery.v1.json` | 主站配置 → 新增从站 | 从站名称及可手动配置的空 PDO 条目；不推断驱动器机械参数或绑定 |
+
+产品 PDO 模板采用 JSON 文件，按 `deviceType` 分组、按品牌/型号/配置变体搜索；新建 ROCOS-IGH 工程与“新增从站”共用同一库。新建时选空白保持空总线，选产品模板创建一个从站；已有工程只追加从站，随后可继续编辑 PDO，支持撤销。ROCOS-ECM 的 PDO 仍来自只读 ENI。
+
+| JSON 定义 | 品牌 / 型号 / 变体 | Rx / Tx 条目 | 来源 |
+| --- | --- | --- | --- |
+| `devices/igh-drive-talon.v1.json` | Elmo / Twitter / Talon | 5 / 5 | 用户指定的 `rocos-igh/config/talon_pdo.yaml` |
+| `devices/igh-drive-zeroerr.v1.json` | ZeroErr / 未注明 / ZeroErr6 | 7 / 5 | `rocos-igh/config/ZeroErr6.yaml` |
+| `devices/igh-ft-xjc.v1.json` | XJC / 未注明 / ZeroErr6 | 6 / 13 | 用户提供的 XJC 配置，与 `ZeroErr6.yaml` 一致 |
+| `devices/igh-io-ax58200.v1.json` | 未注明 / AX58200 GPIO / 16DI / 16DO | 16 / 16 | 用户提供的 AX58200 GPIO 配置 |
+
+每份产品模板包含 `id`、`version`、`deviceType`、`brand`、`model`、`variant`、`profiles`、`source`、`defaults`、`data` 和 `notice`。未确认的品牌或型号用空字符串表示，界面显示“未注明”，不能根据配置文件名猜测型号。`variant` 区分同一产品的不同映射方案；`source` 记录来源和调整。增加型号时新增 JSON，并在 `src/core/project/templates.ts` 的 `devicePresets` 注册，选择界面和快照校验自动使用该列表。修改已发布模板须增加版本，不能覆盖旧定义。
+
+模板保留设备的真实位宽：Talon 的 Load Torque Value 为 32 位，XJC 测量值为 32 位，AX58200 每通道为 1 位；不自动改成 APP 的绑定位宽。XJC 两项重复 `None` 填充命名为 `None_1` / `None_2`，索引、顺序和 8 位宽度不变。套用时从站 ID 按配置位置生成，DC 参考标记为 false，不创建 Hardware/Binding 或自动确认机械参数。
+
+存储选择：当前使用随应用打包的 JSON，不引入 SQLite/WASM。工程携带实际使用的 JSON 快照。未来的个人模板保存/导入功能可用 IndexedDB 存本机副本、JSON 做交换格式；本版本尚未提供个人模板库编辑器。
 
 演示模型不对应实际设备，限位、速度、力矩和几何尺寸均需人工核对。新增从站的 PDO 索引也需结合设备说明或 ESI 确认。模板不会填入许可证、自动启用 SDO 命令或确认硬件参数。
 

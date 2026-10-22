@@ -1,3 +1,4 @@
+import { SolidArrow } from './previewHelpers';
 import * as THREE from 'three';
 import type { URDFJoint } from 'urdf-loader';
 
@@ -52,10 +53,11 @@ export function jointAxisFrame(joint: URDFJoint) {
   joint.updateWorldMatrix(true, false);
   return { origin: new THREE.Vector3().setFromMatrixPosition(joint.matrixWorld), direction: joint.axis.clone().transformDirection(joint.matrixWorld) };
 }
-export function updateJointAxis(arrow: THREE.ArrowHelper, joint: URDFJoint | undefined, length: number) {
+export function updateJointAxis(arrow: SolidArrow, joint: URDFJoint | undefined, length: number) {
   const frame = joint && jointAxisFrame(joint); arrow.visible = !!frame;
   if (!frame) return;
-  arrow.position.copy(frame.origin); arrow.setDirection(frame.direction); arrow.setLength(length, length * .25, length * .12);
+  arrow.position.copy(frame.origin); arrow.setDirection(frame.direction); arrow.setLength(length);
+  arrow.rotationArrow.visible = ['revolute', 'continuous', 'planar'].includes(joint!.jointType);
 }
 export function updateJointConnection(line: THREE.Line, joint: URDFJoint | undefined) {
   line.visible = !!joint?.parent; if (!joint?.parent) return;

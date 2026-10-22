@@ -1,8 +1,9 @@
+import { SolidArrow, worldAxes, applyTranslucency } from './previewHelpers';
 import { m as msg, MessageError, errorMessage, messageFields, joinMessages, type MessageInput } from '../core/project/messages';
 import { diagnosticText, t, useLocale } from '../i18n';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, Button, Select, Slider, Space, Tooltip } from 'antd';
-import { AimOutlined, BorderBottomOutlined, DeploymentUnitOutlined, ExpandOutlined, ShrinkOutlined, ScanOutlined, UndoOutlined, EyeOutlined, BlockOutlined } from '@ant-design/icons';
+import { AimOutlined, BorderBottomOutlined, DeploymentUnitOutlined, ExpandOutlined, ShrinkOutlined, ScanOutlined, UndoOutlined, EyeOutlined, BlockOutlined, BgColorsOutlined } from '@ant-design/icons';
 import { ViewportGizmo } from 'three-viewport-gizmo';
 import { PreviewButton, ViewIcon } from './PreviewButton';
 import * as THREE from 'three';
@@ -25,6 +26,7 @@ THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
 
 type Display = ReturnType<typeof createPreviewState>['display'];
 function applyGeometry(model: THREE.Object3D, display: Display) {
+  applyTranslucency(model, display.translucent);
   model.traverse(node => {
     if ('isURDFVisual' in node) node.visible = display.visual;
     if ('isURDFCollider' in node) {
@@ -38,11 +40,7 @@ function applyGeometry(model: THREE.Object3D, display: Display) {
   });
 }
 function jointArrow() {
-  const axis = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(), .1, 0xd97706);
-  for (const part of [axis.line, axis.cone]) {
-    for (const material of Array.isArray(part.material) ? part.material : [part.material]) { material.depthTest = false; material.transparent = true; material.opacity = .95; }
-    part.renderOrder = 999;
-  }
+  const axis = new SolidArrow(0xd97706, true, true);
   axis.visible = false; return axis;
 }
 function isVisible(object: THREE.Object3D) {
@@ -59,7 +57,7 @@ const previewError=(error:unknown):PreviewMessage=>{
 };
 interface Runtime {
   scene: THREE.Scene; renderer: THREE.WebGLRenderer; camera: THREE.PerspectiveCamera;
-  grid: THREE.GridHelper; axes: THREE.AxesHelper; gizmo: ViewportGizmo; jointAxes: Map<URDFJoint, THREE.ArrowHelper>; axis: THREE.ArrowHelper; connection: THREE.Line; axisJoint?: URDFJoint; axisLength: number;
+  grid: THREE.GridHelper; axes: THREE.Group; gizmo: ViewportGizmo; jointAxes: Map<URDFJoint, SolidArrow>; axis: SolidArrow; connection: THREE.Line; axisJoint?: URDFJoint; axisLength: number;
   controls: OrbitControls; model?: URDFRobot; highlight?: THREE.Box3Helper; highlightTarget?: THREE.Object3D; fit: (view?: string) => void;
 }
 export function RobotPreview({ project, robot, selected = '', onSelect, onExpandedChange, viewState, dark = false }: { project: Project; robot:RobotModel; selected?: string; onSelect?: (key: string) => void; onExpandedChange?: (expanded: boolean) => void; viewState?: ReturnType<typeof createPreviewState>; dark?: boolean }) {
@@ -106,7 +104,7 @@ export function RobotPreview({ project, robot, selected = '', onSelect, onExpand
     scene.add(new THREE.HemisphereLight(0xffffff, 0x667788, 2.5));
     const light = new THREE.DirectionalLight(0xffffff, 3); light.position.set(3, 2, 5); scene.add(light);
     const grid = new THREE.GridHelper(4, 40, 0xa9b8cb, 0xdce3ec); grid.rotation.x = Math.PI / 2; scene.add(grid);
-    const axes = new THREE.AxesHelper(.5).setColors(0xff0000, 0x00ff00, 0x0000ff); scene.add(axes);
+    const axes = worldAxes(); scene.add(axes);
     const gizmo = new ViewportGizmo(camera, renderer, { container: gizmoHost.current!, size: 88, placement: 'bottom-left', offset: { left: 0, bottom: 0 }, background: { enabled: false }, font: { family: 'Arial, sans-serif' }, x: { color: '#e74c3c', labelColor: '#fff' }, y: { color: '#2ecc71', labelColor: '#fff' }, z: { color: '#3498db', labelColor: '#fff' } });
     gizmo.attachControls(controls);
     const fit = (view = 'iso') => {
@@ -201,7 +199,7 @@ export function RobotPreview({ project, robot, selected = '', onSelect, onExpand
         const blob = URL.createObjectURL(new Blob([new Uint8Array(asset.bytes).buffer])); urls.push(blob);
         originals.set(blob, url); originals.set(url, url); return blob;
       });
-      manager.onLoad = () => { if (!disposed) { if (!sameModel && !viewTouched.current) r.fit(); highlight(); } };
+      manager.onLoad = () => { if (!disposed) { if (r.model) applyGeometry(r.model, displayRef.current); if (!sameModel && !viewTouched.current) r.fit(); highlight(); } };
       manager.onError = url => {
         const original = originals.get(url) || url;
         if (original === fallback) return;
@@ -290,7 +288,7 @@ export function RobotPreview({ project, robot, selected = '', onSelect, onExpand
   const setJoint = (name: string, value: number) => applyPose({ ...pose, [name]: value });
   const fitView = (view?: string) => { viewTouched.current = true; runtime.current?.fit(view); };
   return <ModelViewport onExpandedChange={onExpandedChange}>{({ expanded, toggle, buttonRef }) => <>
-    <div className="robot-preview" ref={host} data-selected={selected} data-geometry={geometry} />
+    <div className="robot-preview" ref={host} data-selected={selected} data-geometry={geometry} data-translucent={display.translucent} />
     <div className="preview-notices">
     {error && <Alert type="warning" message={typeof error==='string'?t(error):diagnosticText(error)} />}
     {problems.length > 0 && <section className="preview-resource-issues" aria-label={t('模型资源问题')} tabIndex={0}>
@@ -326,7 +324,7 @@ export function RobotPreview({ project, robot, selected = '', onSelect, onExpand
       <div className="preview-icon-bar preview-toggles" role="group" aria-label={t('显示选项')}>
         {([
           ['axes', t('显示坐标轴'), <DeploymentUnitOutlined />], ['jointAxes', t('显示关节轴'), <AimOutlined />],
-          ['collision', t('显示 Collision'), <BlockOutlined />], ['visual', t('显示 Visual'), <EyeOutlined />], ['grid', t('显示网格'), <BorderBottomOutlined />],
+          ['collision', t('显示 Collision'), <BlockOutlined />], ['visual', t('显示 Visual'), <EyeOutlined />], ['grid', t('显示网格'), <BorderBottomOutlined />], ['translucent', t('半透明显示'), <BgColorsOutlined />],
         ] as const).map(([key, label, icon]) => <PreviewButton key={key} label={label} icon={icon} pressed={display[key]} onClick={() => setDisplay(value => ({ ...value, [key]: !value[key] }))} />)}
       </div>
     {!!joints.length && <div className="preview-joint-tools"><Select size="small" showSearch optionFilterProp="label" aria-label={t("预览关节")} value={current?.name} getPopupContainer={trigger => trigger.parentElement!} options={joints.map(j => ({ value: j.name, label: `${j.name} · ${j.type === 'prismatic' ? 'm' : 'rad'}` }))} onChange={name => { memory.joint = name; setPoseJoint(name); }} />
