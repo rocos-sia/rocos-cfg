@@ -1,13 +1,45 @@
 import { m as msg, MessageError } from '../project/messages';
 import { DOMParser, XMLSerializer } from '@xmldom/xmldom';
+const opaqueHardware = new WeakMap<Node, string>();
 export function xmlDocument(text: string, locate = false) {
   if (/<!DOCTYPE|<!ENTITY/i.test(text)) throw new MessageError(msg('不支持 XML DTD 或外部实体'));
   const errors: string[] = [];
   const doc = new DOMParser({ ...(locate ? { locator: {} } : {}), errorHandler: { warning: m => errors.push(m), error: m => errors.push(m), fatalError: m => errors.push(m) } }).parseFromString(text, 'application/xml');
   if (errors.length || !doc.documentElement) throw new MessageError(errors.length?errors.join('\n'):msg('XML 缺少根节点'));
+  if (doc.documentElement.localName === 'robot') retainHardwareSource(doc, text);
   return doc;
 }
-export const serializeXml = (doc: Document | Element) => new XMLSerializer().serializeToString(doc);
+export function serializeXml(doc: Document | Element) {
+  const serializer = new XMLSerializer();
+  // xmldom supports a raw string from nodeFilter, although its bundled typings
+  // omit that return type. The raw fragments came from this validated document;
+  // only retained hardware nodes bypass serialization, never user substitutions.
+  const serialize = serializer.serializeToString as unknown as (node: Node, html: boolean, filter: (node: Node) => Node | string) => string;
+  return serialize.call(serializer, doc, false, node => opaqueHardware.get(node) ?? node);
+}
+function retainHardwareSource(doc: Document, text: string) {
+  const nodes = Array.from(doc.getElementsByTagName('*')).filter(node => node.localName === 'hardware' && !isLegacyHardware(node.parentNode!));
+  if (!nodes.length) return;
+  // Tokenize only markup boundaries. Skip comments, CDATA and processing
+  // instructions, and respect quoted '>' characters; hardware values stay opaque.
+  const tokens = /<!--[\s\S]*?-->|<!\[CDATA\[[\s\S]*?\]\]>|<\?[\s\S]*?\?>|<\/?[^\s<>/?!]+(?:[^<>"']|"[^"]*"|'[^']*')*>/g;
+  let depth = 0, start = 0, index = 0;
+  for (const match of text.matchAll(tokens)) {
+    const token = match[0];
+    if (token.startsWith('<!') || token.startsWith('<?')) continue;
+    const closing = token.startsWith('</'), empty = /\/\s*>$/.test(token);
+    const name = /^<\/?([^\s/>]+)/.exec(token)![1].split(':').at(-1);
+    if (!depth && !closing && name === 'hardware') {
+      start = match.index;
+      if (empty) { opaqueHardware.set(nodes[index++], token); continue; }
+      depth = 1;
+    } else if (depth) {
+      if (closing) depth--;
+      else if (!empty) depth++;
+      if (!depth) opaqueHardware.set(nodes[index++], text.slice(start, match.index + token.length));
+    }
+  }
+}
 export const children = (node: Element | Document, tag?: string): Element[] => Array.from(node.childNodes).filter((n): n is Element => n.nodeType === 1 && (!tag || (n as Element).localName === tag));
 export const child = (node: Element | Document, tag: string) => children(node, tag)[0];
 export const content = (node: Element | undefined, tag: string) => node ? child(node, tag)?.textContent?.trim() || '' : '';

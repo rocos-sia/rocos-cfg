@@ -113,3 +113,25 @@ it('caches separate sessions for the same project UUID even when switched before
     expect(useProject.getState().project?.name).toBe('second unsaved edit');
   }finally{vi.useRealTimers();}
 });
+
+it('retains one unchanged binary buffer across a full undo history and redo', () => {
+  const p=createProject('large resources','igh');
+  p.files.push({id:'large-asset',path:'assets/mesh.bin',role:'resource',owner:'resource',bytes:new Uint8Array(1024*1024).fill(42)});
+  useProject.getState().load(p);
+  for(let i=0;i<45;i++)useProject.getState().change(next=>{next.description='edit '+i;});
+  const buffers=()=>new Set([...useProject.getState().past,...useProject.getState().future,useProject.getState().project!].map(snapshot=>fileById(snapshot,'large-asset')!.bytes.buffer));
+  expect(useProject.getState().past).toHaveLength(40);expect(buffers().size).toBe(1);
+  useProject.getState().undo();useProject.getState().redo();expect(buffers().size).toBe(1);
+});
+
+it('isolates in-place binary edits and failed transactions while restoring exact bytes on undo/redo', () => {
+  const p=createProject('binary edits','igh');p.files.push({id:'asset',path:'asset.bin',role:'resource',owner:'resource',bytes:new Uint8Array([1,2,3])});
+  useProject.getState().load(p);
+  useProject.getState().change(next=>{fileById(next,'asset')!.bytes[1]=9;});
+  expect([...fileById(p,'asset')!.bytes]).toEqual([1,2,3]);expect([...fileById(useProject.getState().project!,'asset')!.bytes]).toEqual([1,9,3]);
+  useProject.getState().undo();expect([...fileById(useProject.getState().project!,'asset')!.bytes]).toEqual([1,2,3]);
+  useProject.getState().redo();const current=useProject.getState().project!;
+  expect([...fileById(current,'asset')!.bytes]).toEqual([1,9,3]);
+  expect(()=>useProject.getState().change(next=>{fileById(next,'asset')!.bytes.fill(0);throw Error('abort');})).toThrow('abort');
+  expect(useProject.getState().project===current).toBe(true);expect([...fileById(current,'asset')!.bytes]).toEqual([1,9,3]);
+});

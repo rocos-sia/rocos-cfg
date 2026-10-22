@@ -1,3 +1,4 @@
+import { verifySourceBaseline } from './source';
 import { createExample } from '../../src/core/project/examples';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
@@ -14,8 +15,7 @@ const source=process.env.ROCOS_ECM_SOURCE;
 describe.skipIf(!source)('ECM e0e5e32 original startup loader (no SDK or hardware)',()=>{
   let temporary:string,executable:string;
   beforeAll(()=>{
-    expect(execFileSync('git',['-C',source!,'rev-parse','--short=7','HEAD'],{encoding:'utf8'}).trim()).toBe('e0e5e32');
-    expect(execFileSync('git',['-C',source!,'status','--porcelain','--','Main/Common/EcConfig.cpp','Main/Common/EcConfig.h'],{encoding:'utf8'}).trim()).toBe('');
+    verifySourceBaseline(source!,'e0e5e32',['Main/Common/EcConfig.cpp','Main/Common/EcConfig.h']);
     temporary=mkdtempSync(resolve(tmpdir(),'ecm-'));executable=resolve(temporary,'loader');
     execFileSync('g++',['-std=c++17','-O0','-I'+resolve(source!,'Main/Common'),'tests/consumer/ecm-loader.cpp',resolve(source!,'Main/Common/EcConfig.cpp'),'-lyaml-cpp','-o',executable],{timeout:60000});
     writeFileSync(resolve(temporary,'eni7.xml'),'<EtherCATConfig/>');writeFileSync(resolve(temporary,'eni.xml'),'<EtherCATConfig/>');

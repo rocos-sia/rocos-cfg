@@ -66,7 +66,7 @@ ROCOS_IGH_SOURCE=/path/to/rocos-igh npm test
 
 该测试仅编译原生文件加载器，核对有效/无效配置与 64 位 SDO 编码，不连接 EtherCAT、共享内存或设备。未设置 `ROCOS_IGH_SOURCE` 时，消费端测试明确跳过；其余单元测试照常执行。
 
-EC-Master 启动配置加载器测试锁定 `e0e5e32`，同样需要 `g++` 和 yaml-cpp：
+EC-Master 启动配置加载器测试锁定 `e0e5e32`；允许该基线的后代提交，但参与核对的加载器文件必须保持基线字节且无本地修改。同样需要 `g++` 和 yaml-cpp：
 
 ```sh
 ROCOS_ECM_SOURCE=/path/to/rocos-ecm npm test -- tests/consumer/ecm.test.ts
@@ -98,6 +98,8 @@ ROCOS_APP_SOURCE=/path/to/rocos-app npm run test:ui -- tests/browser/talon.spec.
 ```
 
 Talon 浏览器测试从指定源码目录读取 URDF 和八个 STL，检查实际三角形绘制、结构树、旧扩展不参与解析及工程往返后的文件哈希。模型资产不复制到本仓库或公开应用包；未提供源码路径时此测试明确跳过。
+
+两类主站与真实 Talon 的完整工程测试另见 [真实七轴工程回归](docs/REAL-PROJECTS.md)，覆盖约 53 MB 资源的编辑、归档、重开及运行导出。原始 IgH/APP 组合存在信号不匹配，测试保留问题工程并仅在测试副本中显式处理，不将其视为可部署配置。
 
 ## GitHub Pages
 

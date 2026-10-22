@@ -6,7 +6,7 @@
 
 ## 可复现入口
 
-需要 Linux、Node.js 22.12+、g++、nm、yaml-cpp 和 Eigen 开发头文件，以及 APP 源码内的 spdlog 头文件。当前测试使用 `/usr/include/eigen3`。三个源码仓库须位于指定提交，参与编译的源码文件不得有本地修改：
+需要 Linux、Node.js 22.12+、g++、nm、yaml-cpp 和 Eigen 开发头文件，以及 APP 源码内的 spdlog 头文件。当前测试使用 `/usr/include/eigen3`。APP、IgH 源码仓库须位于指定提交。ECM 允许基线的后代提交，但原始共享结构头文件必须逐字节等于基线；参与核对的源码文件不得有本地修改：
 
 | 消费端 | 提交 | 头文件 |
 | --- | --- | --- |
@@ -20,6 +20,8 @@ ROCOS_IGH_SOURCE=/path/to/rocos-igh \
 ROCOS_ECM_SOURCE=/path/to/rocos-ecm \
 npm test -- tests/consumer/abi.test.ts
 ```
+
+2026-10-22 复跑时 ECM 实际 HEAD 为 `589d2a9`，原始共享结构头文件与表中 `e0e5e32` 相同；报告的 `baselineProof` 分别记录实际 revision、基线和文件哈希。工程目标规则仍保留原基线。
 
 未提供全部源码路径或运行平台不是 Linux 时，六项测试明确跳过。执行后 `test-results/consumer-abi/report.json` 留存编译器、目标架构、实际参数、源码提交及 SHA-256、字段布局、通过项和报告状态；该文件不进入工程归档或公开应用包。
 

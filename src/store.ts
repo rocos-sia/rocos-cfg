@@ -1,3 +1,4 @@
+import { shareUnchangedFileBytes } from './core/project/history';
 import { m as msg, MessageError } from './core/project/messages';
 import { editProjectYaml } from './core/bus/igh-edit';
 import { invalidateHardwareConfirmation } from './core/hardware/edit';
@@ -47,9 +48,9 @@ function cache(p:Project){
 export const useProject=create<State>((setState,getState)=>({
   project:null,workspaceEpoch:0,recoveryKey:null,past:[],future:[],savedRevision:null,persistence:'尚未打开工程',
   load:p=>{projectEpoch++;setState({project:p,workspaceEpoch:projectEpoch,recoveryKey:newRecoveryKey(),past:[],future:[],savedRevision:null,persistence:'工程已载入'});cache(p);},
-  change:fn=>{const s=getState();if(!s.project)return;const p=structuredClone(s.project);fn(p);invalidateHardwareConfirmation(s.project,p);p.revision++;p.modifiedAt=new Date().toISOString();setState({project:p,past:[...s.past,s.project].slice(-40),future:[],persistence:'有未保存修改'});cache(p);},
-  undo:()=>{projectEpoch++;const s=getState();if(!s.project||!s.past.length)return;const p=structuredClone(s.past.at(-1)!);p.revision=s.project.revision+1;setState({project:p,past:s.past.slice(0,-1),future:[s.project,...s.future]});cache(p);},
-  redo:()=>{projectEpoch++;const s=getState();if(!s.project||!s.future.length)return;const p=structuredClone(s.future[0]);p.revision=s.project.revision+1;setState({project:p,past:[...s.past,s.project],future:s.future.slice(1)});cache(p);},
+  change:fn=>{const s=getState();if(!s.project)return;const p=structuredClone(s.project);fn(p);shareUnchangedFileBytes(s.project,p);invalidateHardwareConfirmation(s.project,p);p.revision++;p.modifiedAt=new Date().toISOString();setState({project:p,past:[...s.past,s.project].slice(-40),future:[],persistence:'有未保存修改'});cache(p);},
+  undo:()=>{projectEpoch++;const s=getState();if(!s.project||!s.past.length)return;const previous=s.past.at(-1)!;const p=structuredClone(previous);shareUnchangedFileBytes(previous,p);p.revision=s.project.revision+1;setState({project:p,past:s.past.slice(0,-1),future:[s.project,...s.future]});cache(p);},
+  redo:()=>{projectEpoch++;const s=getState();if(!s.project||!s.future.length)return;const previous=s.future[0];const p=structuredClone(previous);shareUnchangedFileBytes(previous,p);p.revision=s.project.revision+1;setState({project:p,past:[...s.past,s.project],future:s.future.slice(1)});cache(p);},
   yaml:(id,path,value)=>{
     const p=getState().project;if(!p)return;
     const original=fileById(p,id);if(!original)throw new MessageError(msg("文件不存在"));

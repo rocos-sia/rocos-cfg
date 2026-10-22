@@ -56,7 +56,7 @@ it('uses only explicit standard URDF limits for optional Hardware drafts',()=>{
 });
 it('uses YAML hardware and bindings despite conflicting legacy XML and preserves files through archive and runtime export',async()=>{
   const p=resourceProject(),urdf=fileById(p,p.entrypoints.urdf)!,baseline=validateProject(p);
-  const legacy='<hardware><id>999</id><ecat_id>unknown</ecat_id><limit lower="99" upper="-99" vel="bad"/><inputs><position_actual_value>missing</position_actual_value></inputs><mesh filename="missing.stl"/><texture filename="missing.png"/></hardware>';
+  const legacy="<hardware extra = 'opaque &amp; raw'>\r\n<!-- > <hardware/> --><?keep a='>'?><![CDATA[</hardware> <mesh filename='missing'/>]]><hardware />"+'<id>999</id><ecat_id>unknown</ecat_id><limit lower="99" upper="-99" vel="bad"/><inputs><position_actual_value>missing</position_actual_value></inputs><mesh filename="missing.stl"/><texture filename="missing.png"/></hardware>';
   urdf.bytes=utf8.encode(textOf(urdf).replace('<robot name="r">','<robot name="r">'+legacy).replace('</joint>',legacy+'</joint>'));
   const hardware=textOf(fileById(p,p.entrypoints.hardware)!),binding=textOf(fileById(p,p.entrypoints.binding)!);
   expect(validateProject(p)).toEqual(baseline);
@@ -71,4 +71,25 @@ it('uses YAML hardware and bindings despite conflicting legacy XML and preserves
   expect(textOf(fileById(restored,restored.entrypoints.binding)!)).toBe(binding);
   expect(hardwareDocument(fileById(restored,restored.entrypoints.hardware)!).devices[0].id).toBe(0);
   expect(bindingDocument(fileById(restored,restored.entrypoints.binding)!).bindings).toEqual([{joint_name:'joint',drive_id:0}]);
+});
+
+it('preserves lexical hardware content across parameter, geometry and structural edits', async()=>{
+  const {editGeometry}=await import('../src/core/documents/urdf-geometry');
+  const {xmlDocument,serializeXml}=await import('../src/core/documents/xml');
+  const opaque="<ext:hardware  xmlns:ext='urn:legacy' note = 'a > b &amp; c'>\r\n<!-- </ext:hardware> --><?note keep?><![CDATA[<hardware/>]]><hardware  flag = 'x' />\r\n</ext:hardware>";
+  const p=resourceProject(),file=fileById(p,p.entrypoints.urdf)!;
+  file.bytes=utf8.encode(textOf(file).replace('</joint>',opaque+'</joint>').replace('</robot>',"<hardware id = 'empty' />"+'</robot>'));
+  const input=textOf(file),edited=editJoint(input,'joint','xyz','0 0.2 0');
+  expect(edited).toContain(opaque);expect(edited).toContain("<hardware id = 'empty' />");
+  expect(readRobot(edited).joints[0].xyz).toBe('0 0.2 0');
+  const geometry=editGeometry(edited,'tip','visual',0,'scale','2 2 2');
+  expect(geometry).toContain(opaque);
+  file.bytes=utf8.encode(geometry);
+  const renamed=planRobotChange(p,{kind:'rename',node:'joint',name:'joint',value:'renamed'}).project;
+  expect(textOf(fileById(renamed,renamed.entrypoints.urdf)!)).toContain(opaque);
+  const removed=planRobotChange(p,{kind:'delete',node:'joint',name:'joint',mode:'subtree'}).project;
+  const remaining=textOf(fileById(removed,removed.entrypoints.urdf)!);
+  expect(remaining).not.toContain(opaque);expect(remaining).toContain("<hardware id = 'empty' />");
+  // Other XML formats still use ordinary serialization; no raw substitution.
+  expect(serializeXml(xmlDocument("<other><hardware  id = 'x' /></other>"))).toBe('<other><hardware id="x"/></other>');
 });

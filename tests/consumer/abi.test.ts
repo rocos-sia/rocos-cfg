@@ -1,3 +1,4 @@
+import { verifySourceBaseline } from './source';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { execFileSync, spawn, spawnSync, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, mkdirSync, writeFileSync } from 'node:fs';
@@ -29,7 +30,8 @@ describe.skipIf(!enabled)('separately compiled original shared-memory headers (p
     target=execFileSync('g++',['-dumpmachine'],{encoding:'utf8'}).trim();
     for(const [kind,source] of Object.entries(sources) as [Kind,typeof sources[Kind]][]){
       const revision=execFileSync('git',['-C',source.root!,'rev-parse','HEAD'],{encoding:'utf8'}).trim();
-      expect(revision.startsWith(source.revision)).toBe(true);
+      const baselineProof=kind==='ecm'?verifySourceBaseline(source.root!,source.revision,[source.header]):undefined;
+      if(!baselineProof)expect(revision.startsWith(source.revision)).toBe(true);
       expect(execFileSync('git',['-C',source.root!,'status','--porcelain','--',source.header,...(kind==='app'?['src/hardware.hpp','src/hardware.cpp']:[])],{encoding:'utf8'}).trim()).toBe('');
       const path=resolve(source.root!,source.header),headerHash=hash(readFileSync(path));
       executables[kind]=resolve(directory,kind);
@@ -47,7 +49,7 @@ describe.skipIf(!enabled)('separately compiled original shared-memory headers (p
       }
       const result=run(executables[kind],['layout']);expect(result.status,result.stderr).toBe(0);
       layouts[kind]=JSON.parse(result.stdout);
-      provenance[kind]={revision,header:source.header,sha256:headerHash,compilation, ...(kind==='app'?{hardwareSourceSha256:hash(readFileSync(resolve(source.root!,'src/hardware.cpp')))}:{})};
+      provenance[kind]={revision,...(baselineProof?{baselineProof}:{}),header:source.header,sha256:headerHash,compilation, ...(kind==='app'?{hardwareSourceSha256:hash(readFileSync(resolve(source.root!,'src/hardware.cpp')))}:{})};
     }
     executables.incompatible=resolve(directory,'incompatible');
     execFileSync('g++',['-std=c++17',...flags,'-DMAX_PD_NAME_LEN=80','-I'+resolve(sources.app.root!,'src'),'tests/consumer/abi-probe.cpp','-o',executables.incompatible],{timeout:60000});
