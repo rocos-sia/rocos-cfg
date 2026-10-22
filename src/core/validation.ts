@@ -29,14 +29,12 @@ export function validateProject(p: Project, registry: ModuleRegistry = modules):
   try{if(appFile)app=appDocument(appFile).data;}catch{ /* Module validation reports malformed startup files. */ }
   if(app&&fileById(p,p.entrypoints.master.fileId)&&app.robot.ecat_id!==bus.masterId)add('app.master-id',msg("APP ecat_id 与主站 ID 不一致"),p.entrypoints.app!,'robot.ecat_id');
   // APP 7093bcd Hardware::scanForEcatBus recognizes a bus only when slave 0
-  // has variables in both directions. A discovery PDO is unknown, not empty.
+  // has manually configured variables in both directions.
   if(targetStatus(p,'app').supported && bus.slaves.length && !bus.diagnostics.some(d=>d.severity==='error')) {
     const first=bus.slaves[0],master=p.entrypoints.master;
     const absent=(['input','output'] as const).filter(direction=>!bus.signals.some(s=>s.slaveId===first.id&&s.direction===direction));
-    const unknown=absent.filter(direction=>master.kind==='igh' && bus.diagnostics.some(d=>d.code==='igh.discovery'&&d.field?.startsWith(`slaves.0.${direction==='input'?'tx_pdos':'rx_pdos'}.`)));
     const fileId=(master.kind==='ecm'?master.eniFileId:master.fileId)||undefined;
-    if(absent.length>unknown.length) add('app.bus-location',msg("当前 APP 要求首个从站同时具有输入和输出变量，否则无法可靠定位总线；请核对主站配置与目标 APP 版本"),fileId);
-    else if(unknown.length) add('app.bus-location.pending',msg("首个从站的变量需运行时发现；当前 APP 要求它同时具有输入和输出变量，请在目标环境确认"),fileId,undefined,'warning');
+    if(absent.length) add('app.bus-location',msg("当前 APP 要求首个从站同时具有输入和输出变量，否则无法可靠定位总线；请核对主站配置与目标 APP 版本"),fileId);
   }
   const urdf=fileById(p,p.entrypoints.urdf);
   if(urdf && app) try {

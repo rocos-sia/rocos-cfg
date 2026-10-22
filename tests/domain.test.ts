@@ -15,7 +15,7 @@ it('refuses external XML entities',()=>{expect(()=>xmlDocument('<!DOCTYPE robot 
 it('builds direction-correct IgH signals with bit widths retained',()=>{
   const p=createProject('io','igh'),f=p.files[0];
   f.bytes=utf8.encode(patchYaml(textOf(f),['slaves'],[{id:0,name:'IO',rx_pdos:[{index:0x1600,entries:[{name:'DO',index:0x7000,sub_index:1,bit_length:1}]}],tx_pdos:[{index:0x1a00,entries:[]}]}]));
-  const c=buildBusCatalog(p);expect(c.signals[0]).toMatchObject({direction:'output',bitLength:1,storageBytes:1});expect(c.diagnostics.some(d=>d.code==='igh.discovery')).toBe(true);
+  const c=buildBusCatalog(p);expect(c.signals[0]).toMatchObject({direction:'output',bitLength:1,storageBytes:1});expect(c.diagnostics.some(d=>d.code==='igh.discovery')).toBe(false);
 });
 it('reads ENI process image rather than all candidate PDO nodes',()=>{
   const p=createProject('ecm','ecm');const eni=makeFile('master/eni.xml','eni',`<EtherCATConfig Version="1.3"><Config><Slave><Info><Name>Drive</Name><PhysAddr>1001</PhysAddr></Info><ProcessData><Send><BitStart>0</BitStart><BitLength>16</BitLength></Send><Recv><BitStart>0</BitStart><BitLength>32</BitLength></Recv><TxPdo><Entry><Name>Unused</Name></Entry></TxPdo></ProcessData></Slave><ProcessImage><Inputs><ByteSize>4</ByteSize><Variable><Name>Drive.Inputs.Position</Name><DataType>DINT</DataType><BitSize>32</BitSize><BitOffs>0</BitOffs></Variable></Inputs><Outputs><ByteSize>2</ByteSize><Variable><Name>Drive.Outputs.Control</Name><DataType>UINT</DataType><BitSize>16</BitSize><BitOffs>0</BitOffs></Variable></Outputs></ProcessImage></Config></EtherCATConfig>`);

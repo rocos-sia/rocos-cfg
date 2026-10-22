@@ -62,7 +62,7 @@ describe('versioned rules and structured template snapshots',()=>{
     const use=next.editor.templateUses?.find(t=>t.templateId==='device.igh-discovery');expect(use?.outputs).toEqual([file.id]);
     expect(p.editor.templateUses?.some(t=>t.templateId==='device.igh-discovery')).toBe(false);
     const slave=readYaml(textOf(fileById(next,file.id)!)).slaves[1];expect(slave.rx_pdos[0].entries).toEqual([]);expect(slave.init_commands).toEqual([]);
-    expect(buildBusCatalog(next).diagnostics.some(d=>d.code==='igh.discovery')).toBe(true);
+    expect(buildBusCatalog(next).diagnostics.some(d=>d.code==='igh.discovery')).toBe(false);
   });
   it('marks an archive with missing profile/template snapshots incomplete rather than inventing replacements',async()=>{
     const p=createProject('missing','igh'),id=p.targets.master.profile!.fileId;p.files=p.files.filter(f=>f.id!==id);

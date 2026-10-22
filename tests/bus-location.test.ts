@@ -26,11 +26,11 @@ it.each([[false,true],[true,false],[false,false]])('blocks runtime export for kn
 it('accepts known bidirectional first slaves in both adapters',()=>{
   for(const p of [resourceProject(),eniProject(true,true)])expect(validateProject(p).filter(d=>d.code.startsWith('app.bus-location'))).toEqual([]);
 });
-it('treats IgH discovery as unknown, not as proven zero variables',()=>{
+it('requires manually configured first-slave variables for offline APP validation',()=>{
   const p=resourceProject(),file=fileById(p,p.entrypoints.master.fileId)!;
   file.bytes=utf8.encode(patchYaml(textOf(file),['slaves',0,'tx_pdos',0,'entries'],[]));
   expect(buildBusCatalog(p).diagnostics.filter(d=>d.severity==='error')).toEqual([]);
-  expect(validateProject(p).filter(d=>d.code.startsWith('app.bus-location'))).toMatchObject([{code:'app.bus-location.pending',severity:'warning'}]);
+  expect(validateProject(p).filter(d=>d.code.startsWith('app.bus-location'))).toMatchObject([{code:'app.bus-location',severity:'error'}]);
   p.targets.app.version='future';
   expect(validateProject(p).filter(d=>d.code.startsWith('app.bus-location'))).toEqual([]);
 });

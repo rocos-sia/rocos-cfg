@@ -68,7 +68,7 @@ test('import selection errors and bus differences change language while cancelli
   await expect(dialog).toContainText('Select the active master configuration');
   await dialog.getByRole('combobox').click();await page.getByTitle('one.yaml · igh',{exact:true}).click();
   await expect(dialog).toContainText('Name=工程总览-{name};');await expect(dialog).toContainText('Slave 0');
-  await expect(dialog).toContainText('runtime discovery');
+  await expect(dialog).not.toContainText('runtime discovery');
   await locale(page,'zh-CN');await expect(page.getByRole('dialog',{name:'导入预览'})).toContainText('名称=工程总览-{name}');
   await page.getByRole('dialog',{name:'导入预览'}).getByRole('button',{name:/^取\s*消$/}).click();
   const download=page.waitForEvent('download');await page.getByRole('button',{name:'下载工程',exact:true}).click();

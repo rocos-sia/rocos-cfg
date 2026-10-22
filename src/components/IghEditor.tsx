@@ -108,7 +108,6 @@ export function IghEditor({ p }: { p: Project }) {
                 {rowActions(path, pi, pdos.length, `${prefix} `)}
                 <Button onClick={() => run(() => edit(doc => modifySequence(doc, ep, 'add', 0, { name: '新信号', index: 0, sub_index: 0, bit_length: 8 })))}>{t('新增 {prefix} 条目',{prefix})}</Button>
               </Space>
-              {!entries.length && <Alert type="info" message={t("运行时待发现：保留空 entries，启动时由主站发现并回写。")} />}
               {!!entries.length && <Table size="small" pagination={false} scroll={{ x: 880 }} rowKey={(_, i) => String(i)} dataSource={entries} columns={[
                 { title: t("名称（区分大小写）"), width: 230, render: (_, entry, ei) => <TextCell fileId={file.id} field={[...ep,ei,'name'].join('.')} label={t('{prefix} 条目 {index} 名称',{prefix,index:ei+1})} value={entry?.name} commit={value => edit(doc => doc.setIn([...ep, ei, 'name'], value))} /> },
                 { title: 'Index', width: 135, render: (_, entry, ei) => integerCell(t('{prefix} 条目 {index} Index',{prefix,index:ei+1}), entry?.index, [...ep, ei, 'index'], 'uint16', true) },

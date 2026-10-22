@@ -16,8 +16,8 @@ slaves:
 const errors = (text: string) => buildIghCatalog(makeFile('igh.yaml', 'igh', text)).diagnostics.filter(d => d.severity === 'error');
 
 describe('IgH native configuration rules', () => {
-  it('accepts omitted master defaults and all native empty-discovery forms', () => {
-    for (const empty of ['[]', '{}', 'null', '']) expect(errors(minimal.replaceAll('entries: []}', `entries: ${empty}}`))).toEqual([]);
+  it('preserves native empty-entry forms without runtime-discovery notices', () => {
+    for (const empty of ['[]', '{}', 'null', '']) expect(buildIghCatalog(makeFile('igh.yaml', 'igh', minimal.replaceAll('entries: []}', `entries: ${empty}}`))).diagnostics).toEqual([]);
     expect(errors(minimal.replace('entries: []', 'wrong_entries: []'))).not.toEqual([]);
   });
   it('rejects lexical integer differences and unknown fields that yaml-cpp rejects', () => {

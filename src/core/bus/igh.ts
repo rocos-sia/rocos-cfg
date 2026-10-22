@@ -95,7 +95,7 @@ export function buildIghCatalog(file: ProjectFile): BusCatalog {
         integer([...pp, 'index'], 'uint16');
         const entries = node([...pp, 'entries']);
         if ((isScalar(entries) && entries.value === null) || (isMap(entries) && !entries.items.length) || (isSeq(entries) && !entries.items.length)) {
-          report(label([...pp, 'entries']), msg("运行时待发现"), 'igh.discovery', 'warning'); return;
+          return; // Empty entries remain editable; configure PDO signals manually.
         }
         if (!isSeq(entries)) { report(label([...pp, 'entries']), msg("必须为条目序列，或显式空值 [] / null / {}"), 'igh.entries'); return; }
         entries.items.forEach((_, n) => {
