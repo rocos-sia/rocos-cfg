@@ -203,3 +203,8 @@
 @media(pointer:coarse){.model-viewport .preview-icon-button{width:44px;height:44px;min-width:44px}.preview-view-tools{padding:8px}}
 
 .preview-tool-tooltip{pointer-events:none}
+
+.field-boolean .field-heading{align-self:flex-start}
+.field-boolean .field-heading label{flex:initial}
+.field-switch{min-height:44px;display:flex;align-items:center}
+.field-switch .ant-switch{align-self:auto}

@@ -15,11 +15,11 @@ it('keeps blank projects blank and rejects device templates for read-only ECM PD
 for (const preset of Object.keys(devicePresets) as Exclude<DevicePreset, 'blank'>[]) it(`${preset} creates and appends editable PDOs with durable model-specific snapshots`, async () => {
   const p = createProject('template', 'igh', { pdoTemplate: preset });
   const template = deviceTemplate(preset), slave = config(p).slaves[0];
-  expect(slave).toMatchObject({ id: 0n, name: template.defaults.name, dc_ref: false });
+  expect(slave).toMatchObject({ id: 0n, name: template.defaults.name, dc_ref: true });
   expect(buildBusCatalog(p).diagnostics).toEqual([]);
   expect(config(p).slaves).toHaveLength(1);
   const next = planSlaveChange(p, { kind: 'add', preset }).project;
-  expect(config(next).slaves).toHaveLength(2); expect(config(next).slaves[1].id).toBe(1n);
+  expect(config(next).slaves[1].dc_ref).toBe(false); expect(config(next).slaves).toHaveLength(2); expect(config(next).slaves[1].id).toBe(1n);
   expect(config(p).slaves).toHaveLength(1);
   expect(readYaml(textOf(fileById(next, next.entrypoints.hardware)!)).hardware).toEqual([]);
   expect(next.editor.confirmations).toEqual({});

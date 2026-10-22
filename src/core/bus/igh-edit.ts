@@ -62,9 +62,9 @@ export function planSlaveChange(project: Project, action: SlaveAction): SlavePla
     if (action.kind === 'add' || action.kind === 'copy') {
       if (slaves.items.length >= ighRules.maxSlaves) throw new MessageError(msg("当前目标最多支持 {v0} 个从站", {v0:String(ighRules.maxSlaves)}));
       if (action.kind === 'add') {
-        const template=deviceTemplate(action.preset);
-        slaves.add(doc.createNode({id:slaves.items.length,name:template.defaults.name,...template.data}));
-        recordTemplate(p,template,{name:template.defaults.name},[masterFileId(p)]);
+        const template=deviceTemplate(action.preset),dcRef=slaves.items.length===0;
+        slaves.add(doc.createNode({id:slaves.items.length,name:template.defaults.name,...template.data,dc_ref:dcRef}));
+        recordTemplate(p,template,{name:template.defaults.name,dc_ref:Number(dcRef)},[masterFileId(p)]);
         origins.push(-1); selected = slaves.items.length - 1;
       } else {
         const old = slaves.items[action.index];

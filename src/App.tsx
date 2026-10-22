@@ -1,3 +1,4 @@
+import { useUrdfImport } from './components/UrdfImport';
 import { PdoTemplateSelect, pdoTemplateDescription } from './components/PdoTemplateSelect';
 import type { DevicePreset } from './core/project/templates';
 import { ParameterLabel } from './components/ParameterHelp';
@@ -38,6 +39,7 @@ const pages=[{key:'overview',label:'工程总览',icon:<FolderOpenOutlined aria-
 function Workspace({dark,toggle}:{dark:boolean;toggle:()=>void}) {
   const locale=useLocale();
   const {selectFiles,dialog:importDialog}=useImportDialog();
+  const urdfImport=useUrdfImport(selectFiles);
   const state=useProject(),p=state.project;const message=useLocalizedMessage();const modal=useLocalizedModal();
   const modelView = useRef({ epoch: state.workspaceEpoch, value: createModelViewState() });
   if (modelView.current.epoch !== state.workspaceEpoch) modelView.current = { epoch: state.workspaceEpoch, value: createModelViewState() };
@@ -112,7 +114,7 @@ function Workspace({dark,toggle}:{dark:boolean;toggle:()=>void}) {
         {analysis.error&&<Alert type="error" message={diagnosticText({message:analysis.error,text:analysis.errorTemplate})} action={<Button onClick={analysis.retry}>{t("重新解析")}</Button>}/>}
         {sourceFile?<Card className="space-top diagnostic-source" title={sourceFile.path} extra={<Button onClick={()=>setReveal(undefined)}>{t("返回配置页面")}</Button>}><SourceEditor file={sourceFile} diagnostic={destination}/></Card>:<>
         {route==='master'&&<Master p={p} analysis={analysis.data} onImport={importFiles} dark={dark}/>}
-        {route==='robot'&&<Robot key={state.workspaceEpoch} p={p} analysis={analysis.data} onImport={importFiles} viewState={modelView.current.value} dark={dark}/>}
+        {route==='robot'&&<Robot key={state.workspaceEpoch} p={p} analysis={analysis.data} onImport={urdfImport.open} viewState={modelView.current.value} dark={dark}/>}
         {route==='hardware'&&<Hardware p={p} analysis={analysis.data}/>}
         {route==='app'&&<AppConfig p={p}/>}
         </>}
@@ -124,6 +126,7 @@ function Workspace({dark,toggle}:{dark:boolean;toggle:()=>void}) {
     {importDialog}{files.dialogs}
     <input hidden type="file" accept=".rcproj,.zip" ref={picker} onChange={e=>{const f=e.target.files?.[0];if(f)void readBrowserFile(f).then(opened=>files.accept(opened)).catch(e=>message.error(()=>(errorText(e,true))));e.target.value='';}}/>
     <input hidden type="file" multiple ref={importPicker} onChange={e=>{const files=Array.from(e.target.files||[]);if(p&&files.length)void selectFiles(files);e.target.value='';}}/>
+    {urdfImport.dialog}
   </div>;
 }
 export default function Application(){const locale=useLocale();useEffect(()=>{document.documentElement.lang=locale;},[locale]);const [dark,setDark]=useState(localStorage.getItem('rocos-theme')==='dark');return <ConfigProvider locale={locale==='zh-CN'?zhCN:enUS} theme={{algorithm:dark?theme.darkAlgorithm:theme.defaultAlgorithm,token:{colorPrimary:'#2563eb',borderRadius:8,controlHeight:44,fontFamily:'var(--config-font-family)',fontSize:14,motion:false},components:{Card:{borderRadiusLG:16},Menu:{darkItemBg:'#192b45',darkSubMenuItemBg:'#192b45',itemHeight:48}}}}><AntApp><Workspace dark={dark} toggle={()=>{setDark(!dark);localStorage.setItem('rocos-theme',String(!dark?'dark':'light'));}}/></AntApp></ConfigProvider>;}

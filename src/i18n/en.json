@@ -1295,5 +1295,15 @@
   "显示关节轴": "Show joint axes",
   "显示 Collision": "Show Collision",
   "显示 Visual": "Show Visual",
-  "显示网格": "Show grid"
+  "显示网格": "Show grid",
+  "导入URDF": "Import URDF",
+  "选择 URDF 文件": "Choose URDF file",
+  "选择 URDF 所在目录": "Choose URDF directory",
+  "选择所在目录": "Choose containing directory",
+  "预览导入": "Preview import",
+  "仅导入 URDF": "Import URDF only",
+  "未找到同名 Mesh，导入后可补充。": "No matching Mesh found. You can add it after importing.",
+  "存在同名文件，请选择": "Multiple files share this name; choose one",
+  "请选择包含所选 URDF 的同级目录（文件内容须一致）。": "Choose the folder directly containing the selected URDF (its contents must match).",
+  "选择 URDF 所在目录，按文件名搜索同级及子目录中的 Mesh，忽略原引用路径。浏览器需要您选择目录后才能读取其中的文件。": "Choose the folder containing the URDF to find Mesh files by name in that folder and its subfolders, ignoring the original reference paths. The browser can read the folder only after you select it."
 }

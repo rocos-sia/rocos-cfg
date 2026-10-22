@@ -4,13 +4,13 @@ import { modules } from '../modules';
 import type { ModuleRegistry } from '../modules/registry';
 import { fileModule } from '../modules/project';
 import { decodeXml, xmlDocument } from '../documents/xml';
-import { checkPaths } from './paths';
+import { checkPaths, resourceFilename } from './paths';
 import { collectReferences } from './references';
 import { attachProfile, baseTarget } from './profiles';
 
 export type ImportSlot = 'master' | 'eni' | 'app' | 'urdf' | 'hardware' | 'binding';
 export interface ImportPlan {
-  projectId: string; revision: number; single: boolean; files: ProjectFile[];
+  projectId: string; revision: number; single: boolean; files: ProjectFile[]; matchUrdfMeshes?: boolean;
 }
 export type ImportSelection = Partial<Record<ImportSlot, string | 'keep'>>;
 export const importSlot = (role: FileRole): ImportSlot | undefined => role === 'igh' || role === 'ecm' ? 'master' :
@@ -93,6 +93,14 @@ export function applyImport(p: Project, plan: ImportPlan, selection = defaultImp
   if (bindingChanged || [...replaced].some(id => { const f = p.files.find(f => f.id === id); return f && importSlot(f.role); })) next.editor.confirmations = {};
   next.references = next.references.filter(r => !replaced.has(r.sourceFileId));
   next.references = collectReferences(next, registry);
+  if(plan.matchUrdfMeshes) {
+    const importedIds=new Set(ids.values());
+    next.references=next.references.map(ref=>{
+      if(!importedIds.has(ref.sourceFileId)||!ref.field.startsWith('mesh[')||next.files.find(f=>f.id===ref.sourceFileId)?.role!=='urdf')return ref;
+      const candidates=next.files.filter(f=>importedIds.has(f.id)&&f.role==='resource'&&f.path.split('/').at(-1)===resourceFilename(ref.original));
+      return candidates.length===1?{...ref,state:'internal',targetFileId:candidates[0].id}:ref;
+    });
+  }
   return next;
 }
 export function masterProfile(kind: 'igh' | 'ecm'): TargetProfile {

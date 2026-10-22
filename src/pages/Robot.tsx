@@ -32,7 +32,7 @@ export function Robot({ p, analysis, onImport, viewState, dark }: { p: Project; 
   const [sourceReveal, setSourceReveal] = useState<UrdfSourceReveal>();
   const layoutState = viewState.layout || (viewState.layout = createModelLayoutState());
   if(!analysis)return null;
-  if (!file) return <Button onClick={onImport}>{t("导入 URDF")}</Button>;
+  if (!file) return <Button onClick={onImport}>{t("导入URDF")}</Button>;
   const robot=analysis.robot;
   if(!robot)return <><Alert message={analysis.robotError?diagnosticText({message:analysis.robotError,text:analysis.robotErrorText}):t("URDF 无法解析")} type="error" /><SourceEditor file={file} /></>;
   let startup: any; try { startup = app && appDocument(app).data; } catch {}
@@ -86,7 +86,7 @@ export function Robot({ p, analysis, onImport, viewState, dark }: { p: Project; 
       {pending?.plan.warningMessages.map((issue,i)=><Alert key={i} type="warning" message={diagnosticText(issue)}/>)}
       <p>{t("整次操作可撤销。")}</p>
     </Modal>
-    <div className="page-heading robot-page-heading"><div><h1>{t("机器人模型")}</h1><p>{t("编辑结构与属性，预览模型；预览不会驱动真实设备。")}</p></div><Button onClick={onImport}>{t("导入 URDF / Mesh")}</Button></div>
+    <div className="page-heading robot-page-heading"><div><h1>{t("机器人模型")}</h1><p>{t("编辑结构与属性，预览模型；预览不会驱动真实设备。")}</p></div><Button onClick={onImport}>{t("导入URDF")}</Button></div>
     {(p.editor.notices || []).filter(n => n.fileId === file.id).map((n, i) => <Alert key={`notice-${i}`} message={diagnosticText(n)} type="warning" className="space-top" action={<Button size="small" onClick={() => useProject.getState().change(next => { next.editor.notices = next.editor.notices?.filter(item => item.fileId !== n.fileId || item.message !== n.message); })}>{t("已核对")}</Button>} />)}
     {robot.issues.map((e, i) => <Alert key={i} message={diagnosticText(e)} type="error" className="space-top" />)}
     <ModelWorkspace state={layoutState} onShowTree={() => treeRef.current?.reveal(selected)} actions={<Space wrap>

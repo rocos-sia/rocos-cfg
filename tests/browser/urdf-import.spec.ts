@@ -1,0 +1,62 @@
+import { expect, test } from '@playwright/test';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { createProject } from '../../src/core/project/create';
+import { saveProject, openProject } from '../../src/core/project/archive';
+import { collectReferences } from '../../src/core/project/references';
+import { fileById, textOf } from '../../src/core/project/types';
+import { projectSnapshot } from './helpers/project';
+
+const xml='<robot name="imported"><link name="base"><visual><geometry><mesh filename="package://old/path/part.stl"/></geometry></visual><collision><geometry><mesh filename="/old/second.stl"/></geometry></collision></link></robot>';
+const stl='solid part\nfacet normal 0 0 1\nouter loop\nvertex 0 0 0\nvertex 1 0 0\nvertex 0 1 0\nendloop\nendfacet\nendsolid part';
+test('URDF picker scans sibling and descendant meshes, previews, archives and undoes the import',async({page},info)=>{
+  const dir=info.outputPath('robot');await mkdir(join(dir,'meshes'),{recursive:true});
+  await writeFile(join(dir,'robot.urdf'),xml);await writeFile(join(dir,'part.stl'),stl);await writeFile(join(dir,'meshes','second.stl'),stl);
+  await writeFile(join(dir,'unrelated.yaml'),'unrelated: true');
+  await page.goto('/');await page.locator('input[type=file]').first().setInputFiles({name:'import.rcproj',mimeType:'application/zip',buffer:Buffer.from(await saveProject(createProject('import','igh')))});
+  await page.getByRole('menuitem',{name:'机器人模型',exact:true}).click();
+  const before=await projectSnapshot(page), chooser=page.waitForEvent('filechooser');
+  await page.getByRole('button',{name:'导入URDF',exact:true}).click();await(await chooser).setFiles(join(dir,'robot.urdf'));
+  await page.getByLabel('选择 URDF 所在目录',{exact:true}).setInputFiles(dir);
+  await page.getByRole('button',{name:'预览导入',exact:true}).click();
+  const preview=page.getByRole('dialog',{name:'导入预览'});await expect(preview).toContainText('本次包含 3 个文件');
+  expect(await projectSnapshot(page)).toBe(before);
+  await preview.getByRole('button',{name:'确认导入'}).click();
+  await expect(page.locator('.preview-heading strong')).toContainText('imported');
+  const download=page.waitForEvent('download');await page.getByRole('button',{name:'下载工程',exact:true}).click();
+  const path=await(await download).path();const {readFile}=await import('node:fs/promises');const saved=await openProject(new Uint8Array(await readFile(path!)));
+  const refs=collectReferences(saved).filter(r=>r.sourceFileId===saved.entrypoints.urdf);
+  expect(refs.map(r=>[r.state,fileById(saved,r.targetFileId)?.path])).toEqual([['internal','part.stl'],['internal','meshes/second.stl']]);
+  expect(textOf(fileById(saved,saved.entrypoints.urdf)!)).toBe(xml);expect(saved.files.some(f=>f.path==='unrelated.yaml')).toBe(false);
+  await page.screenshot({path:info.outputPath('urdf-import.png')});
+  await page.getByRole('button',{name:'撤销',exact:true}).click();
+  // Revision changes on undo; the imported robot and resources must disappear.
+  await expect(page.locator('.preview-heading strong')).not.toContainText('imported');
+});
+test('DC switch is centered beside the name input, with adjacent help and first slave enabled',async({page},info)=>{
+  await page.goto('/');await page.locator('input[type=file]').first().setInputFiles({name:'dc.rcproj',mimeType:'application/zip',buffer:Buffer.from(await saveProject(createProject('dc','igh',{pdoTemplate:'drive-talon'})))});
+  await page.getByRole('menuitem',{name:'主站配置',exact:true}).click();await page.getByRole('tab',{name:'PDO / SDO 编辑',exact:true}).click();
+  const toggle=page.getByRole('switch',{name:'DC 参考从站',exact:true}),input=page.getByRole('textbox',{name:'从站名称',exact:true});
+  await expect(toggle).toBeChecked();
+  const a=(await toggle.boundingBox())!,b=(await input.boundingBox())!;expect(Math.abs(a.y+a.height/2-b.y-b.height/2)).toBeLessThan(2);
+  const field=page.locator('.field-boolean').filter({has:toggle});
+  const label=(await field.locator('label').boundingBox())!,help=(await field.locator('.parameter-help').boundingBox())!;
+  expect(help.x-label.x-label.width).toBeLessThanOrEqual(8);
+  await toggle.click();await expect(toggle).not.toBeChecked();
+  await page.screenshot({path:info.outputPath('dc-alignment.png')});
+});
+test('duplicate names require a choice, missing meshes stay explicit, and cancelling changes nothing',async({page},info)=>{
+  const dir=info.outputPath('duplicates');await mkdir(join(dir,'nested'),{recursive:true});
+  await writeFile(join(dir,'robot.urdf'),xml);await writeFile(join(dir,'part.stl'),stl);await writeFile(join(dir,'nested','part.stl'),stl);
+  await page.goto('/');await page.locator('input[type=file]').first().setInputFiles({name:'duplicate.rcproj',mimeType:'application/zip',buffer:Buffer.from(await saveProject(createProject('duplicates','igh')))});
+  await page.getByRole('menuitem',{name:'机器人模型',exact:true}).click();const before=await projectSnapshot(page);
+  await page.getByLabel('选择 URDF 文件',{exact:true}).setInputFiles(join(dir,'robot.urdf'));
+  await page.getByLabel('选择 URDF 所在目录',{exact:true}).setInputFiles(dir);
+  await expect(page.getByRole('button',{name:'预览导入',exact:true})).toBeDisabled();
+  await expect(page.getByText('未找到同名 Mesh，导入后可补充。',{exact:true})).toBeVisible();
+  await page.getByLabel('part.stl',{exact:true}).click();await page.getByTitle('duplicates/nested/part.stl',{exact:true}).click();
+  await page.getByRole('button',{name:'预览导入',exact:true}).click();
+  const preview=page.getByRole('dialog',{name:'导入预览'});await expect(preview).toContainText('本次包含 2 个文件');
+  await expect(preview).toContainText('/old/second.stl');
+  await preview.getByRole('button',{name:/取\s*消/}).click();expect(await projectSnapshot(page)).toBe(before);
+});

@@ -14,12 +14,13 @@ const labels: Record<ImportSlot, string> = { master: '主站', eni: 'ENI', app: 
 export function useImportDialog() {
   const message=useLocalizedMessage(), generation = useRef(0);
   const [session, setSession] = useState<{ base: Project; workspaceEpoch:number; plan: ImportPlan; selection: ImportSelection; hashes: Record<string, string> }>();
-  const selectFiles = async (files: File[]) => {
+  const selectFiles = async (files: File[], matchUrdfMeshes=false) => {
     const ticket = ++generation.current;
     try {
       await flushBuffers();
       const {project,workspaceEpoch} = useProject.getState(); if (!project || !files.length) return;
       const base = structuredClone(project), plan = await prepareImport(base, files);
+      plan.matchUrdfMeshes=matchUrdfMeshes;
       const eniFiles = [...base.files.filter(f => f.id === base.entrypoints.master.eniFileId), ...plan.files.filter(f => f.role === 'eni')];
       const hashes = Object.fromEntries(await Promise.all(eniFiles.map(async f => [f.id, await digest(f.bytes)])));
       if (generation.current === ticket && useProject.getState().workspaceEpoch===workspaceEpoch) setSession({ base, workspaceEpoch, plan, selection: defaultImportSelection(plan), hashes });

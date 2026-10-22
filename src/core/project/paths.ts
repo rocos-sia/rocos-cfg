@@ -43,3 +43,10 @@ export function resourcePath(source: string, reference: string, packages: Record
   if (resolved === undefined) return undefined;
   try { return safePath(resolved); } catch { return undefined; }
 }
+
+/** Match decoded filenames, preserving case and ignoring package/absolute paths. */
+export function resourceFilename(uri: string) {
+  let path=uri;
+  try { path=decodeURIComponent(path); } catch { /* Literal filenames remain usable. */ }
+  return path.replaceAll('\\','/').split('/').at(-1) || '';
+}

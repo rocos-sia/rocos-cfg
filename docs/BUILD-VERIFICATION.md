@@ -2,6 +2,22 @@
 
 本记录按版本保留本地验证结果，不代表正式发布或完整首版验收。产物位于本机 `artifacts/`，不随 Git 提交；后续源码修改不会自动更新这些包或本记录。无版本后缀的静态离线 ZIP 及 `test-results/` 会被后续构建/验证替换，应按哈希对应记录。
 
+## 0.1.0-rc.26
+
+2026-10-22，机器人模型页改为“导入URDF”：选择 URDF 后选择其所在目录，按文件名搜索同级及子目录中的 Mesh，忽略原引用路径，解码 URI 转义且区分大小写。目录根部的 URDF 必须与所选文件字节一致；唯一候选自动选中，重名候选手动选择，缺失项可后补。复用原有导入预览/撤销事务，保留 URDF 原文与资源相对目录，通过文件 ID 映射保存关联；不自动导入无关配置或纹理。目录访问边界依据 [MDN 目录选择 API](https://developer.mozilla.org/en-US/docs/Web/API/HTMLInputElement/webkitdirectory)。
+
+DC 参考开关与相邻名称输入框垂直居中，布尔字段的 Tooltip 紧邻标签。新建工程选择产品模板、或空总线添加首个从站时默认 `dc_ref: true`；后续新增与复制保持 `false`，已有/导入配置与排序不按位置重置，主站 `master.dc` 独立控制。模板原始快照不变，应用覆盖值进入使用记录。工程格式兼容，无新增依赖。
+
+| 产物 | SHA-256 |
+| --- | --- |
+| `artifacts/rocos-configurator-0.1.0-rc.26-offline.zip` | `f5d9ef2bdaf5038b275e7bbbafa700c7ba6a62e725cd6741e0babcdfc00a746f` |
+
+- TypeScript、GitHub Pages 子路径生产构建及静态离线 ZIP 构建通过；保留既有大 chunk 构建提示。
+- 单元回归 219 项通过、157 项未配置外部消费端测试跳过。目录匹配改用字节比较后，定向 5 项再次通过。
+- Chrome 最终仓库回归 125 项全部通过，排除 3 项外部真实 Talon 工程测试。新增用例覆盖真实目录选择、同级/子目录 Mesh、原 URI 路径忽略、保存映射、撤销、重名选择、缺失提示、取消不改工程，以及首从站 DC 默认值和控件中心/Tooltip 距离。首次测试的预览标题 class 和 AntD 两字按钮空格定位不正确，修正测试定位器后通过，未放宽行为断言。截图位于 `test-results/ui/urdf-import-*/`。
+- 最终静态包在仓库子路径下的离线测试 4 项通过；实际 ZIP 解压冷启动、版本、字体/声明哈希、配置保存和归档哈希检查通过，禁止外网请求。
+- 未验证其他浏览器、Tauri/Windows、独立电脑、远端 Pages、SDK 或实机。内部测试版本 `0.1.0-rc.26`，不创建正式 tag。
+
 ## 0.1.0-rc.25
 
 2026-10-22，模型预览增加整体半透明开关，关闭后恢复原材质的不透明度/透明/深度写入设置；世界坐标轴改为实体箭杆，关节旋转轴附加右手正方向弧形箭头，移动关节仅直线箭头。预览状态仅在工作区会话保存。几何与材质行为参考 [Three.js Material](https://threejs.org/docs/pages/Material.html)、[CylinderGeometry](https://threejs.org/docs/pages/CylinderGeometry.html) 和 [TubeGeometry](https://threejs.org/docs/pages/TubeGeometry.html)，使用现有依赖。
