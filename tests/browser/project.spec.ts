@@ -17,7 +17,7 @@ test('create, edit, archive, reopen and recover a project',async({page,browser},
 });
 test('new ECM project offers ENI import and prevents invalid runtime export',async({page})=>{
   await page.goto('/');await page.getByRole('button',{name:'新建工程',exact:true}).click();
-  await page.getByRole('dialog').locator('.ant-select[aria-label="主站类型"]').click();await page.getByTitle('Acontis EC-Master',{exact:true}).click();
+  await page.getByRole('dialog').locator('.ant-select[aria-label="主站类型"]').click();await page.getByTitle('ROCOS-ECM',{exact:true}).click();
   await page.getByRole('button',{name:'创建工程',exact:true}).click();await page.getByRole('menuitem',{name:'主站配置'}).click();await expect(page.getByText('请导入 ENI 文件',{exact:true})).toBeVisible();
   await page.getByRole('button',{name:'校验工程',exact:true}).click();await expect(page.getByRole('cell',{name:'请导入 ENI 文件',exact:true})).toBeVisible();
 });
@@ -117,11 +117,11 @@ test('unfinished SDO values are saved as invalid configuration instead of silent
   await page.getByRole('menuitem', { name: '主站配置' }).click();
   await page.getByRole('tab', { name: 'PDO / SDO 编辑', exact: true }).click();
   await expect(page.getByLabel('SDO 1 值', { exact: true })).toHaveValue(invalid);
-  await page.getByRole('button', { name: '导出 IgH 主站文件', exact: true }).click();
+  await page.getByRole('button', { name: '导出 ROCOS-IGH 主站文件', exact: true }).click();
   await expect(page.getByText('请先修复主站配置错误', { exact: true })).toBeVisible();
   await page.getByLabel('SDO 1 值', { exact: true }).fill('42');
   await page.getByLabel('SDO 1 值', { exact: true }).blur();
   const exported = page.waitForEvent('download');
-  await page.getByRole('button', { name: '导出 IgH 主站文件', exact: true }).click();
+  await page.getByRole('button', { name: '导出 ROCOS-IGH 主站文件', exact: true }).click();
   expect((await exported).suggestedFilename()).toBe('igh.yaml');
 });

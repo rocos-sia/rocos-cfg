@@ -57,7 +57,7 @@ export function useImportDialog() {
       })}
       {error && <Alert type="warning" message={error} />}
       {preview && <>
-        <p>{t('主站目标规则：{kind} / {version}。这是编辑器使用的规则基线，不代表输入文件来自该版本。配置替换后需重新确认驱动器绑定。',{kind:preview.entrypoints.master.kind.toUpperCase(),version:preview.targets.master.version})}</p>
+        <p>{t('主站目标规则：{kind} / {version}。这是编辑器使用的规则基线，不代表输入文件来自该版本。配置替换后需重新确认驱动器绑定。',{kind:`ROCOS-${preview.entrypoints.master.kind.toUpperCase()}`,version:preview.targets.master.version})}</p>
         {busReview && <details open><summary>{t('主站 / ENI 变更：{count} 项从站或信号差异',{count:busChanges.length})}</summary>
           <p>{t("按运行时 ID 和信号名称比较，不表示已识别同一物理设备。原 Hardware 引用保留，必须复核；不会按序号自动重绑。")}</p>
           {session.selection.eni && session.selection.eni !== 'keep' && <p style={{ overflowWrap: 'anywhere' }}>ENI SHA-256<br />{t("原：")}{session.hashes[session.base.entrypoints.master.eniFileId || ''] || t("无")}<br />{t("新：")}{session.hashes[session.selection.eni]}</p>}

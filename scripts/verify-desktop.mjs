@@ -231,7 +231,7 @@ try {
   await rename('after-directory-export');await click('保存工程');await visibleText('已保存工程文件');assert.equal((await manifest(runtimeProject)).project.name,'after-directory-export');
   console.log('Desktop: cancelled directory picker, verified new directory, unchanged existing files, ZIP byte parity and retained project save target passed.');
   for(const kind of ['igh','ecm']){
-    await menu('工程总览');await click('打开示例');await click(kind==='igh'?'打开 IgH 示例':'打开 EC-Master 示例');
+    await menu('工程总览');await click('打开示例');await click(kind==='igh'?'打开 ROCOS-IGH 示例':'打开 ROCOS-ECM 示例');
     await visibleText('切换工程');await click('打开新工程');await visibleText('教学示例');
     await menu('硬件与绑定');
     await wait(()=>script(`const label=[...document.querySelectorAll('label')].find(e=>e.textContent.includes('已人工核对换算、零点与限位'));const input=label?.querySelector('input');if(!input)return false;if(!input.checked)input.click();return true;`),'review teaching mechanics');

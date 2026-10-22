@@ -19,7 +19,7 @@ for(const kind of ['ecm','igh'] as const)test(`local real ${kind} Talon project 
   page.on('request',request=>{if(/^https?:/.test(request.url())&&!request.url().startsWith(uiOrigin))external.push(request.url());});
   expect(corrections.length).toBe(kind==='igh'?56:0);
   await page.goto('/');await page.getByRole('button',{name:'新建工程',exact:true}).click();
-  if(kind==='ecm'){await page.getByRole('dialog').locator('.ant-select[aria-label="主站类型"]').click();await page.getByTitle('Acontis EC-Master',{exact:true}).click();}
+  if(kind==='ecm'){await page.getByRole('dialog').locator('.ant-select[aria-label="主站类型"]').click();await page.getByTitle('ROCOS-ECM',{exact:true}).click();}
   await page.getByRole('button',{name:'创建工程',exact:true}).click();
   await page.locator('input[type=file][multiple]').last().setInputFiles({name:'local-inputs.zip',mimeType:'application/zip',buffer:Buffer.from(packZip(entries))});
   const preview=page.getByRole('dialog',{name:'导入预览',exact:true});await expect(preview).toBeVisible();await preview.getByRole('button',{name:'确认导入',exact:true}).click();await expect(preview).not.toBeVisible();

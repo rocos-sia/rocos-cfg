@@ -114,7 +114,7 @@ test('both bundled teaching examples remain editable and exportable after a cach
   await context.setOffline(true);await page.reload();
   for(const [index,kind] of (['igh','ecm'] as const).entries()){
     await page.getByRole('button',{name:'打开示例',exact:true}).click();
-    await page.getByRole('button',{name:kind==='igh'?'打开 IgH 示例':'打开 EC-Master 示例',exact:true}).click();
+    await page.getByRole('button',{name:kind==='igh'?'打开 ROCOS-IGH 示例':'打开 ROCOS-ECM 示例',exact:true}).click();
     if(index)await page.getByRole('button',{name:'打开新工程',exact:true}).click();
     await expect(page.getByText('教学示例',{exact:true})).toBeVisible();
     await page.getByRole('menuitem',{name:'主站配置',exact:true}).click();

@@ -12,7 +12,7 @@ for(const kind of ['igh','ecm'] as const)for(const mode of ['keyboard','touch'] 
   const opts={viewport:mode==='touch'?{width:1024,height:900}:{width:1440,height:1000},hasTouch:mode==='touch'};
   const context=await browser.newContext(opts),page=await context.newPage(),errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto('/');await activate(page,page.getByRole('button',{name:'打开示例',exact:true}),mode);
-  await activate(page,page.getByRole('button',{name:kind==='igh'?'打开 IgH 示例':'打开 EC-Master 示例',exact:true}),mode);
+  await activate(page,page.getByRole('button',{name:kind==='igh'?'打开 ROCOS-IGH 示例':'打开 ROCOS-ECM 示例',exact:true}),mode);
   await expect(page.getByText('教学示例',{exact:true})).toBeVisible();
   await navigate(page,'主站配置',mode);await edit(page,page.getByRole('spinbutton',{name:/^通信周期/}),'2000',mode);
   await navigate(page,'机器人模型',mode);

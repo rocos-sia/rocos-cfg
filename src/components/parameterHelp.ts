@@ -1,6 +1,6 @@
 // UI descriptions only; configuration parsing and export remain unchanged.
 const descriptions: Record<string, string> = {
-  "igh.master.master_id": "标识 IgH 主站实例，需与 APP 的 EtherCAT 主站 ID 一致。",
+  "igh.master.master_id": "标识 ROCOS-IGH 主站实例，需与 APP 的 EtherCAT 主站 ID 一致。",
   "igh.master.period_us": "EtherCAT 循环通信间隔，单位 μs；需与设备及实时调度能力匹配。",
   "ecm.cycle": "EtherCAT 循环通信间隔，单位 μs；需与设备及实时调度能力匹配。",
   "igh.master.cpu": "将主站线程绑定到指定 CPU；空值沿用当前亲和性。",
@@ -8,7 +8,7 @@ const descriptions: Record<string, string> = {
   "igh.master.preop_timeout_ms": "等待从站进入 PREOP 状态的超时时间，单位 ms。",
   "igh.master.op_timeout_ms": "等待从站进入 OP 运行状态的超时时间，单位 ms。",
   "igh.master.pdo_config_attempts": "启动时配置 PDO 的最大尝试次数。",
-  "ecm.id": "标识 EC-Master 实例，需与 APP 的 EtherCAT 主站 ID 一致。",
+  "ecm.id": "标识 ROCOS-ECM 实例，需与 APP 的 EtherCAT 主站 ID 一致。",
   "ecm.eni": "相对于启动配置文件的 ENI XML 路径；ENI 决定总线拓扑和过程数据布局，在本工具中只读。",
   "ecm.duration": "主站运行时长，单位 ms；0 表示持续运行。",
   "ecm.cpuidx": "运行主站任务的 CPU 索引。",
@@ -119,7 +119,7 @@ const descriptions: Record<string, string> = {
   "hardware.inputs.tz": "六维力传感器 tz 轴的 int16 原始输入信号；选择当前从站对应的 TxPDO。",
   "project.name": "工程存档的显示名称，用于识别和流转，不改变机器人节点名称。",
   "project.description": "记录工程用途、设备信息或交付说明，随 .rcproj 一起保存。",
-  "project.kind": "选择 IgH 或 EC-Master，决定主站配置格式与可用的总线编辑方式。",
+  "project.kind": "选择 ROCOS-IGH 或 ROCOS-ECM，决定主站配置格式与可用的总线编辑方式。",
   "project.template": "选择初始机器人结构；演示模板只提供建模起点，设备参数仍需人工核对。",
   "project.prefix": "为模板生成的 Link 和 Joint 名称添加前缀，便于区分不同模型。",
   "project.length": "演示模板连杆的长度，单位 m；不会自动推导驱动器机械参数。",
