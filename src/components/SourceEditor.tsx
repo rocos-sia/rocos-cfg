@@ -12,14 +12,15 @@ import { Button, Alert, Space, Tag } from 'antd';
 import { fileModule, readonlyFile } from '../core/modules/project';
 import { useProject, flushBuffers } from '../store';
 import { textOf, type ProjectFile } from '../core/project/types';
+import { urdfSourceRange, type UrdfSourceReveal } from '../core/documents/urdf-source';
 
-export function SourceEditor({ file }: { file: ProjectFile }) {
+export function SourceEditor({ file, reveal }: { file: ProjectFile; reveal?: UrdfSourceReveal }) {
   let source: string;
   try { source = textOf(file); }
   catch { return <Alert type="warning" message={t('无法以声明编码显示 {path}，原始字节仍保留在工程中。',{path:file.path})} />; }
-  return <DecodedSourceEditor file={file} source={source} />;
+  return <DecodedSourceEditor file={file} source={source} reveal={reveal} />;
 }
-function DecodedSourceEditor({ file, source }: { file: ProjectFile; source: string }) {
+function DecodedSourceEditor({ file, source, reveal }: { file: ProjectFile; source: string; reveal?: UrdfSourceReveal }) {
   const locale=useLocale(),attributes=useRef(new Compartment()),phrases=useRef(new Compartment());
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
@@ -77,6 +78,21 @@ function DecodedSourceEditor({ file, source }: { file: ProjectFile; source: stri
       finally { syncing.current = false; }
     }
   }, [file.id, visible]);
+
+  useEffect(() => {
+    if (!reveal || !view.current) return;
+    const editor = view.current;
+    if (source !== reveal.source || editor.state.doc.toString() !== reveal.source.replace(/\r\n?|\n/g, '\n')) {
+      message.error(() => t('源码已变化，请先应用或放弃草稿，再重新定位节点。')); return;
+    }
+    try {
+      const range = urdfSourceRange(editor.state.doc.toString(), reveal.kind, reveal.index);
+      if (!range) throw new Error('URDF source occurrence unavailable');
+      host.current?.scrollIntoView({ block: 'center' });
+      editor.dispatch({ selection: { anchor: range.from, head: range.to }, effects: EditorView.scrollIntoView(range.from, { y: 'center' }) });
+      editor.focus();
+    } catch { message.error(() => t('无法定位该节点，请检查 URDF 源码。')); }
+  }, [reveal]);
 
   return <div className="source-editor">
     <Space className="section-tools">

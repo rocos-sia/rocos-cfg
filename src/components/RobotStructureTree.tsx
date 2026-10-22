@@ -3,7 +3,7 @@ import { Tree } from 'antd';
 import { t } from '../i18n';
 import type { StructureViewState } from './modelViewState';
 
-export interface StructureNode { key: string; title: string; children?: StructureNode[] }
+export interface StructureNode { key: string; title: string; children?: StructureNode[]; selectable?: boolean }
 export interface StructureTreeHandle { reveal: (key: string) => void }
 
 const filterNodes = (nodes: StructureNode[], query: string): StructureNode[] => nodes.flatMap(node => {

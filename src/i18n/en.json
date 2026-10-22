@@ -1104,5 +1104,19 @@
   "局部平面法向：{axis}；橙色箭头随当前预览姿态变换。": "Local plane normal: {axis}; the orange arrow follows the current preview pose.",
   "该关节没有单一运动轴。": "This joint has no single motion axis.",
   "纹理": "Texture",
-  "蓝线：{parent} → {child}，连接父 Link 原点与当前关节坐标系。": "Blue segment: {parent} → {child}, from the parent Link origin to the current joint frame."
+  "蓝线：{parent} → {child}，连接父 Link 原点与当前关节坐标系。": "Blue segment: {parent} → {child}, from the parent Link origin to the current joint frame.",
+  "{name} [{kind} #{index}，名称冲突或为空]": "{name} [{kind} #{index}, ambiguous or empty name]",
+  "未命名": "Unnamed",
+  "子 Link 名称有歧义：{name}": "Ambiguous child Link name: {name}",
+  "缺少子 Link：{name}": "Missing child Link: {name}",
+  "源码已变化，请先应用或放弃草稿，再重新定位节点。": "Source has changed. Apply or discard the draft before locating the node again.",
+  "无法定位该节点，请检查 URDF 源码。": "Cannot locate this node. Check the URDF source.",
+  "定位到 URDF 源码": "Locate in URDF source",
+  "节点名称重复或为空，不能按名称安全编辑。请定位到源码修复。": "The node name is duplicated or empty. Locate it in the source to repair it before editing by name.",
+  "文件中的第 {index} 个 {kind}": "{kind} occurrence {index} in the file",
+  "父 Link：{name}": "Parent Link: {name}",
+  "子 Link：{name}": "Child Link: {name}",
+  "Joint 名称不唯一，请在源码中修复": "Joint name is not unique; repair it in the source",
+  "Link 名称不唯一，请在源码中修复": "Link name is not unique; repair it in the source",
+  "节点名称不唯一，请在源码中修复": "Node name is not unique; repair it in the source"
 }

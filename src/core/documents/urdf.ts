@@ -51,8 +51,9 @@ export function controlChain(text: string, base: string, tip: string) {
   return controlChainFromRobot(readRobot(text),base,tip);
 }
 export function editJoint(text: string, name: string, field: keyof RobotJointParameters, value: string): string {
-  const robot = readRobot(text), node = children(robot.doc.documentElement,'joint').find(j=>j.getAttribute('name')===name);
+  const robot = readRobot(text), matches = children(robot.doc.documentElement,'joint').filter(j=>j.getAttribute('name')===name), node = matches[0];
   if (!node) throw new MessageError(msg("关节不存在"));
+  if (!name.trim() || matches.length !== 1) throw new MessageError(msg('Joint 名称不唯一，请在源码中修复'));
   if (field === 'name' || field === 'type') node.setAttribute(field,value);
   else {
     const map: Record<string,[string,string]> = { parent:['parent','link'], child:['child','link'], xyz:['origin','xyz'],rpy:['origin','rpy'],axis:['axis','xyz'],lower:['limit','lower'],upper:['limit','upper'],velocity:['limit','velocity'],effort:['limit','effort'],mimic:['mimic','joint'] };

@@ -23,7 +23,8 @@ function propertiesOfLink(link: Element) {
   } : null };
 }
 export function editGeometry(text: string, name: string, group: 'visual' | 'collision', index: number, field: keyof GeometryView, value: string) {
-  const doc = xmlDocument(text), link = children(doc.documentElement, 'link').find(l => l.getAttribute('name') === name);
+  const doc = xmlDocument(text), matches = children(doc.documentElement, 'link').filter(l => l.getAttribute('name') === name), link = matches[0];
+  if (!name.trim() || matches.length > 1) throw new MessageError(msg('Link 名称不唯一，请在源码中修复'));
   const item = link && children(link, group)[index]; if (!item) throw new MessageError(msg("几何节点已不存在"));
   if (field === 'xyz' || field === 'rpy') {
     let origin = child(item, 'origin'); if (!origin) { origin = doc.createElement('origin'); item.appendChild(origin); } origin.setAttribute(field, value);

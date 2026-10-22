@@ -64,6 +64,10 @@ function chainLabel(p: Project) {
 export function planRobotChange(project: Project, action: RobotAction): RobotPlan {
   const p = structuredClone(project), impacts: DiagnosticMessage[] = [], warnings: DiagnosticMessage[] = [];
   const f = editable(p, p.entrypoints.urdf), robot = readRobot(textOf(f)), root = robot.doc.documentElement;
+  if (action.kind === 'rename' || action.kind === 'delete') {
+    const names = action.node === 'link' ? robot.links : robot.joints.map(joint => joint.name);
+    if (!action.name.trim() || names.filter(name => name === action.name).length > 1) throw new MessageError(msg('节点名称不唯一，请在源码中修复'));
+  }
   const oldChain = chainLabel(p);
   let selection = '';
   const removeLinks = new Set<string>(), removeJoints = new Set<string>();

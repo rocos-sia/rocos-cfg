@@ -1,7 +1,7 @@
 # ROCOS Configurator 设计规范
 
-> 版本：V1.1；更新日期：2026-10-21。
-> 适用于 ROCOS Configurator 的 GitHub Pages 网页、浏览器离线模式与桌面版。当前项目处于方案设计阶段，本文规定目标界面与交互，不表示相关组件已经实现。
+> 版本：V1.2；更新日期：2026-10-22。
+> 适用于 ROCOS Configurator 的 GitHub Pages 网页、浏览器离线模式与桌面版。当前项目处于开发测试阶段，本文规定目标界面与交互；已执行范围与剩余门槛见[验收跟踪](docs/ACCEPTANCE.md)。
 > 功能范围、配置格式、消费端约束和开发阶段以[软件设计文档](<docs/ROCOS Configurator 软件设计文档.md>)为依据；本文维护视觉、布局和用户交互规范。
 
 ## 1. 产品定位与设计原则
@@ -303,25 +303,25 @@ UI 实现和后续变更至少覆盖以下场景：
 - `.rcproj` 打开、保存、另存为、导出副本与配置导出入口明确；不完整工程、草稿恢复、归档损坏和版本不兼容均有对应状态。
 - 键盘焦点、读屏标签、纯图标按钮、触控命中区域、对比度和减少动效逐项验证。
 
-验收使用本地文件与受控样例。项目尚无 UI 实现和测试脚本，实施时建立截图/浏览器测试及相关命令，并记录实际覆盖范围；不能将本文描述的目标写成已通过的测试结果。
+验收使用本地文件与受控样例。现有工作台、浏览器和 Linux 原生验证的执行范围见[构建验证记录](docs/BUILD-VERIFICATION.md)；每次变更记录实际覆盖范围，不能将本文描述的目标写成已通过的测试结果。
 
 ## 12. 实现与维护约定
 
 本规范是 Configurator 的独立设计基线。软件设计文档维护能力与数据约束，本规范维护视觉和交互；涉及两者的变更需同步，避免导航、只读边界、状态和输出行为不一致。
 
-以下为建议落点，均待实现，不作为现有文件链接：
+现有实现落点如下；文件存在不代表本规范全部目标已经完成：
 
-| 内容 | 建议位置 |
+| 内容 | 当前位置 |
 | --- | --- |
 | 工作台令牌、布局与断点 | `src/styles/configurator.css` |
-| Ant Design 主题映射 | `src/styles/theme.ts` |
-| 字号与基础字体 | `src/styles/typography.ts`、`src/styles/global.css` |
-| 工作台与通用卡片 | `src/components/layout/`、`src/components/common/` |
+| Ant Design 主题映射 | `src/App.tsx` 中的 `ConfigProvider` |
+| 字号与基础字体 | `src/styles/configurator.css`、`src/components/SourceEditor.tsx`；本地字体资源及 `@font-face` 尚未接入 |
+| 工作台与通用卡片 | `src/App.tsx`、`src/components/` |
 | 树、表单、映射表与诊断 | `src/components/` |
-| 页面和路由 | `src/pages/`、`src/app/` |
-| 模块的领域能力与校验 | `src/modules/`、`src/core/` |
+| 页面和 Hash 路由 | `src/pages/`、`src/App.tsx` |
+| 模块的领域能力与校验 | `src/core/modules/`、`src/core/` |
 | 双语资源 | `src/i18n/` |
-| 字体与离线视觉资源 | `public/fonts/`、`public/` |
+| 离线视觉资源 | `public/`；字体分发仍待补齐 |
 | 浏览器流程与视觉验收 | `tests/browser/` |
 
 新增配置模块沿用工作台、表单、来源标记、诊断和导出交互，通过 APP 配置的分组入口接入；独立一级页面需由任务规模决定，不为每个文件类型增设导航。只读、可编辑和可导出能力由领域模块声明，页面不能自行放宽。

@@ -45,7 +45,13 @@ const pointerClick=async(selector)=>{
 const text=()=>script('return document.body.innerText');
 const visibleText=target=>wait(async()=>(await text()).includes(target),target);
 const click=async(label)=>{await wait(()=>script(`const el=[...document.querySelectorAll('button')].find(e=>e.offsetParent&&e.textContent.replace(/\\s/g,'')===arguments[0].replace(/\\s/g,''));if(!el||el.disabled)return false;el.click();return true;`,[label]),'click '+label);};
-const menu=label=>script(`const el=[...document.querySelectorAll('[role=menuitem]')].find(e=>e.textContent.trim()===arguments[0]);if(!el)throw Error('menu missing');el.click();`,[label]);
+const menu=async label=>{
+  // The selected project's name is already present in the confirmation dialog.
+  // Wait for adoption/confirmation to finish before navigating away from it.
+  await wait(()=>script(`return ![...document.querySelectorAll('.ant-modal-wrap')].some(e=>e.getClientRects().length)&&!document.querySelector('.file-transfer');`),'navigation after completed dialog');
+  await script(`const el=[...document.querySelectorAll('[role=menuitem]')].find(e=>e.textContent.trim()===arguments[0]);if(!el)throw Error('menu missing');el.click();`,[label]);
+  await wait(()=>script(`return document.querySelector('.sidebar .ant-menu-item-selected')?.textContent.trim()===arguments[0];`,[label]),'selected navigation '+label);
+};
 async function language(value){
   // Dispatch the real language control while a controlled modal is open; no
   // application state or test-only native command is injected.
@@ -154,9 +160,11 @@ try {
   await script(`document.querySelector('[role=slider][aria-label="关节预览位置"]').focus();`);xdotool('key','--clearmodifiers','End');
   await wait(()=>script(`return document.querySelector('[role=slider]')?.getAttribute('aria-valuenow')==='1';`),'native preview pose');
   for(const [upper,expected] of [['2','1'],['0.5','0.5']]){
-    await script(`document.querySelector('#joint-upper').focus();`);
+    await wait(()=>script(`const e=document.querySelector('#joint-upper');if(!e)return false;window.nativeUpperFrom=e;e.focus();return document.activeElement===e;`),'native upper field focus');
     xdotool('key','--clearmodifiers','ctrl+a');xdotool('type','--clearmodifiers',upper);xdotool('key','--clearmodifiers','Tab');
-    await wait(()=>script(`return document.querySelector('#joint-upper')?.value===arguments[0]&&document.querySelector('[role=slider]')?.getAttribute('aria-valuenow')===arguments[1];`,[upper,expected]),'native pose retained/clamped at upper '+upper);
+    // The typed old input briefly has the new value before analysis unmounts
+    // the page. Wait for its replacement, derived from committed URDF bytes.
+    await wait(()=>script(`const e=document.querySelector('#joint-upper');return !!e&&e!==window.nativeUpperFrom&&e.value===arguments[0]&&document.querySelector('[role=slider]')?.getAttribute('aria-valuenow')===arguments[1];`,[upper,expected]),'native pose retained/clamped at upper '+upper);
   }
   await click('撤销');await wait(()=>script(`return document.querySelector('#joint-upper')?.value==='2'&&document.querySelector('[role=slider]')?.getAttribute('aria-valuenow')==='0.5';`),'native undo preserves local pose');
   await click('重置姿态');await wait(()=>script(`return document.querySelector('[role=slider]')?.getAttribute('aria-valuenow')==='0';`),'native reset pose');
@@ -228,7 +236,7 @@ try {
     await writeFile(join(artifacts,kind+'-example-runtime.zip'),await readFile(exampleRuntime));
   }
   console.log('Desktop: both teaching examples saved and runtime-exported with ENI byte parity.');
-  const multiCompiler=await createViteServer({server:{middlewareMode:true},appType:'custom'}),multiPath=join(temp,'multiple-devices.rcproj'),displayPath=join(temp,'display.rcproj'),missingPath=join(temp,'missing.rcproj');
+  const multiCompiler=await createViteServer({server:{middlewareMode:true},appType:'custom'}),multiPath=join(temp,'multiple-devices.rcproj'),displayPath=join(temp,'display.rcproj'),missingPath=join(temp,'missing.rcproj'),invalidPath=join(temp,'malformed.rcproj');
   try {
     const {multiaxisProject}=await multiCompiler.ssrLoadModule('/tests/fixtures/multiaxis.ts');
     const {saveProject}=await multiCompiler.ssrLoadModule('/src/core/project/archive.ts');
@@ -237,6 +245,10 @@ try {
     await writeFile(displayPath,await saveProject(previewProject()));
     const {missingPreviewProject}=await multiCompiler.ssrLoadModule('/tests/fixtures/diagnostics.ts');
     await writeFile(missingPath,await saveProject(missingPreviewProject()));
+    const {malformedRobot}=await multiCompiler.ssrLoadModule('/tests/fixtures/malformed-robot.ts');
+    const {fileById,utf8}=await multiCompiler.ssrLoadModule('/src/core/project/types.ts');
+    const invalid=missingPreviewProject();fileById(invalid,invalid.entrypoints.urdf).bytes=utf8.encode(malformedRobot);
+    await writeFile(invalidPath,await saveProject(invalid));
   } finally {await multiCompiler.close();}
   await click('打开工程');await picker(multiPath,'Open File');await visibleText('切换工程');await click('打开新工程');await menu('硬件与绑定');
   const multiBefore=await readFile(multiPath);
@@ -295,11 +307,23 @@ try {
   const missingAfter=unzipSync(await readFile(missingPath));assert.deepEqual(Object.keys(missingAfter).sort(),Object.keys(missingBefore).sort());
   for(const [path,bytes] of Object.entries(missingBefore))if(path!=='rocos-project.json')assert.deepEqual(missingAfter[path],bytes);
   console.log('Desktop: selected axis, complete missing mesh inventory/location and preserved source payloads passed.');
+  const invalidBefore=unzipSync(await readFile(invalidPath));
+  await click('打开工程');await picker(invalidPath,'Open File');await visibleText('切换工程');await click('打开新工程');await menu('机器人模型');
+  await wait(()=>script(`const rows=[...document.querySelectorAll('.model-tree .ant-tree-title')];const e=rows.find(e=>e.textContent==='shared [Joint #3，名称冲突或为空] [fixed]');if(!e)return false;e.scrollIntoView({block:'center'});e.click();return true;`),'native duplicate occurrence selection');
+  await visibleText('文件中的第 3 个 Joint');
+  await wait(()=>script(`return [...document.querySelectorAll('button')].filter(e=>['重命名节点','删除节点'].includes(e.textContent.trim())).every(e=>e.disabled);`),'native ambiguous mutation disabled');
+  await click('定位到 URDF 源码');
+  await wait(()=>script(`const s=window.getSelection(),e=s?.anchorNode;return !!document.activeElement.closest('.cm-content')&&s.toString()==='<joint'&&(e?.parentElement?.closest('.cm-line')?.textContent||'').includes('occurrence="second"');`),'native exact XML occurrence and editor focus');
+  await writeFile(join(artifacts,'desktop-urdf-conflicts.png'),Buffer.from(await request('GET',`/session/${session}/screenshot`),'base64'));
+  await click('保存工程');await visibleText('已保存工程文件');
+  const invalidAfter=unzipSync(await readFile(invalidPath));assert.deepEqual(Object.keys(invalidAfter).sort(),Object.keys(invalidBefore).sort());
+  for(const [path,bytes] of Object.entries(invalidBefore))if(path!=='rocos-project.json')assert.deepEqual(invalidAfter[path],bytes);
+  console.log('Desktop: malformed URDF occurrence selection, safe source location and unchanged payloads passed.');
   await writeFile(join(artifacts,'report.json'),JSON.stringify({
     status:'passed',applicationVersion:expectedVersion,platform:process.platform,architecture:process.arch,node:process.version,
     binary:{path:binary,sha256:createHash('sha256').update(await readFile(binary)).digest('hex')},
     scope:'Actual Linux WebKit application, native GTK dialogs and temporary files in an isolated display.',
-    checks:['displayed and archived application version','initial save and verified backup','bilingual overwrite-backup notification','external conflict with bilingual reason and difference view','save as','native directory import','same-ID copy and new-ID fork','browser and desktop archive roundtrip','background URDF analysis and WebGL viewport','collapsed model tree reveal and retained/clamped preview pose','bilingual unsaved-close confirmation and cancellation','damaged archive recovery and protected source','directory picker cancellation','bilingual directory-export success dialog','directory receipt and file hashes','ZIP and directory byte parity','retained project save target','both teaching examples archived and runtime-exported','keyboard device selection and isolated second-drive editing','geometry display and model page state','expanded canvas, focus cycle and Escape','selected joint axis and missing mesh inventory/location'],
+    checks:['displayed and archived application version','initial save and verified backup','bilingual overwrite-backup notification','external conflict with bilingual reason and difference view','save as','native directory import','same-ID copy and new-ID fork','browser and desktop archive roundtrip','background URDF analysis and WebGL viewport','collapsed model tree reveal and retained/clamped preview pose','bilingual unsaved-close confirmation and cancellation','damaged archive recovery and protected source','directory picker cancellation','bilingual directory-export success dialog','directory receipt and file hashes','ZIP and directory byte parity','retained project save target','both teaching examples archived and runtime-exported','keyboard device selection and isolated second-drive editing','geometry display and model page state','expanded canvas, focus cycle and Escape','selected joint axis and missing mesh inventory/location','malformed URDF occurrence selection and source navigation'],
     notExecuted:['Windows installation','independent offline computer','power loss or full disk','controller SDK or physical devices'],
   },null,2)+'\n');
 } catch(e) {

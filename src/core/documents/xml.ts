@@ -1,9 +1,9 @@
 import { m as msg, MessageError } from '../project/messages';
 import { DOMParser, XMLSerializer } from '@xmldom/xmldom';
-export function xmlDocument(text: string) {
+export function xmlDocument(text: string, locate = false) {
   if (/<!DOCTYPE|<!ENTITY/i.test(text)) throw new MessageError(msg('不支持 XML DTD 或外部实体'));
   const errors: string[] = [];
-  const doc = new DOMParser({ errorHandler: { warning: m => errors.push(m), error: m => errors.push(m), fatalError: m => errors.push(m) } }).parseFromString(text, 'application/xml');
+  const doc = new DOMParser({ ...(locate ? { locator: {} } : {}), errorHandler: { warning: m => errors.push(m), error: m => errors.push(m), fatalError: m => errors.push(m) } }).parseFromString(text, 'application/xml');
   if (errors.length || !doc.documentElement) throw new MessageError(errors.length?errors.join('\n'):msg('XML 缺少根节点'));
   return doc;
 }
