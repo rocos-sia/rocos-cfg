@@ -21,6 +21,7 @@ import { fileAccess, readBrowserFile } from './adapters/file-access';
 import { useProjectFiles } from './components/ProjectFiles';
 import { useImportDialog } from './components/ImportDialog';
 import { OfflineStatus } from './components/OfflineStatus';
+import { createModelViewState } from './components/modelViewState';
 const Master = lazy(() => import('./pages/Master').then(module => ({ default: module.Master })));
 const Robot = lazy(() => import('./pages/Robot').then(module => ({ default: module.Robot })));
 const Hardware = lazy(() => import('./pages/Hardware').then(module => ({ default: module.Hardware })));
@@ -30,6 +31,8 @@ function Workspace({dark,toggle}:{dark:boolean;toggle:()=>void}) {
   const locale=useLocale();
   const {selectFiles,dialog:importDialog}=useImportDialog();
   const state=useProject(),p=state.project;const message=useLocalizedMessage();const modal=useLocalizedModal();
+  const modelView = useRef({ epoch: state.workspaceEpoch, value: createModelViewState() });
+  if (modelView.current.epoch !== state.workspaceEpoch) modelView.current = { epoch: state.workspaceEpoch, value: createModelViewState() };
   const [route,setRoute]=useState(location.hash.slice(2)||'overview'),[newOpen,setNewOpen]=useState(false),[name,setName]=useState('我的机器人'),[kind,setKind]=useState<MasterKind>('igh'),[busy,setBusy]=useState(false);
   const [examplesOpen,setExamplesOpen]=useState(false);
   const [robotSeed,setRobotSeed]=useState('blank'),[robotPrefix,setRobotPrefix]=useState('arm'),[robotLength,setRobotLength]=useState(0.3);
@@ -76,7 +79,7 @@ function Workspace({dark,toggle}:{dark:boolean;toggle:()=>void}) {
         {analysis.pending&&<p role="status">{t("正在后台解析当前工程的总线与模型…")}</p>}
         {analysis.error&&<Alert type="error" message={diagnosticText({message:analysis.error,text:analysis.errorTemplate})} action={<Button onClick={analysis.retry}>{t("重新解析")}</Button>}/>}
         {route==='master'&&<Master p={p} analysis={analysis.data} onImport={importFiles}/>}
-        {route==='robot'&&<Robot p={p} analysis={analysis.data} onImport={importFiles}/>}
+        {route==='robot'&&<Robot key={state.workspaceEpoch} p={p} analysis={analysis.data} onImport={importFiles} viewState={modelView.current.value} dark={dark}/>}
         {route==='hardware'&&<Hardware p={p} analysis={analysis.data}/>}
         {route==='app'&&<AppConfig p={p}/>}
         {route==='export'&&<><div className="page-heading"><div><h1>{t("校验与导出")}</h1><p>{t("工程存档和运行配置分别生成，静态校验不代表实机验证。")}</p></div><Button type="primary" disabled={busy||files.busy} onClick={diagnose}>{t("重新校验")}</Button></div><div className="export-grid"><Card title={t("工程归档 · .rcproj")}><p>{t("包含配置、资源和编辑草稿。导出副本保留工程身份；复制为新工程生成独立身份，打开后可单独维护。两种操作均保留当前工作区与保存目标。")}</p><Space wrap><Button icon={<SaveOutlined aria-hidden />} disabled={files.busy} onClick={()=>void files.save('copy')}>{t("导出工程副本")}</Button><Button disabled={files.busy} onClick={()=>void files.save('fork')}>{t("复制为新工程")}</Button></Space></Card><Card title={files.native?t("运行配置 · ZIP / 目录"):t("运行配置 · .zip")}><p>{t("仅导出配置与资源；需要先修复全部阻塞问题。")}</p><Button icon={<DownloadOutlined aria-hidden />} disabled={busy||files.busy} onClick={()=>void exportConfiguration()}>{t("检查并导出配置")}</Button>{files.native&&<Button className="space-top" disabled={busy||files.busy} onClick={()=>void exportConfiguration(true)}>{t("导出到新目录")}</Button>}</Card></div><Card title={t("诊断结果")} className="space-top" extra={report?<Tag color={report.revision!==p.revision?'orange':errors?'red':'green'}>{report.revision!==p.revision?t("结果已过期"):t('{count} 项错误',{count:errors})}</Tag>:<Tag>{t("未校验")}</Tag>}><Table rowKey={(_,i)=>String(i)} dataSource={diagnostics} columns={[{title:t("级别"),dataIndex:'severity',width:100,render:v=><Tag color={v==='error'?'red':v==='warning'?'orange':'blue'}>{v}</Tag>},{title:t("问题"),dataIndex:'message',render:(_,d)=>diagnosticText(d)},{title:t("规则"),dataIndex:'code'},{title:t("文件"),dataIndex:'fileId',render:id=>p.files.find(f=>f.id===id)?.path||'—'}]} locale={{emptyText:t("点击“校验”检查当前工程")}}/></Card><Card title={t("文件清单")} className="space-top"><Table rowKey="id" dataSource={p.files} columns={[{title:t("路径"),dataIndex:'path'},{title:t("用途"),dataIndex:'role'},{title:t("大小"),render:(_,f)=>`${f.bytes.length.toLocaleString()} B`},{title:t("内容"),render:(_,f)=><Button size="small" onClick={()=>run(()=>download(f.bytes,f.path.split('/').at(-1)!))}>{t("下载原/当前文件")}</Button>}]} /></Card></>}

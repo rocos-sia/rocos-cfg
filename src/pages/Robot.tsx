@@ -2,7 +2,7 @@ import { useLocalizedMessage } from '../components/useLocalizedMessage';
 import { useLocalizedModal } from '../components/useLocalizedModal';
 import { diagnosticText, errorText, t } from '../i18n';
 import { LinkProperties } from '../components/LinkProperties';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Alert, Button, Card, Input, Modal, Select, Space } from 'antd';
 import { type Project, fileById, textOf } from '../core/project/types';
 import { type RobotJointParameters } from '../core/documents/urdf';
@@ -11,20 +11,17 @@ import { appDocument } from '../core/documents/app-config';
 import { changeJointParameter, planRobotChange, type RobotAction, type RobotPlan } from '../core/documents/robot-edit';
 import { useProject } from '../store';
 import { SourceEditor } from '../components/SourceEditor';
-import { createPreviewState, RobotPreview } from '../components/RobotPreview';
+import { RobotPreview } from '../components/RobotPreview';
+import type { ModelViewState } from '../components/modelViewState';
 import { RobotStructureTree, type StructureNode, type StructureTreeHandle } from '../components/RobotStructureTree';
 
 type Form = { kind: 'rename' | 'add'; node: 'link' | 'joint'; name: string; value: string; link: string; parent: string };
 type TreeNode = StructureNode;
-export function Robot({ p, analysis, onImport }: { p: Project; analysis?:ProjectAnalysis; onImport: () => void }) {
+export function Robot({ p, analysis, onImport, viewState, dark }: { p: Project; analysis?:ProjectAnalysis; onImport: () => void; viewState: ModelViewState; dark: boolean }) {
   const file = fileById(p, p.entrypoints.urdf), app = fileById(p, p.entrypoints.app);
-  const [selected, setSelected] = useState(''), [search, setSearch] = useState(''), [form, setForm] = useState<Form | null>(null);
+  const [selected, setSelected] = useState(viewState.selected), [search, setSearch] = useState(viewState.search), [form, setForm] = useState<Form | null>(null);
+  useEffect(() => { viewState.selected = selected; viewState.search = search; }, [selected, search, viewState]);
   const treeRef = useRef<StructureTreeHandle>(null);
-  // Worker analysis temporarily removes the view. Keep its transient pose and
-  // camera in this workspace, without retaining stale parsed model results.
-  const epoch = useProject.getState().workspaceEpoch;
-  const previewState = useRef({ epoch, view: createPreviewState() });
-  if (previewState.current.epoch !== epoch) previewState.current = { epoch, view: createPreviewState() };
   const message=useLocalizedMessage();const modal=useLocalizedModal();
   const [pending,setPending]=useState<{plan:RobotPlan;revision:number;epoch:number}>();
   if(!analysis)return null;
@@ -46,6 +43,8 @@ export function Robot({ p, analysis, onImport }: { p: Project; analysis?:Project
   const tree = robot.roots.map(node);
   const disconnected = robot.links.filter(name => !seen.has(name));
   if (disconnected.length) tree.push({ key: 'unconnected', title: t("未连接节点 / 冲突节点"), children: disconnected.filter(name => !seen.has(name)).map(node) });
+  const treeKey = JSON.stringify([file.id, robot.links, robot.joints.map(j => [j.name, j.parent, j.child])]);
+  if (viewState.tree.topology !== treeKey) viewState.tree = { topology: treeKey, scrollTop: 0 };
   const prepare = (action: RobotAction) => {
     try {
       const plan = planRobotChange(p, action);
@@ -95,10 +94,10 @@ export function Robot({ p, analysis, onImport }: { p: Project; analysis?:Project
     </Space>
     <div className="robot-workspace">
       <Card title={t("Link / Joint 结构")}><Input.Search aria-label={t("搜索模型节点")} placeholder={t("搜索节点名称")} value={search} onChange={e => setSearch(e.target.value)} allowClear />
-        <RobotStructureTree ref={treeRef} key={JSON.stringify([file.id, robot.links, robot.joints.map(j => [j.name, j.parent, j.child])])}
+        <RobotStructureTree ref={treeRef} key={treeKey} viewState={viewState.tree}
           nodes={tree} selected={selected} search={search} onSearchChange={setSearch} onSelect={setSelected} />
       </Card>
-      <Card title={robot.name || t("模型预览")} className="preview-card"><RobotPreview key={epoch} project={p} robot={robot} viewState={previewState.current.view} selected={selected} onSelect={key => { setSelected(key); treeRef.current?.reveal(key); }} /><div className="preview-caption">{t("配置预览 · m / rad · 拖动旋转，滚轮缩放")}</div></Card>
+      <Card title={robot.name || t("模型预览")} className="preview-card"><RobotPreview project={p} robot={robot} viewState={viewState.preview} dark={dark} selected={selected} onSelect={key => { setSelected(key); treeRef.current?.reveal(key); }} /><div className="preview-caption">{t("配置预览 · m / rad · 拖动旋转，滚轮缩放")}</div></Card>
       <Card title={joint?.name || link || t("节点属性")}>
         {joint ? <div className="fields single">
           <div className="field"><label htmlFor="joint-parent">{t("父 Link（重挂接）")}</label><Select id="joint-parent" value={joint.parent} options={robot.links.map(value => ({ value, label: value }))} onChange={parent => prepare({ kind: 'reparent', joint: joint.name, parent })} /></div>

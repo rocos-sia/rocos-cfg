@@ -62,6 +62,7 @@ test('3D picking selects the tree and preview sliders change only the rendered p
   const before = await canvas.screenshot();
   const slider = page.getByRole('slider', { name: '关节预览位置' }); await slider.focus(); await slider.press('End');
   await expect(slider).toHaveAttribute('aria-valuenow', '1');
+  await slider.blur(); await expect(page.getByRole('tooltip')).not.toBeVisible();
   await expect.poll(async () => Buffer.compare(before, await canvas.screenshot())).not.toBe(0);
   const downloaded = page.waitForEvent('download'); await page.getByRole('button', { name: '下载工程', exact: true }).click();
   const path = testInfo.outputPath('pose.rcproj'); await (await downloaded).saveAs(path);

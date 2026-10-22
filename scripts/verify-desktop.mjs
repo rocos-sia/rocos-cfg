@@ -38,6 +38,10 @@ async function request(method,path,body){
   }
 }
 const script=(code,args=[])=>request('POST',`/session/${session}/execute/sync`,{script:code,args});
+const pointerClick=async(selector)=>{
+  const point=await script(`const e=document.querySelector(arguments[0]);if(!e)throw Error('Missing pointer target');const r=e.getBoundingClientRect();if(!r.width||!r.height)throw Error('Hidden pointer target');return {x:Math.round(r.x+r.width/2),y:Math.round(r.y+r.height/2)};`,[selector]);
+  await request('POST',`/session/${session}/actions`,{actions:[{type:'pointer',id:'native-pointer',parameters:{pointerType:'mouse'},actions:[{type:'pointerMove',origin:'viewport',duration:0,...point},{type:'pointerDown',button:0},{type:'pointerUp',button:0}]}]});
+};
 const text=()=>script('return document.body.innerText');
 const visibleText=target=>wait(async()=>(await text()).includes(target),target);
 const click=async(label)=>{await wait(()=>script(`const el=[...document.querySelectorAll('button')].find(e=>e.offsetParent&&e.textContent.replace(/\\s/g,'')===arguments[0].replace(/\\s/g,''));if(!el||el.disabled)return false;el.click();return true;`,[label]),'click '+label);};
@@ -224,11 +228,13 @@ try {
     await writeFile(join(artifacts,kind+'-example-runtime.zip'),await readFile(exampleRuntime));
   }
   console.log('Desktop: both teaching examples saved and runtime-exported with ENI byte parity.');
-  const multiCompiler=await createViteServer({server:{middlewareMode:true},appType:'custom'}),multiPath=join(temp,'multiple-devices.rcproj');
+  const multiCompiler=await createViteServer({server:{middlewareMode:true},appType:'custom'}),multiPath=join(temp,'multiple-devices.rcproj'),displayPath=join(temp,'display.rcproj');
   try {
     const {multiaxisProject}=await multiCompiler.ssrLoadModule('/tests/fixtures/multiaxis.ts');
     const {saveProject}=await multiCompiler.ssrLoadModule('/src/core/project/archive.ts');
     await writeFile(multiPath,await saveProject(multiaxisProject()));
+    const {previewProject}=await multiCompiler.ssrLoadModule('/tests/fixtures/preview.ts');
+    await writeFile(displayPath,await saveProject(previewProject()));
   } finally {await multiCompiler.close();}
   await click('打开工程');await picker(multiPath,'Open File');await visibleText('切换工程');await click('打开新工程');await menu('硬件与绑定');
   const multiBefore=await readFile(multiPath);
@@ -245,17 +251,49 @@ try {
   assert.deepEqual(driveValues,[[4,104],[0,7],[2,102]]);
   await writeFile(join(artifacts,'multiple-devices-edited.rcproj'),await readFile(multiPath));
   console.log('Desktop: keyboard device selection and isolated second-drive editing passed.');
+  const displayBefore=unzipSync(await readFile(displayPath));
+  await click('打开工程');await picker(displayPath,'Open File');await visibleText('切换工程');await click('打开新工程');await menu('机器人模型');
+  await visibleText('collision_only');await click('适应模型');
+  await script(`const e=[...document.querySelectorAll('.model-tree .ant-tree-title')].find(e=>e.textContent==='joint_1 [revolute]');e.click();document.querySelector('[role=slider]').focus();`);
+  xdotool('key','--clearmodifiers','End');await wait(()=>script(`return document.querySelector('[role=slider]')?.getAttribute('aria-valuenow')==='1';`),'native display pose');
+  await script(`document.querySelector('input[role=combobox][aria-label="模型显示"]').focus();`);xdotool('key','--clearmodifiers','Down');
+  await wait(()=>script(`return !!document.querySelector('.ant-select-item-option[title="碰撞（Collision）"]')?.offsetParent;`),'native collision popup');
+  xdotool('key','--clearmodifiers','Down','Return');
+  await wait(()=>script(`return document.querySelector('.robot-preview')?.dataset.geometry==='collision';`),'native collision selection');
+  await click('正视');await menu('APP 配置');await menu('机器人模型');
+  await wait(()=>script(`const p=document.querySelector('.robot-preview');return p?.dataset.selected==='joint:joint_1'&&p.dataset.geometry==='collision'&&document.querySelector('[role=slider]')?.getAttribute('aria-valuenow')==='1';`),'native navigation retains preview state');
+  await click('展开视图');
+  await wait(()=>script(`const d=document.querySelector('.model-viewport-expanded');return d?.getAttribute('aria-modal')==='true'&&!!d.querySelector('canvas')&&document.querySelectorAll('canvas').length===1;`),'native expanded canvas');
+  for(let i=0;i<14;i++){
+    await script(`window.nativeTabFrom=document.activeElement;`);xdotool('key','--clearmodifiers','Tab');
+    await wait(()=>script(`return document.activeElement!==window.nativeTabFrom&&!!document.activeElement?.closest('[role=dialog]');`),'native Tab advances inside model '+i);
+  }
+  await pointerClick('.model-viewport-expanded .preview-display-tools .ant-select');
+  await wait(()=>script(`const e=document.querySelector('.model-viewport-expanded .ant-select-item-option[title="外观（Visual）"]');return !!e?.getClientRects().length&&getComputedStyle(e).visibility!=='hidden';`),'native expanded display popup');
+  await pointerClick('.model-viewport-expanded .ant-select-item-option[title="外观（Visual）"]');
+  await wait(()=>script(`return document.querySelector('.robot-preview')?.dataset.geometry==='visual';`),'native expanded visual selection');
+  xdotool('key','--clearmodifiers','Escape');
+  await wait(()=>script(`return !document.querySelector('.model-viewport-expanded')&&document.activeElement?.textContent==='展开视图';`),'native Escape and restored focus');
+  await click('展开视图');await click('退出展开视图');
+  await click('保存工程');await visibleText('已保存工程文件');
+  const displayAfter=unzipSync(await readFile(displayPath));assert.deepEqual(Object.keys(displayAfter).sort(),Object.keys(displayBefore).sort());
+  for(const [path,bytes] of Object.entries(displayBefore))if(path!=='rocos-project.json')assert.deepEqual(displayAfter[path],bytes);
+  const beforeManifest=JSON.parse(new TextDecoder().decode(displayBefore['rocos-project.json'])),afterManifest=await manifest(displayPath);
+  assert.equal(afterManifest.project.revision,beforeManifest.project.revision);assert.deepEqual(afterManifest.entrypoints,beforeManifest.entrypoints);
+  console.log('Desktop: collision display, navigation state, modal focus/Escape and unchanged project payloads passed.');
   await writeFile(join(artifacts,'report.json'),JSON.stringify({
     status:'passed',applicationVersion:expectedVersion,platform:process.platform,architecture:process.arch,node:process.version,
     binary:{path:binary,sha256:createHash('sha256').update(await readFile(binary)).digest('hex')},
     scope:'Actual Linux WebKit application, native GTK dialogs and temporary files in an isolated display.',
-    checks:['displayed and archived application version','initial save and verified backup','bilingual overwrite-backup notification','external conflict with bilingual reason and difference view','save as','native directory import','same-ID copy and new-ID fork','browser and desktop archive roundtrip','background URDF analysis and WebGL viewport','collapsed model tree reveal and retained/clamped preview pose','bilingual unsaved-close confirmation and cancellation','damaged archive recovery and protected source','directory picker cancellation','bilingual directory-export success dialog','directory receipt and file hashes','ZIP and directory byte parity','retained project save target','both teaching examples archived and runtime-exported','keyboard device selection and isolated second-drive editing'],
+    checks:['displayed and archived application version','initial save and verified backup','bilingual overwrite-backup notification','external conflict with bilingual reason and difference view','save as','native directory import','same-ID copy and new-ID fork','browser and desktop archive roundtrip','background URDF analysis and WebGL viewport','collapsed model tree reveal and retained/clamped preview pose','bilingual unsaved-close confirmation and cancellation','damaged archive recovery and protected source','directory picker cancellation','bilingual directory-export success dialog','directory receipt and file hashes','ZIP and directory byte parity','retained project save target','both teaching examples archived and runtime-exported','keyboard device selection and isolated second-drive editing','geometry display and model page state','expanded canvas, focus cycle and Escape'],
     notExecuted:['Windows installation','independent offline computer','power loss or full disk','controller SDK or physical devices'],
   },null,2)+'\n');
 } catch(e) {
   console.error(e);
   await writeFile(join(artifacts,'failure.txt'),String(e.stack||e));
   try{if(session)await writeFile(join(artifacts,'failure-ui.txt'),await text());}catch{}
+  try{if(session)await writeFile(join(artifacts,'failure-dom.json'),JSON.stringify(await script(`return {active:document.activeElement?.outerHTML,dialogs:[...document.querySelectorAll('[role=dialog]')].map(e=>({open:e.open,html:e.innerHTML})),popups:[...document.querySelectorAll('.ant-select-dropdown')].map(e=>({html:e.outerHTML,rect:e.getBoundingClientRect().toJSON(),visibility:getComputedStyle(e).visibility,display:getComputedStyle(e).display,offset:!!e.offsetParent}))};`),null,2));}catch{}
+
   throw e;
 } finally {
   await browser?.close().catch(()=>{});

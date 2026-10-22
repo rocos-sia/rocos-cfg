@@ -25,6 +25,17 @@
 .model-tree .ant-tree-node-content-wrapper { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media(min-width:1401px){.robot-workspace{grid-template-columns:320px minmax(320px,1fr) 280px}}
 .preview-card .ant-space.space-top, .preview-card .space-top:has(.ant-slider) { margin: 14px 16px; }
+.preview-display-tools { display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; padding:14px 16px 0; }
+.preview-display-tools .ant-select { min-width:180px; }
+.preview-display-tools .ant-btn,.preview-display-tools .ant-select-selector { min-height:44px; }
+.model-viewport .ant-btn { min-height:44px; }
+.model-viewport-inline { position:static; inset:auto; width:100%; max-width:none; max-height:none; margin:0; padding:0; border:0; background:none; color:inherit; overflow:visible; }
+.model-viewport-expanded { position:fixed; inset:16px; z-index:1051; width:calc(100vw - 32px); max-width:none; height:calc(100dvh - 32px); max-height:none; margin:auto; padding:0; border:1px solid var(--config-border); border-radius:12px; background:var(--config-card); color:var(--config-text); }
+.model-viewport.is-expanded::before { content:""; position:fixed; inset:0; z-index:1050; background:rgba(0,0,0,.55); }
+.model-viewport-expanded .model-viewport-content { height:100%; display:flex; flex-direction:column; overflow:auto; }
+.model-viewport-expanded .robot-preview { flex:1 0 160px; height:auto; min-height:160px; }
+.model-viewport-expanded .preview-display-tools { flex-shrink:0; }
+@media(max-width:760px) { .model-viewport-expanded { inset:0; width:100vw; height:100dvh; border-radius:0; border:0; } }
 
 .file-transfer{position:fixed;right:24px;bottom:84px;z-index:1100;width:min(380px,calc(100vw - 48px));padding:16px;border:1px solid var(--config-border);border-radius:12px;background:var(--config-card);box-shadow:0 8px 30px #0002;}
 

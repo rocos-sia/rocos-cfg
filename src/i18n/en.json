@@ -1082,5 +1082,12 @@
   "示例包含主站、单轴模型、Hardware、绑定、APP 和附件，可离线编辑与保存。机械参数为教学值，需手动确认；示例 ENI 仅用于解析演示，未经过 SDK 或实机验证。": "Examples include a master, one-axis model, hardware, bindings, APP configuration and attachments for offline editing and saving. Mechanical values are illustrative and require manual confirmation. The example ENI illustrates parsing and has not been verified with an SDK or physical devices.",
   "选择设备 {id}（{type}）": "Select device {id} ({type})",
   "机器人结构树": "Robot structure tree",
-  "选择": "Select"
+  "选择": "Select",
+  "模型展开视图": "Expanded model view",
+  "模型显示": "Model display",
+  "外观（Visual）": "Visual",
+  "碰撞（Collision）": "Collision",
+  "展开视图": "Expand view",
+  "退出展开视图": "Exit expanded view",
+  "当前模型没有碰撞几何，可切换至外观显示。": "This model has no collision geometry. Switch to Visual to see its appearance."
 }

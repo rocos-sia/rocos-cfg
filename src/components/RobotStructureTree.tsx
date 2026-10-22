@@ -1,6 +1,7 @@
-import { forwardRef, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
 import { Tree } from 'antd';
 import { t } from '../i18n';
+import type { StructureViewState } from './modelViewState';
 
 export interface StructureNode { key: string; title: string; children?: StructureNode[] }
 export interface StructureTreeHandle { reveal: (key: string) => void }
@@ -21,13 +22,16 @@ function paths(nodes: StructureNode[], ancestors: string[] = [], result = new Ma
 /** Expansion and reveal requests are local view state, never project changes. */
 export const RobotStructureTree = forwardRef<StructureTreeHandle, {
   nodes: StructureNode[]; selected: string; search: string;
+  viewState: StructureViewState;
   onSearchChange: (query: string) => void; onSelect: (key: string) => void;
-}>(function RobotStructureTree({ nodes, selected, search, onSearchChange, onSelect }, ref) {
+}>(function RobotStructureTree({ nodes, selected, search, onSearchChange, onSelect, viewState }, ref) {
   const allPaths = paths(nodes), visible = filterNodes(nodes, search), visiblePaths = paths(visible);
-  const [expanded, setExpanded] = useState(() => [...allPaths.keys()]);
-  const [filtered, setFiltered] = useState<{ query: string; keys: string[] }>({ query: '', keys: [] });
+  const [expanded, setExpanded] = useState(() => viewState.expanded || [...allPaths.keys()]);
+  const [filtered, setFiltered] = useState<{ query: string; keys: string[] }>(() => viewState.filtered || { query: '', keys: [] });
   const [, requestRender] = useState(0);
   const host = useRef<HTMLDivElement>(null), pendingScroll = useRef(false);
+  useEffect(() => { viewState.expanded = expanded; viewState.filtered = filtered; }, [expanded, filtered, viewState]);
+  useLayoutEffect(() => { if (host.current) host.current.scrollTop = viewState.scrollTop; }, []);
   const activeKeys = search ? (filtered.query === search ? filtered.keys : [...visiblePaths.keys()]) : expanded;
   useImperativeHandle(ref, () => ({ reveal(key) {
     const ancestors = allPaths.get(key); if (!ancestors) return;
@@ -45,7 +49,7 @@ export const RobotStructureTree = forwardRef<StructureTreeHandle, {
     const row = host.current?.querySelector('.ant-tree-treenode-selected');
     if (row) { row.scrollIntoView({ block: 'nearest', inline: 'nearest' }); pendingScroll.current = false; }
   });
-  return <div className="model-tree" ref={host}><Tree aria-label={t('机器人结构树')}
+  return <div className="model-tree" ref={host} onScroll={e => { viewState.scrollTop = e.currentTarget.scrollTop; }}><Tree aria-label={t('机器人结构树')}
     treeData={visible} selectedKeys={[selected]} expandedKeys={activeKeys} autoExpandParent={false}
     onExpand={keys => {
       const values = keys.map(String);
