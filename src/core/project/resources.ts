@@ -45,8 +45,7 @@ export function moveResource(p: Project, id: string, path: string) {
   file.path = path; checkPaths(p.files.map(f => f.path));
 }
 
-export function resourceResolver(p: Project) {
-  const refs = collectReferences(p);
+export function resourceResolver(p: Project, refs = collectReferences(p)) {
   return (sourceId: string, original: string) => {
     const candidates = refs.filter(r => r.sourceFileId === sourceId && r.original === original && r.state === 'internal');
     const ids = new Set(candidates.map(r => r.targetFileId));

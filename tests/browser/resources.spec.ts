@@ -23,6 +23,8 @@ test('resource import and mapping feed the preview, portable export and fresh-co
   model.bytes = utf8.encode(new TextDecoder().decode(model.bytes).replace('package://robot_description/meshes/part.dae', '/workstation/triangle.stl'));
   await page.goto('/');
   await page.locator('input[type=file]').first().setInputFiles({ name: 'portable.rcproj', mimeType: 'application/zip', buffer: Buffer.from(await saveProject(p)) });
+  await page.getByRole('menuitem', { name: '机器人模型' }).click();
+  await expect(page.getByRole('region', { name: '模型资源问题', exact: true })).toContainText('/workstation/triangle.stl');
   await page.getByRole('menuitem', { name: 'APP 配置' }).click();
   await page.getByTestId('resource-files').setInputFiles({ name: 'assets.zip', mimeType: 'application/zip', buffer: Buffer.from(zipSync({ 'assets/triangle mesh.stl': strToU8(stl) })) });
   await page.getByRole('button', { name: '确认导入', exact: true }).click();
@@ -31,6 +33,7 @@ test('resource import and mapping feed the preview, portable export and fresh-co
   await page.getByRole('menuitem', { name: '机器人模型' }).click();
   await expect(page.getByLabel('机器人三维预览')).toBeVisible();
   await expect(page.getByText(/Mesh 尚未纳入工程/)).toHaveCount(0);
+  await expect(page.getByRole('region', { name: '模型资源问题', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: '校验工程', exact: true }).click();
   await expect(page.getByText('0 项错误', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: '检查并导出配置', exact: true }).click();
@@ -57,7 +60,7 @@ test('DAE textures resolve through saved mappings and appear in the rendered mod
   const { texturedDae, greenPng } = await import('../fixtures/textured-dae');
   const { moveResource } = await import('../../src/core/project/resources');
   const p = resourceProject();
-  p.files.find(f => f.path.endsWith('part.dae'))!.bytes = utf8.encode(texturedDae);
+  p.files.find(f => f.path.endsWith('part.dae'))!.bytes = utf8.encode(texturedDae.replace('<init_from>../textures/blue%20paint.png</init_from>', '<init_from>\n  ../textures/blue%20paint.png\n</init_from>'));
   fileById(p, 'paint')!.bytes = greenPng;
   moveResource(p, 'paint', 'assets/relocated paint.png');
   const errors: string[] = [], external: string[] = [];

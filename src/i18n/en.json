@@ -1089,5 +1089,20 @@
   "碰撞（Collision）": "Collision",
   "展开视图": "Expand view",
   "退出展开视图": "Exit expanded view",
-  "当前模型没有碰撞几何，可切换至外观显示。": "This model has no collision geometry. Switch to Visual to see its appearance."
+  "当前模型没有碰撞几何，可切换至外观显示。": "This model has no collision geometry. Switch to Visual to see its appearance.",
+  "内嵌纹理无法解码。": "The embedded texture could not be decoded.",
+  "模型资源无法加载：{path}": "Model resource could not be loaded: {path}",
+  "STL 不包含有效三角形：{path}": "STL contains no valid triangles: {path}",
+  "DAE 不包含可预览几何：{path}": "DAE contains no previewable geometry: {path}",
+  "模型资源问题": "Model resource problems",
+  "模型资源问题（{count}）": "Model resource problems ({count})",
+  "橙色占位标记仅用于定位，不代表实际几何或尺寸。请在 APP 配置中导入或映射资源。": "Orange placeholders locate missing geometry; they do not represent its shape or size. Import or map resources in APP settings.",
+  "内嵌纹理": "Embedded texture",
+  "定位 {link} · {mode}": "Locate {link} · {mode}",
+  "选中关节轴向": "Selected joint axis",
+  "局部轴向：{axis}；橙色箭头随当前预览姿态变换。": "Local axis: {axis}; the orange arrow follows the current preview pose.",
+  "局部平面法向：{axis}；橙色箭头随当前预览姿态变换。": "Local plane normal: {axis}; the orange arrow follows the current preview pose.",
+  "该关节没有单一运动轴。": "This joint has no single motion axis.",
+  "纹理": "Texture",
+  "蓝线：{parent} → {child}，连接父 Link 原点与当前关节坐标系。": "Blue segment: {parent} → {child}, from the parent Link origin to the current joint frame."
 }

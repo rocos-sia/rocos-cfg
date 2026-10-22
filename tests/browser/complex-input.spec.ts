@@ -6,6 +6,12 @@ import { fileById, textOf } from '../../src/core/project/types';
 import { readYaml } from '../../src/core/documents/yaml';
 import { activate, edit, navigate, tabTo } from './helpers/input';
 const snapshot=(page:import('@playwright/test').Page)=>page.evaluate(async()=>{const path='/src/store.ts';const {useProject}=await import(path);return JSON.stringify(useProject.getState().project);});
+async function english(page:import('@playwright/test').Page){
+  await activate(page,page.getByRole('button',{name:'切换语言',exact:true}),'keyboard');
+  const menu=page.getByRole('menu').filter({has:page.getByRole('menuitem',{name:'English',exact:true})});
+  await tabTo(page,menu);await page.keyboard.press('Home');await page.keyboard.press('ArrowDown');
+  await expect(page.getByRole('menuitem',{name:'English',exact:true})).toBeFocused();await page.keyboard.press('Enter');
+}
 
 for(const mode of ['keyboard','touch'] as const)test(`multiple hardware devices can be selected and edited with ${mode} without changing the wrong drive`,async({browser},info)=>{
   test.setTimeout(90000);const context=await browser.newContext({hasTouch:mode==='touch',viewport:{width:mode==='touch'?1024:1440,height:1000}}),page=await context.newPage();
@@ -31,8 +37,9 @@ for(const mode of ['keyboard','touch'] as const)test(`multiple hardware devices 
   if(mode==='keyboard'){
     await activate(page,page.getByRole('button',{name:'切换主题',exact:true}),mode);await tabTo(page,second);
     const wrapper=second.locator('xpath=ancestor::label');await expect(wrapper).toHaveCSS('outline-width','2px');await expect(wrapper).toHaveCSS('outline-color','rgb(147, 197, 253)');
-    const original=await snapshot(page);await page.evaluate(async()=>{const path='/src/i18n/index.ts';const {setLocale}=await import(path);setLocale('en-US');});
-    await expect(page.getByRole('radio',{name:'Select device 0 (driver)',exact:true})).toBeChecked();expect(await snapshot(page)).toBe(original);
+    const original=await snapshot(page);await english(page);
+    const englishDevice=page.getByRole('radio',{name:'Select device 0 (driver)',exact:true});
+    await expect(englishDevice).toBeChecked();await tabTo(page,englishDevice);await expect(englishDevice).toBeFocused();expect(await snapshot(page)).toBe(original);
     const card=await page.locator('.hardware-layout>.ant-card').last().boundingBox(),workspace=await page.locator('.workspace').boundingBox();
     expect(card!.x+card!.width).toBeLessThanOrEqual(workspace!.x+workspace!.width);
     await expect(page.getByRole('button',{name:'Delete device',exact:true})).toBeInViewport();
@@ -57,7 +64,7 @@ test('branched model keyboard navigation, filtering and language changes retain 
   await expect(page.getByText(axisNames[1]+' [revolute]',{exact:true})).toBeVisible();
   await expect(page.getByText('fixed_branch [fixed]',{exact:true})).not.toBeVisible();
   await tabTo(page,page.locator('.model-tree .ant-tree'));await page.screenshot({path:info.outputPath('tree-focus.png')});
-  await page.evaluate(async()=>{const path='/src/i18n/index.ts';const {setLocale}=await import(path);setLocale('en-US');});
+  await english(page);await tabTo(page,page.locator('.model-tree .ant-tree'));
   await expect(page.getByRole('tree',{name:'Robot structure tree',exact:true})).toBeVisible();
   await expect(page.getByRole('searchbox',{name:'Search model nodes',exact:true})).toHaveValue(axisNames[1]);
   await expect(page.locator('.robot-preview')).toHaveAttribute('data-selected','joint:'+axisNames[1]);expect(await snapshot(page)).toBe(before);

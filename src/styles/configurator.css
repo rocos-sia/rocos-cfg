@@ -29,6 +29,11 @@
 .preview-display-tools .ant-select { min-width:180px; }
 .preview-display-tools .ant-btn,.preview-display-tools .ant-select-selector { min-height:44px; }
 .model-viewport .ant-btn { min-height:44px; }
+.preview-resource-issues { margin:12px 16px; padding:12px; border:1px solid #d97706; border-radius:8px; max-height:180px; overflow:auto; overflow-wrap:anywhere; flex-shrink:0; }
+.preview-resource-issues p { margin:6px 0; color:var(--config-muted); font-size:12px; }
+.preview-resource-issues ul { margin:8px 0 0; padding-left:18px; }
+.preview-resource-issues li+li { margin-top:12px; }
+.preview-axis-status { margin:12px 16px 0; font-size:12px; color:var(--config-muted); overflow-wrap:anywhere; flex-shrink:0; }
 .model-viewport-inline { position:static; inset:auto; width:100%; max-width:none; max-height:none; margin:0; padding:0; border:0; background:none; color:inherit; overflow:visible; }
 .model-viewport-expanded { position:fixed; inset:16px; z-index:1051; width:calc(100vw - 32px); max-width:none; height:calc(100dvh - 32px); max-height:none; margin:auto; padding:0; border:1px solid var(--config-border); border-radius:12px; background:var(--config-card); color:var(--config-text); }
 .model-viewport.is-expanded::before { content:""; position:fixed; inset:0; z-index:1050; background:rgba(0,0,0,.55); }

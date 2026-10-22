@@ -228,13 +228,15 @@ try {
     await writeFile(join(artifacts,kind+'-example-runtime.zip'),await readFile(exampleRuntime));
   }
   console.log('Desktop: both teaching examples saved and runtime-exported with ENI byte parity.');
-  const multiCompiler=await createViteServer({server:{middlewareMode:true},appType:'custom'}),multiPath=join(temp,'multiple-devices.rcproj'),displayPath=join(temp,'display.rcproj');
+  const multiCompiler=await createViteServer({server:{middlewareMode:true},appType:'custom'}),multiPath=join(temp,'multiple-devices.rcproj'),displayPath=join(temp,'display.rcproj'),missingPath=join(temp,'missing.rcproj');
   try {
     const {multiaxisProject}=await multiCompiler.ssrLoadModule('/tests/fixtures/multiaxis.ts');
     const {saveProject}=await multiCompiler.ssrLoadModule('/src/core/project/archive.ts');
     await writeFile(multiPath,await saveProject(multiaxisProject()));
     const {previewProject}=await multiCompiler.ssrLoadModule('/tests/fixtures/preview.ts');
     await writeFile(displayPath,await saveProject(previewProject()));
+    const {missingPreviewProject}=await multiCompiler.ssrLoadModule('/tests/fixtures/diagnostics.ts');
+    await writeFile(missingPath,await saveProject(missingPreviewProject()));
   } finally {await multiCompiler.close();}
   await click('打开工程');await picker(multiPath,'Open File');await visibleText('切换工程');await click('打开新工程');await menu('硬件与绑定');
   const multiBefore=await readFile(multiPath);
@@ -262,6 +264,8 @@ try {
   await wait(()=>script(`return document.querySelector('.robot-preview')?.dataset.geometry==='collision';`),'native collision selection');
   await click('正视');await menu('APP 配置');await menu('机器人模型');
   await wait(()=>script(`const p=document.querySelector('.robot-preview');return p?.dataset.selected==='joint:joint_1'&&p.dataset.geometry==='collision'&&document.querySelector('[role=slider]')?.getAttribute('aria-valuenow')==='1';`),'native navigation retains preview state');
+  await wait(()=>script(`return document.querySelector('[role=status][aria-label="选中关节轴向"]')?.textContent.includes('0 0 1');`),'native selected joint axis');
+  await writeFile(join(artifacts,'desktop-joint-axis.png'),Buffer.from(await request('GET',`/session/${session}/screenshot`),'base64'));
   await click('展开视图');
   await wait(()=>script(`const d=document.querySelector('.model-viewport-expanded');return d?.getAttribute('aria-modal')==='true'&&!!d.querySelector('canvas')&&document.querySelectorAll('canvas').length===1;`),'native expanded canvas');
   for(let i=0;i<14;i++){
@@ -281,11 +285,21 @@ try {
   const beforeManifest=JSON.parse(new TextDecoder().decode(displayBefore['rocos-project.json'])),afterManifest=await manifest(displayPath);
   assert.equal(afterManifest.project.revision,beforeManifest.project.revision);assert.deepEqual(afterManifest.entrypoints,beforeManifest.entrypoints);
   console.log('Desktop: collision display, navigation state, modal focus/Escape and unchanged project payloads passed.');
+  const missingBefore=unzipSync(await readFile(missingPath));
+  await click('打开工程');await picker(missingPath,'Open File');await visibleText('切换工程');await click('打开新工程');await menu('机器人模型');
+  await wait(()=>script(`const e=document.querySelector('.preview-resource-issues');return e?.querySelectorAll('li').length===3&&!e.textContent.includes('opaque-');`),'native complete missing mesh inventory');
+  await click('定位 tool_link · 碰撞（Collision）');
+  await wait(()=>script(`const p=document.querySelector('.robot-preview');return p?.dataset.geometry==='collision'&&p.dataset.selected==='link:tool_link'&&document.querySelector('.model-tree .ant-tree-treenode-selected')?.textContent.includes('tool_link');`),'native missing collision location');
+  await writeFile(join(artifacts,'desktop-missing-meshes.png'),Buffer.from(await request('GET',`/session/${session}/screenshot`),'base64'));
+  await click('保存工程');await visibleText('已保存工程文件');
+  const missingAfter=unzipSync(await readFile(missingPath));assert.deepEqual(Object.keys(missingAfter).sort(),Object.keys(missingBefore).sort());
+  for(const [path,bytes] of Object.entries(missingBefore))if(path!=='rocos-project.json')assert.deepEqual(missingAfter[path],bytes);
+  console.log('Desktop: selected axis, complete missing mesh inventory/location and preserved source payloads passed.');
   await writeFile(join(artifacts,'report.json'),JSON.stringify({
     status:'passed',applicationVersion:expectedVersion,platform:process.platform,architecture:process.arch,node:process.version,
     binary:{path:binary,sha256:createHash('sha256').update(await readFile(binary)).digest('hex')},
     scope:'Actual Linux WebKit application, native GTK dialogs and temporary files in an isolated display.',
-    checks:['displayed and archived application version','initial save and verified backup','bilingual overwrite-backup notification','external conflict with bilingual reason and difference view','save as','native directory import','same-ID copy and new-ID fork','browser and desktop archive roundtrip','background URDF analysis and WebGL viewport','collapsed model tree reveal and retained/clamped preview pose','bilingual unsaved-close confirmation and cancellation','damaged archive recovery and protected source','directory picker cancellation','bilingual directory-export success dialog','directory receipt and file hashes','ZIP and directory byte parity','retained project save target','both teaching examples archived and runtime-exported','keyboard device selection and isolated second-drive editing','geometry display and model page state','expanded canvas, focus cycle and Escape'],
+    checks:['displayed and archived application version','initial save and verified backup','bilingual overwrite-backup notification','external conflict with bilingual reason and difference view','save as','native directory import','same-ID copy and new-ID fork','browser and desktop archive roundtrip','background URDF analysis and WebGL viewport','collapsed model tree reveal and retained/clamped preview pose','bilingual unsaved-close confirmation and cancellation','damaged archive recovery and protected source','directory picker cancellation','bilingual directory-export success dialog','directory receipt and file hashes','ZIP and directory byte parity','retained project save target','both teaching examples archived and runtime-exported','keyboard device selection and isolated second-drive editing','geometry display and model page state','expanded canvas, focus cycle and Escape','selected joint axis and missing mesh inventory/location'],
     notExecuted:['Windows installation','independent offline computer','power loss or full disk','controller SDK or physical devices'],
   },null,2)+'\n');
 } catch(e) {
