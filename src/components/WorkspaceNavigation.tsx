@@ -1,6 +1,5 @@
 import { useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
-import { Button, Menu } from 'antd';
-import { CloseOutlined, MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/icons';
+import { Menu } from 'antd';
 import { t } from '../i18n';
 
 const preferenceKey = 'rocos.sidebar.collapsed';
@@ -59,15 +58,13 @@ export function WorkspaceNavigation({ items, route, hasProject, navigate }: {
     {phone && open && <div className="nav-backdrop" data-nav-backdrop onPointerDown={() => setOpen(false)} />}
     <aside className="sidebar" ref={aside} id="workspace-navigation" data-collapsed={collapsed} data-overlay={phone && open}
       role={phone && open ? 'dialog' : undefined} aria-modal={phone && open || undefined} aria-label={t('工程导航')} onKeyDown={keys}>
-      <div className="brand"><div className="brand-symbol">R<span /></div><div><strong>ROCOS</strong><small>CONFIGURATOR</small></div></div>
-      <Button ref={toggle} className="navigation-toggle" type="text" aria-label={phone && open ? t('关闭导航') : collapsed ? t('展开导航') : t('收起导航')}
-        aria-expanded={!collapsed} aria-controls="workspace-navigation-menu" onClick={toggleNavigation}
-        icon={phone && open ? <CloseOutlined aria-hidden /> : collapsed ? <MenuUnfoldOutlined aria-hidden /> : <MenuFoldOutlined aria-hidden />}>
-        {!collapsed && (phone ? t('关闭导航') : t('收起导航'))}
-      </Button>
+      <button ref={toggle} className="brand brand-toggle" type="button" aria-label={phone && open ? t('关闭导航') : collapsed ? t('展开导航') : t('收起导航')}
+        title={collapsed ? t('展开导航') : t('收起导航')} aria-expanded={!collapsed} aria-controls="workspace-navigation-menu" onClick={toggleNavigation}>
+        <span className="brand-symbol">R<span /></span><span className="brand-wordmark"><strong>ROCOS</strong><small>CONFIGURATOR</small></span>
+      </button>
       <div className="nav-label">{t('工程工作台')}</div>
       <Menu id="workspace-navigation-menu" mode="inline" theme="dark" inlineCollapsed={collapsed} selectedKeys={[route]}
-        items={items.map(item => ({ ...item, label: t(item.label), title: t(item.label), 'aria-label': t(item.label), disabled: !hasProject && item.key !== 'overview' }))}
+        items={items.map(item => { const label = t(item.label.replace(/^0[1-4]\s+/, '')); return { ...item, label, title: label, 'aria-label': label, disabled: !hasProject && item.key !== 'overview' }; })}
         onClick={({ key }) => { navigate(key); if (phone) setOpen(false); }} />
       <div className="sidebar-bottom"><div className="status-dot" />{t('离线配置工具')}<small>{__APP_VERSION__}</small></div>
     </aside>

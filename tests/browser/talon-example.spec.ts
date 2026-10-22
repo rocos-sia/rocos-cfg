@@ -11,26 +11,25 @@ for (const kind of ['igh', 'ecm'] as const) test(`Talon ${kind} opens with its f
   page.on('pageerror', error => errors.push(error.message));
   await page.goto('/');
   await page.getByRole('button', {name: '打开示例', exact: true}).click();
-  const button = page.getByRole('button', {name: kind === 'igh' ? '打开 Talon IgH 示例' : '打开 Talon ECM 示例', exact: true});
-  await button.focus();
-  await page.keyboard.press('Enter');
-  await expect(page.locator('.project-name strong')).toHaveText(`Talon · ROCOS-${kind.toUpperCase()}`);
+  await expect(page.locator('.project-name strong')).toHaveText('Talon');
   await expect(page.getByText('Talon 示例', {exact: true})).toBeVisible();
-  await page.getByRole('menuitem', {name: '主站配置', exact: true}).click();
+  await page.getByRole('menuitem', {name: '总线配置', exact: true}).click();
+  await page.getByRole('tab', {name: kind.toUpperCase(), exact: true}).click();
   if (kind === 'ecm') {
     await expect(page.getByRole('combobox', {name: /^链路驱动/})).toBeVisible();
     await expect(page.locator('.ant-select').filter({has: page.getByRole('combobox', {name: /^链路驱动/})})).toContainText('IntelGbeRec');
   }
   await expect(page.getByRole('tab', {name: '从站 (7)', exact: true})).toBeVisible();
   await expect(page.getByRole('tab', {name: `过程映像 (${kind === 'igh' ? 77 : 91})`, exact: true})).toBeVisible();
-  await page.getByRole('menuitem', {name: '机器人模型', exact: true}).click();
+  await page.getByRole('menuitem', {name: '应用配置', exact: true}).click();
+  await page.getByRole('tab', {name: '模型', exact: true}).click();
   await expect(page.getByText('joint_7 [continuous]', {exact: true})).toBeVisible();
   await expect(page.getByLabel('机器人三维预览', {exact: true})).toBeVisible();
   await page.getByRole('button', {name: '适应模型', exact: true}).click();
   await expect(page.getByRole('region', {name: '模型资源问题', exact: true})).toHaveCount(0);
   await expect(page.locator('.preview-notices .ant-alert')).toHaveCount(0);
   await page.screenshot({path: info.outputPath(`talon-${kind}.png`)});
-  await page.getByRole('menuitem', {name: '硬件与绑定', exact: true}).click();
+  await page.getByRole('tab', {name: '硬件', exact: true}).click();
   await expect(page.getByRole('radio', {name: '选择设备 6（driver）', exact: true})).toBeVisible();
   await expect(page.getByRole('checkbox', {name: '已人工核对换算、零点与限位', exact: true})).not.toBeChecked();
   const download = page.waitForEvent('download');
@@ -48,7 +47,8 @@ for (const kind of ['igh', 'ecm'] as const) test(`Talon ${kind} opens with its f
   await reopened.locator('input[type=file]').first().setInputFiles(path);
   await expect(reopened.locator('.project-name strong')).toHaveText(p.name);
   await expect(reopened.getByText('Talon 示例', {exact: true})).toBeVisible();
-  await reopened.getByRole('menuitem', {name: '机器人模型', exact: true}).click();
+  await reopened.getByRole('menuitem', {name: '应用配置', exact: true}).click();
+  await reopened.getByRole('tab', {name: '模型', exact: true}).click();
   await expect(reopened.getByText('joint_7 [continuous]', {exact: true})).toBeVisible();
   await expect(reopened.getByLabel('机器人三维预览', {exact: true})).toBeVisible();
   await expect(reopened.getByRole('region', {name: '模型资源问题', exact: true})).toHaveCount(0);

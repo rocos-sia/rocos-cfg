@@ -3,7 +3,7 @@ import { isDesktop } from '../adapters/file-access';
 import { useEffect, useRef, useState } from 'react';
 import { Button, Space, Tag, Tooltip } from 'antd';
 
-export function OfflineStatus() {
+export function OfflineStatus({ hidden = false }: { hidden?: boolean }) {
   const [status, setStatus] = useState('正在准备离线缓存');
   const [waiting, setWaiting] = useState(false);
   const repair = useRef<() => void>(() => {});
@@ -58,6 +58,7 @@ export function OfflineStatus() {
       registration?.removeEventListener('updatefound', watchUpdate);
     };
   }, []);
+  if (hidden) return null;
   const color = ['已可离线使用', '桌面离线版'].includes(status) ? 'green'
     : ['离线缓存不可用', '离线缓存更新失败'].includes(status) ? 'red'
     : waiting || ['离线缓存不完整', '离线缓存待检查'].includes(status) ? 'orange' : 'blue';

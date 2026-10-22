@@ -26,6 +26,7 @@ export function Robot({ p, analysis, onImport, viewState, dark }: { p: Project; 
   const file = fileById(p, p.entrypoints.urdf), app = fileById(p, p.entrypoints.app);
   const [selected, setSelected] = useState(viewState.selected), [search, setSearch] = useState(viewState.search), [form, setForm] = useState<Form | null>(null);
   useEffect(() => { viewState.selected = selected; viewState.search = search; }, [selected, search, viewState]);
+  const [jointActivation,setJointActivation]=useState(0);
   const treeRef = useRef<StructureTreeHandle>(null);
   const message=useLocalizedMessage();const modal=useLocalizedModal();
   const [pending,setPending]=useState<{plan:RobotPlan;revision:number;epoch:number}>();
@@ -43,6 +44,7 @@ export function Robot({ p, analysis, onImport, viewState, dark }: { p: Project; 
   const link = target?.kind === 'link' && !target.ambiguous ? robot.links[target.index] : undefined;
   const selectNode = (key: string) => {
     const reference = structure.references.get(key);
+    setJointActivation(value=>value+1);
     setSelected(reference || key); if (reference) treeRef.current?.reveal(reference);
   };
   const treeKey = JSON.stringify([file.id, robot.links, robot.joints.map(j => [j.name, j.parent, j.child])]);
@@ -86,10 +88,10 @@ export function Robot({ p, analysis, onImport, viewState, dark }: { p: Project; 
       {pending?.plan.warningMessages.map((issue,i)=><Alert key={i} type="warning" message={diagnosticText(issue)}/>)}
       <p>{t("整次操作可撤销。")}</p>
     </Modal>
-    <div className="page-heading robot-page-heading"><div><h1>{t("机器人模型")}</h1><p>{t("编辑结构与属性，预览模型；预览不会驱动真实设备。")}</p></div><Button onClick={onImport}>{t("导入URDF")}</Button></div>
     {(p.editor.notices || []).filter(n => n.fileId === file.id).map((n, i) => <Alert key={`notice-${i}`} message={diagnosticText(n)} type="warning" className="space-top" action={<Button size="small" onClick={() => useProject.getState().change(next => { next.editor.notices = next.editor.notices?.filter(item => item.fileId !== n.fileId || item.message !== n.message); })}>{t("已核对")}</Button>} />)}
     {robot.issues.map((e, i) => <Alert key={i} message={diagnosticText(e)} type="error" className="space-top" />)}
-    <ModelWorkspace state={layoutState} onShowTree={() => treeRef.current?.reveal(selected)} actions={<Space wrap>
+    <ModelWorkspace controls={<div className="model-chain-controls" role="group" aria-label={t("控制关节链")}><span className="model-chain-title">{t("控制关节链")}</span><div className="model-chain-field"><ParameterLabel htmlFor="base-link" role="urdf" path="base">Base Link</ParameterLabel><Select id="base-link" value={startup?.robot?.base_link} style={{ width: 160 }} options={robot.links.map(value => ({ value, label: value }))} onChange={base => prepare({ kind: 'chain', base, tip: robot.links.includes(startup?.robot?.tip_link) ? startup.robot.tip_link : base })} />
+      </div><div className="model-chain-field"><ParameterLabel htmlFor="tip-link" role="urdf" path="tip">Tip Link</ParameterLabel><Select id="tip-link" value={startup?.robot?.tip_link} style={{ width: 160 }} options={robot.links.map(value => ({ value, label: value }))} onChange={tip => prepare({ kind: 'chain', base: robot.links.includes(startup?.robot?.base_link) ? startup.robot.base_link : robot.roots[0], tip })} /></div></div>} state={layoutState} onShowTree={() => treeRef.current?.reveal(selected)} actions={<Space wrap>
       <Button onClick={() => setForm({ kind: 'add', node: 'joint', name: '', value: '', link: '', parent: selectedParent })}>{t("新增关节与 Link")}</Button>
       <Button disabled={!joint && !link} onClick={() => setForm({ kind: 'rename', node: selectedKind, name: selectedName, value: selectedName, link: '', parent: '' })}>{t("重命名节点")}</Button>
       <Button danger disabled={(!joint && !link) || robot.roots.includes(link || '')} onClick={deleteNode}>{t("删除节点")}</Button>
@@ -98,9 +100,9 @@ export function Robot({ p, analysis, onImport, viewState, dark }: { p: Project; 
         <RobotStructureTree ref={treeRef} key={treeKey} viewState={viewState.tree}
           nodes={tree} selected={selected} search={search} onSearchChange={setSearch} onSelect={selectNode} />
       </Card>,
-      <Card key="preview" className="preview-card"><RobotPreview project={p} robot={robot} viewState={viewState.preview} dark={dark} selected={selected} onExpandedChange={onExpandedChange} onSelect={key => { setSelected(key); treeRef.current?.reveal(key); }} /></Card>,
-      <Card key="properties" title={target ? `${target.kind === 'link' ? 'Link' : 'Joint'} · ${target.name || t('未命名')}` : t("节点属性")}>
-        {target && <Button className="section-tools" onClick={() => setSourceReveal({ ...target, source: textOf(file), request: (sourceReveal?.request || 0) + 1 })}>{t('定位到 URDF 源码')}</Button>}
+      <Card key="preview" className="preview-card"><RobotPreview jointActivation={jointActivation} project={p} robot={robot} viewState={viewState.preview} dark={dark} selected={selected} onExpandedChange={onExpandedChange} onSelect={key => { setSelected(key); treeRef.current?.reveal(key); }} /></Card>,
+      <Card key="properties" title={target ? `${target.kind === 'link' ? 'Link' : 'Joint'} · ${target.name || t('未命名')}` : t("节点属性")}
+        extra={target && <Button onClick={() => setSourceReveal({ ...target, source: textOf(file), request: (sourceReveal?.request || 0) + 1 })}>{t('定位到 URDF 源码')}</Button>}>
         {target?.ambiguous ? <>
           <Alert type="warning" message={t('节点名称重复或为空，不能按名称安全编辑。请定位到源码修复。')} />
           <p>{t('文件中的第 {index} 个 {kind}', { index: target.index + 1, kind: target.kind === 'link' ? 'Link' : 'Joint' })}</p>
@@ -114,12 +116,10 @@ export function Robot({ p, analysis, onImport, viewState, dark }: { p: Project; 
               : <Input id={`joint-${key}`} key={joint.name + key + joint[key]} defaultValue={joint[key]} onBlur={e => { if (e.target.value !== joint[key]) edit(key, e.target.value); }} />}
           </div>)}
           {joint.mimic && <Alert type="info" message={t('Mimic：{joint}；当前 APP 不支持将 mimic 加入控制链。',{joint:joint.mimic})} />}
-        </div> : link ? <><p>Link：{link}</p><p>{t("父关节：")}{robot.joints.find(j => j.child === link)?.name || t("根节点")}</p><p>{t("直接子关节：")}{robot.joints.filter(j => j.parent === link).length}</p><LinkProperties text={textOf(file)} name={link} /></> : <p className="muted">{t("选择 Link 或 Joint 编辑结构与属性。")}</p>}
+        </div> : link ? <><p>{t("父关节：")}{robot.joints.find(j => j.child === link)?.name || t("根节点")}</p><LinkProperties text={textOf(file)} name={link} /></> : <p className="muted">{t("选择 Link 或 Joint 编辑结构与属性。")}</p>}
       </Card>
     ]}</ModelWorkspace>
-    <Card className="space-top" title={t("控制关节链")}><Space wrap><ParameterLabel htmlFor="base-link" role="urdf" path="base">Base Link</ParameterLabel><Select id="base-link" value={startup?.robot?.base_link} style={{ width: 200 }} options={robot.links.map(value => ({ value, label: value }))} onChange={base => prepare({ kind: 'chain', base, tip: robot.links.includes(startup?.robot?.tip_link) ? startup.robot.tip_link : base })} />
-      <ParameterLabel htmlFor="tip-link" role="urdf" path="tip">Tip Link</ParameterLabel><Select id="tip-link" value={startup?.robot?.tip_link} style={{ width: 200 }} options={robot.links.map(value => ({ value, label: value }))} onChange={tip => prepare({ kind: 'chain', base: robot.links.includes(startup?.robot?.base_link) ? startup.robot.base_link : robot.roots[0], tip })} /></Space>
-    </Card>
+
     <Card className="space-top" title={t("URDF 源文件")}><SourceEditor file={file} reveal={sourceReveal} /></Card>
     <Modal title={form?.kind === 'add' ? t("新增固定关节与 Link") : t("重命名节点")} open={!!form} okText={t("查看变更")} cancelText={t("取消")} onCancel={() => setForm(null)} onOk={() => {
       if (!form) return;

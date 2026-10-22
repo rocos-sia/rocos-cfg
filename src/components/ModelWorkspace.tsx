@@ -5,8 +5,8 @@ import { ParameterHelp } from './ParameterHelp';
 import { createModelLayoutState, layoutMode, modelLayout, panelGap, type ModelLayoutState, type ModelPanel } from './modelLayout';
 
 /** Keep all three panes mounted while changing their grid tracks/visibility. */
-export function ModelWorkspace({ state, onShowTree, actions, children }: {
-  state: ModelLayoutState; onShowTree: () => void; actions?: ReactNode;
+export function ModelWorkspace({ state, onShowTree, actions, controls, children }: {
+  state: ModelLayoutState; onShowTree: () => void; actions?: ReactNode; controls?: ReactNode;
   children: (onPreviewExpanded: (expanded: boolean) => void) => [ReactNode, ReactNode, ReactNode];
 }) {
   const root = useRef<HTMLDivElement>(null), reset = useRef<HTMLButtonElement>(null), id = useId();
@@ -126,6 +126,7 @@ export function ModelWorkspace({ state, onShowTree, actions, children }: {
   }}>
     <div className="model-panel-tools">
       {actions}
+      {controls}
       <div className="model-panel-settings">
       {layout.mode !== 'wide' && <div role="tablist" aria-label={t('模型面板')}>
         {panels.map(panel => <button key={panel} ref={node => { tabs.current[panel] = node; }} role="tab" id={tabId(panel)} aria-controls={panelId(panel)} aria-selected={visible(panel) && (panel !== 'tree' || layout.mode === 'single')}

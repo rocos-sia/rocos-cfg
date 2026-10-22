@@ -50,10 +50,10 @@ export const RobotStructureTree = forwardRef<StructureTreeHandle, {
     if (row) { row.scrollIntoView({ block: 'nearest', inline: 'nearest' }); pendingScroll.current = false; }
   });
   return <div className="model-tree" ref={host} onScroll={e => { viewState.scrollTop = e.currentTarget.scrollTop; }}><Tree aria-label={t('机器人结构树')}
-    treeData={visible} selectedKeys={[selected]} expandedKeys={activeKeys} autoExpandParent={false}
+    treeData={visible} selectedKeys={[selected]} expandedKeys={activeKeys} autoExpandParent={false} defaultExpandParent={false}
     onExpand={keys => {
       const values = keys.map(String);
       if (search) setFiltered({ query: search, keys: values }); else setExpanded(values);
     }}
-    onSelect={keys => onSelect(String(keys[0] || ''))} /></div>;
+    onSelect={(keys, info) => onSelect(String(keys[0] || info.node.key))} /></div>;
 });

@@ -39,12 +39,12 @@ export function MjcfPreview({files,path}:{files:ProjectFile[];path:string}) {
    group.updateMatrixWorld(true);const box=new THREE.Box3();for(const mesh of group.children)if(!mesh.userData.ground)box.expandByObject(mesh);
    const center=box.isEmpty()?new THREE.Vector3():box.getCenter(new THREE.Vector3()),radius=box.isEmpty()?1:Math.max(.1,box.getSize(new THREE.Vector3()).length()/2);
    controls.target.copy(center);let fitted=false;
-   const render=()=>{if(!disposed){const el=host.current!;renderer.setSize(el.clientWidth,400);camera.aspect=el.clientWidth/400;camera.updateProjectionMatrix();if(!fitted){const angle=Math.atan(Math.tan(Math.PI/8)*Math.min(1,camera.aspect));camera.position.copy(center).add(new THREE.Vector3(1,-1,1).normalize().multiplyScalar(radius*1.3/Math.sin(angle)));fitted=true;controls.update();}renderer.render(scene,camera);}};
+   const render=()=>{if(!disposed){const el=host.current!;const width=Math.max(1,el.clientWidth),height=Math.max(1,el.clientHeight);renderer.setSize(width,height);camera.aspect=width/height;camera.updateProjectionMatrix();if(!fitted){const angle=Math.atan(Math.tan(Math.PI/8)*Math.min(1,camera.aspect));camera.position.copy(center).add(new THREE.Vector3(1,-1,1).normalize().multiplyScalar(radius*1.3/Math.sin(angle)));fitted=true;controls.update();}renderer.render(scene,camera);}};
    controls.addEventListener('change',render);const observer=new ResizeObserver(render);observer.observe(host.current!);render();
    cleanup=()=>{observer.disconnect();controls.dispose();group.traverse(o=>{if(o instanceof THREE.Mesh){o.geometry.dispose();o.material.dispose();}});renderer.dispose();renderer.domElement.remove();data.delete();model.delete();};
    setLoading(false);
   })().catch(e=>{if(!disposed){setError(String(e));setLoading(false);}});
   return()=>{disposed=true;cleanup();};
  },[files,path]);
- return <>{loading&&<p role="status">{t("正在使用 MuJoCo WASM 编译模型…")}</p>}{error&&<Alert type="error" message={t("MJCF 加载失败")} description={error}/>}<div ref={host} className="mjcf-preview" style={{height:400,width:'100%'}}/><p className="muted">{t("MuJoCo 编译后的静态几何预览；支持旋转、缩放。未运行控制程序，纹理及高度场暂不显示。")}</p></>;
+ return <>{loading&&<p role="status">{t("正在使用 MuJoCo WASM 编译模型…")}</p>}{error&&<Alert type="error" message={t("MJCF 加载失败")} description={error}/>}<div ref={host} className="mjcf-preview"/><p className="muted">{t("MuJoCo 编译后的静态几何预览；支持旋转、缩放。未运行控制程序，纹理及高度场暂不显示。")}</p></>;
 }

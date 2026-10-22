@@ -7,7 +7,7 @@ import { saveProject } from '../../src/core/project/archive';
 async function open(page: Page) {
   await page.goto('/');
   await page.locator('input[type=file]').first().setInputFiles({ name: 'display.rcproj', mimeType: 'application/zip', buffer: Buffer.from(await saveProject(previewProject())) });
-  await page.getByRole('menuitem', { name: '机器人模型', exact: true }).click();
+  await page.getByRole('menuitem',{name:'应用配置',exact:true}).click();await page.getByRole('tab',{name:'模型',exact:true}).click();
   await expect(page.getByLabel('机器人三维预览')).toBeVisible();
   await page.getByRole('button', { name: '适应模型', exact: true }).click();
 }
@@ -35,10 +35,10 @@ test('page navigation retains camera, pose, selected node, geometry mode, tree e
   await page.getByText('joint_1 [revolute]', { exact: true }).click();
   const slider = page.getByRole('slider', { name: '关节预览位置' }); await slider.focus(); await slider.press('End');
   await collision(page); await page.getByRole('button', { name: /^正\s*视$/ }).click();
-  await page.locator('.model-tree .ant-tree-switcher_open').first().click();
+  await page.locator('.model-tree .ant-tree-switcher_open').first().click();await expect(page.getByText('joint_1 [revolute]',{exact:true})).not.toBeVisible();
   const canvas = page.locator('.robot-preview canvas'), image = await renderedFrame(canvas);
-  await page.getByRole('menuitem', { name: 'APP 配置', exact: true }).click();
-  await page.getByRole('menuitem', { name: '机器人模型', exact: true }).click();
+  await page.getByRole('menuitem',{name:'应用配置',exact:true}).click();await page.getByRole('tab',{name:'启动参数',exact:true}).click();
+  await page.getByRole('menuitem',{name:'应用配置',exact:true}).click();await page.getByRole('tab',{name:'模型',exact:true}).click();
   await expect(slider).toHaveAttribute('aria-valuenow', '1');
   await expect(page.locator('.robot-preview')).toHaveAttribute('data-selected', 'joint:joint_1');
   await expect(page.locator('.robot-preview')).toHaveAttribute('data-geometry', 'collision');
@@ -47,8 +47,8 @@ test('page navigation retains camera, pose, selected node, geometry mode, tree e
   const search = page.getByRole('searchbox', { name: '搜索模型节点' }); await search.fill('collision_only');
   await expect(search).toHaveValue('collision_only');
   for (let attempt = 0; attempt < 3; attempt++) {
-    await page.getByRole('menuitem', { name: '主站配置', exact: true }).click();
-    await page.getByRole('menuitem', { name: '机器人模型', exact: true }).click();
+    await page.getByRole('menuitem', { name: '总线配置', exact: true }).click();
+    await page.getByRole('menuitem',{name:'应用配置',exact:true}).click();await page.getByRole('tab',{name:'模型',exact:true}).click();
     await expect(page.locator('.model-workspace-shell')).toHaveAttribute('data-mode', 'wide');
     await expect(search).toHaveValue('collision_only');
     await expect(page.getByText('joint_1 [revolute]', { exact: true })).not.toBeVisible();
@@ -81,8 +81,7 @@ for (const { name, touch, viewport } of [{name:'keyboard',touch:false,viewport:{
     await dialog.getByRole('button', { name: 'Show Collision', exact: true }).click();
     await dialog.getByRole('button', { name: 'Show Visual', exact: true }).click();
     await expect(page.locator('.robot-preview')).toHaveAttribute('data-geometry', 'collision');
-    await dialog.locator('.ant-select[aria-label="Preview joint"]').click();
-    await dialog.locator('.ant-select-item-option').filter({ hasText: 'joint_1' }).click();
+    await expect(dialog.getByRole('combobox',{name:'Preview joint',exact:true})).toHaveCount(0);
     await dialog.getByRole('button', { name: 'Show Collision', exact: true }).click();
     await dialog.getByRole('button', { name: 'Show Visual', exact: true }).click();
     await page.screenshot({ path: info.outputPath('expanded-dark-english.png') });

@@ -1,4 +1,5 @@
 import { createProject } from './create';
+import { selectMaster } from './configuration';
 import { recordTemplate, talonTemplate } from './templates';
 import { collectReferences } from './references';
 import { digest, uid, type MasterKind, type ProjectFile } from './types';
@@ -15,7 +16,7 @@ export async function createTalonExample(kind: MasterKind, entries: Map<string, 
     return {id: uid(), path: spec.path, role: spec.role, owner: spec.role, bytes: new Uint8Array(bytes),
       ...(/\.STL$/i.test(spec.path) ? {} : {encoding: 'utf-8'})};
   }));
-  const p = createProject(`Talon · ROCOS-${kind.toUpperCase()}`, kind);
+  const p = createProject('Talon', kind);
   // Starter documents were replaced, so retain only the target rule snapshots.
   p.files = [...p.files.filter(file => file.role === 'profile'), ...files];
   p.editor = {buffers: {}, confirmations: {}};
@@ -35,11 +36,17 @@ export async function createTalonExample(kind: MasterKind, entries: Map<string, 
 }
 
 /** Assets ship with the app and are included in its offline cache. */
-export async function loadTalonExample(kind: MasterKind) {
+export async function loadTalonExample(kind: MasterKind = 'igh') {
   const entries = await Promise.all(talonTemplate().data.files.map(async ({path}) => {
     const response = await fetch(`${import.meta.env.BASE_URL}examples/talon/${path}`);
     if (!response.ok) throw new MessageError(msg('无法加载 Talon 示例文件：{path}', {path}));
     return [path, new Uint8Array(await response.arrayBuffer())] as const;
   }));
-  return createTalonExample(kind, new Map(entries));
+  const project = await createTalonExample(kind, new Map(entries));
+  // Both tabs open their bundled configuration, including ECM's read-only ENI.
+  selectMaster(project, kind === 'igh' ? 'ecm' : 'igh');
+  if (project.entrypoints.master.kind === 'ecm') project.entrypoints.master.eniFileId = project.files.find(file => file.path === 'ecm/eni7.xml')!.id;
+  selectMaster(project, kind);
+  project.references = collectReferences(project);
+  return project;
 }

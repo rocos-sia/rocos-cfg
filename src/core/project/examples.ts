@@ -8,7 +8,7 @@ import { fileById, utf8, type MasterKind } from './types';
  * The illustrative ENI is never represented as SDK-generated or device-tested.
  */
 export function createExample(kind: MasterKind) {
-  const p=createProject(`示例 · ${kind==='igh'?'ROCOS-IGH':'ROCOS-ECM'}`,kind);
+  const p=createProject('教学示例',kind);
   const template=teachingTemplate(),data=template.data;
   p.description='教学示例 / Teaching example. All mechanical values are illustrative; ENI is not SDK-generated or device-tested.';
   for(const [id,value] of [

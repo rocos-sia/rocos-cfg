@@ -153,7 +153,7 @@ test('Talon assets open offline at a repository base path before their first use
   await page.reload();
   await page.getByRole('button', {name: '打开示例', exact: true}).click();
   await page.getByRole('button', {name: '打开 Talon ECM 示例', exact: true}).click();
-  await expect(page.locator('.project-name strong')).toHaveText('Talon · ROCOS-ECM');
+  await expect(page.locator('.project-name strong')).toHaveText('Talon');
   await page.getByRole('menuitem', {name: '机器人模型', exact: true}).click();
   await expect(page.getByText('joint_7 [continuous]', {exact: true})).toBeVisible();
   await expect(page.getByLabel('机器人三维预览', {exact: true})).toBeVisible();

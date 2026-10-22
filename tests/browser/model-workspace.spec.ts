@@ -9,7 +9,7 @@ async function open(page:Page, large=false){
   const p=createExample('igh');fileById(p,p.entrypoints.urdf)!.bytes=utf8.encode(source+(large?'<!--'+'padding '.repeat(36000)+'-->':''));
   const buffer=Buffer.from(await saveProject(p));
   await page.goto('/');await page.locator('input[type=file]').first().setInputFiles({name:'workspace.rcproj',mimeType:'application/zip',buffer});
-  await page.getByRole('menuitem',{name:'机器人模型',exact:true}).click();
+  await page.getByRole('menuitem',{name:'应用配置',exact:true}).click();await page.getByRole('tab',{name:'模型',exact:true}).click();
   await expect(page.getByLabel('机器人三维预览')).toBeVisible();await page.getByRole('button',{name:'适应模型',exact:true}).click();
   return buffer;
 }
@@ -44,12 +44,12 @@ for(const large of [false,true])test(`ordinary limit edits retain pose and camer
 });
 
 test('opening the same project identity starts a new local preview session',async({page})=>{
-  const buffer=await open(page);const before=await snapshot(page);
+  const buffer=await open(page);const before=await snapshot(page);await page.getByText('joint_1 [revolute]',{exact:true}).click();
   const slider=page.getByRole('slider',{name:'关节预览位置',exact:true});await slider.focus();await slider.press('End');await expect(slider).toHaveAttribute('aria-valuenow','1');
   expect(await snapshot(page)).toBe(before);
   await page.locator('input[type=file]').first().setInputFiles({name:'workspace.rcproj',mimeType:'application/zip',buffer});
   await page.getByRole('button',{name:'打开新工程',exact:true}).click();
-  await page.getByRole('menuitem',{name:'机器人模型',exact:true}).click();
-  await expect(slider).toHaveAttribute('aria-valuenow','0');
+  await page.getByRole('menuitem',{name:'应用配置',exact:true}).click();await page.getByRole('tab',{name:'模型',exact:true}).click();
+  await page.getByText('joint_1 [revolute]',{exact:true}).click();await expect(slider).toHaveAttribute('aria-valuenow','0');
   expect(await snapshot(page)).toBe(before);
 });
