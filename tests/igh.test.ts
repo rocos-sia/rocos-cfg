@@ -90,4 +90,18 @@ describe('IgH edits preserve document nodes and update references transactionall
     expect(() => planSlaveChange(p, { kind: 'delete', index: 0 })).toThrow('源码草稿');
     expect(readYaml(textOf(fileById(p, masterFileId(p))!)).slaves).toHaveLength(1);
   });
+  it('moves a slave across multiple positions in one plan and remaps each dependent ID once', () => {
+    let p = createProject('drag', 'igh');
+    for (let i = 0; i < 4; i++) p = planSlaveChange(p, { kind: 'add' }).project;
+    editProjectYaml(p, masterFileId(p), doc => { for (let i = 0; i < 4; i++) doc.setIn(['slaves', i, 'name'], `axis-${i}`); });
+    editProjectYaml(p, p.entrypoints.hardware!, doc => doc.set('hardware', [{ id: 0, type: 'driver' }, { id: 3, type: 'driver' }]));
+    editProjectYaml(p, p.entrypoints.binding!, doc => doc.set('joint_bindings', [{ joint_name: 'joint', drive_id: 0 }]));
+    const moved = planSlaveChange(p, { kind: 'move', index: 0, target: 3 }).project;
+    const slaves = readYaml(textOf(fileById(moved, masterFileId(moved))!)).slaves;
+    expect(slaves.map((s: any) => s.name)).toEqual(['axis-1', 'axis-2', 'axis-3', 'axis-0']);
+    expect(slaves.map((s: any) => s.id)).toEqual([0n, 1n, 2n, 3n]);
+    expect(readYaml(textOf(fileById(moved, p.entrypoints.hardware)!)).hardware.map((d: any) => d.id)).toEqual([3n, 2n]);
+    expect(readYaml(textOf(fileById(moved, p.entrypoints.binding)!)).joint_bindings[0].drive_id).toBe(3n);
+    expect(() => planSlaveChange(p, { kind: 'move', index: 0, target: NaN })).toThrow();
+  });
 });

@@ -47,7 +47,7 @@ export function modifySequence(doc: Document, path: Path, operation: 'add' | 're
     [list.items[index], list.items[target]] = [list.items[target], list.items[index]];
   }
 }
-export type SlaveAction = { kind: 'add' } | { kind: 'copy' | 'delete' | 'up' | 'down'; index: number };
+export type SlaveAction = { kind: 'add' } | { kind: 'copy' | 'delete' | 'up' | 'down'; index: number } | { kind: 'move'; index: number; target: number };
 export interface SlavePlan { project: Project; impacts: string[]; impactMessages: DiagnosticMessage[]; selected: number }
 export function planSlaveChange(project: Project, action: SlaveAction): SlavePlan {
   const profile=targetStatus(project,'master');if(!profile.supported)throw new MessageError(profile);
@@ -76,15 +76,15 @@ export function planSlaveChange(project: Project, action: SlaveAction): SlavePla
       }
     } else {
       const index = action.index;
-      if (index < 0 || index >= slaves.items.length) throw new MessageError(msg("从站已不存在"));
+      if (!Number.isInteger(index) || index < 0 || index >= slaves.items.length) throw new MessageError(msg("从站已不存在"));
       if (action.kind === 'delete') {
         slaves.items.splice(index, 1); origins.splice(index, 1); selected = Math.max(0, index - 1);
         impacts.push(msg("删除 Slave {v0}，其硬件设备和关节绑定将同时移除。", {v0:String(index)}));
       } else {
-        const target = index + (action.kind === 'up' ? -1 : 1);
-        if (target < 0 || target >= slaves.items.length) throw new MessageError(msg("不能继续移动"));
-        [slaves.items[index], slaves.items[target]] = [slaves.items[target], slaves.items[index]];
-        [origins[index], origins[target]] = [origins[target], origins[index]]; selected = target;
+        const target = action.kind === 'move' ? action.target : index + (action.kind === 'up' ? -1 : 1);
+        if (!Number.isInteger(target) || target < 0 || target >= slaves.items.length) throw new MessageError(msg("不能继续移动"));
+        slaves.items.splice(target, 0, slaves.items.splice(index, 1)[0]);
+        origins.splice(target, 0, origins.splice(index, 1)[0]); selected = target;
       }
     }
     origins.forEach((old, next) => {

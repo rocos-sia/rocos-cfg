@@ -15,6 +15,7 @@ import { fileModule, readonlyFile } from '../core/modules/project';
 import { useProject, flushBuffers } from '../store';
 import { textOf, type ProjectFile } from '../core/project/types';
 import { urdfSourceRange, type UrdfSourceReveal } from '../core/documents/urdf-source';
+import { formatUrdf } from '../core/documents/format-urdf';
 
 export function SourceEditor({ file, reveal, diagnostic }: { file: ProjectFile; diagnostic?:DiagnosticRequest; reveal?: UrdfSourceReveal }) {
   let source: string;
@@ -108,6 +109,13 @@ function DecodedSourceEditor({ file, source, reveal, diagnostic }: { file: Proje
     <Space className="section-tools">
       <Tag>{file.path}</Tag>
       {readonly ? <Tag color="gold">{file.role === 'eni' ? t("ENI 原文 · 只读") : t("模块原文 · 只读")}</Tag> : <>
+        {file.role === 'urdf' && <Button onClick={() => {
+          const editor = view.current; if (!editor) return;
+          try {
+            const before = editor.state.doc.toString(), formatted = formatUrdf(before);
+            if (formatted !== before) editor.dispatch({ changes: { from: 0, to: editor.state.doc.length, insert: formatted }, userEvent: 'input.format' });
+          } catch (error) { message.error(() => errorText(error, true)); }
+        }}>{t('格式化 URDF')}</Button>}
         <Button onClick={async () => {
           try { await flushBuffers(); message.success(()=>(t("源码草稿已保留，可随工程保存"))); }
           catch (error) { message.error(()=>(errorText(error,true))); }

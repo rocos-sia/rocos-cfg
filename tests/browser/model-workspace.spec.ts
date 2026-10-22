@@ -1,3 +1,4 @@
+import { renderedFrame } from './helpers/preview';
 import { projectSnapshot as snapshot } from './helpers/project';
 import { expect, test, type Page } from '@playwright/test';
 import { createExample } from '../../src/core/project/examples';
@@ -32,9 +33,10 @@ for(const large of [false,true])test(`ordinary limit edits retain pose and camer
   await page.getByRole('button',{name:/^正\s*视$/}).click();
   const slider=page.getByRole('slider',{name:'关节预览位置',exact:true});await slider.focus();await slider.press('End');await expect(slider).toHaveAttribute('aria-valuenow','1');
   await slider.blur();await expect(page.getByRole('tooltip')).not.toBeVisible();
-  const before=await canvas.screenshot({path:info.outputPath('before-edit.png')});await page.getByLabel('位置上限',{exact:true}).fill('2');await page.getByLabel('位置上限',{exact:true}).blur();
+  await canvas.screenshot({path:info.outputPath('before-edit.png')});const before=await renderedFrame(canvas);await page.getByLabel('位置上限',{exact:true}).fill('2');await page.getByLabel('位置上限',{exact:true}).blur();
   await expect(slider).toHaveAttribute('aria-valuenow','1');if(!large)await expect(canvas).toHaveAttribute('data-workspace-canvas','retained');
-  await expect.poll(async()=>Buffer.compare(before,await canvas.screenshot({path:info.outputPath('after-edit.png')}))).toBe(0);
+  await expect.poll(async()=>Buffer.compare(before,await renderedFrame(canvas))).toBe(0);
+  await canvas.screenshot({path:info.outputPath('after-edit.png')});
   await page.getByLabel('位置上限',{exact:true}).fill('0.5');await page.getByLabel('位置上限',{exact:true}).blur();await expect(slider).toHaveAttribute('aria-valuenow','0.5');
   await page.getByRole('button',{name:/^撤\s*销$/}).click();await expect(slider).toHaveAttribute('aria-valuenow','0.5');
   await page.getByRole('button',{name:'重置姿态',exact:true}).click();await expect(slider).toHaveAttribute('aria-valuenow','0');

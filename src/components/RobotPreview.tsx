@@ -254,6 +254,7 @@ export function RobotPreview({ project, robot, selected = '', onSelect, onExpand
   const fitView = (view?: string) => { viewTouched.current = true; runtime.current?.fit(view); };
   return <ModelViewport onExpandedChange={onExpandedChange}>{({ expanded, toggle, buttonRef }) => <>
     <div className="robot-preview" ref={host} data-selected={selected} data-geometry={geometry} />
+    <div className="preview-notices">
     {error && <Alert type="warning" message={typeof error==='string'?t(error):diagnosticText(error)} />}
     {problems.length > 0 && <section className="preview-resource-issues" aria-label={t('模型资源问题')} tabIndex={0}>
       <strong>{t('模型资源问题（{count}）', { count: problems.length })}</strong>
@@ -264,17 +265,24 @@ export function RobotPreview({ project, robot, selected = '', onSelect, onExpand
         <Space wrap>{problem.owners.map(owner => <Button size="small" key={JSON.stringify(owner)} disabled={!onSelect} onClick={() => { setGeometry(owner.mode); select.current?.(`link:${owner.link}`); }}>{t('定位 {link} · {mode}', { link: owner.link, mode: owner.mode === 'visual' ? t('外观（Visual）') : t('碰撞（Collision）') })}</Button>)}</Space>
       </li>)}</ul>
     </section>}
+    {geometry === 'collision' && !hasCollision && <Alert type="info" message={t('当前模型没有碰撞几何，可切换至外观显示。')} />}
+    </div>
+    <div className="preview-top-overlay">
+      <div className="preview-heading"><strong>{robot.name || t('模型预览')}</strong><Button size="small" ref={buttonRef} onClick={toggle}>{expanded ? t('退出展开视图') : t('展开视图')}</Button></div>
+      <small>{t('配置预览 · m / rad · 拖动旋转，滚轮缩放')}</small>
     {selectedJoint && <div className="preview-axis-status" role="status" aria-label={t('选中关节轴向')}>
       <strong>{selectedJoint.name} · {selectedJoint.type}</strong> · {hasJointAxis(selectedJoint.type) ? (selectedJoint.type === 'planar' ? t('局部平面法向：{axis}；橙色箭头随当前预览姿态变换。', { axis: selectedJoint.axis }) : t('局部轴向：{axis}；橙色箭头随当前预览姿态变换。', { axis: selectedJoint.axis })) : t('该关节没有单一运动轴。')}
       <div>{t('蓝线：{parent} → {child}，连接父 Link 原点与当前关节坐标系。', { parent: selectedJoint.parent, child: selectedJoint.child })}</div>
     </div>}
-    {geometry === 'collision' && !hasCollision && <Alert type="info" message={t('当前模型没有碰撞几何，可切换至外观显示。')} />}
-    <div className="preview-display-tools"><Select showSearch optionFilterProp="label" aria-label={t('模型显示')} value={geometry} getPopupContainer={trigger => trigger.parentElement!} options={[{value:'visual',label:t('外观（Visual）')},{value:'collision',label:t('碰撞（Collision）')}]} onChange={setGeometry} />
-      <Button ref={buttonRef} onClick={toggle}>{expanded ? t('退出展开视图') : t('展开视图')}</Button></div>
-    <Space wrap className="space-top"><Button size="small" onClick={() => fitView()}>{t("适应模型")}</Button>{[['front', t("正视")], ['side', t("侧视")], ['top', t("俯视")]].map(([key, label]) => <Button size="small" key={key} onClick={() => fitView(key)}>{label}</Button>)}<Button size="small" onClick={() => applyPose(previewPose(joints).values)}>{t("重置姿态")}</Button></Space>
-    {!!joints.length && <div className="space-top"><Select showSearch optionFilterProp="label" aria-label={t("预览关节")} style={{ width: '100%' }} value={current?.name} getPopupContainer={trigger => trigger.parentElement!} options={joints.map(j => ({ value: j.name, label: `${j.name} · ${j.type === 'prismatic' ? 'm' : 'rad'}` }))} onChange={name => { memory.joint = name; setPoseJoint(name); }} />
+    </div>
+    <div className="preview-controls">
+      <div className="preview-display-tools"><Select size="small" showSearch optionFilterProp="label" aria-label={t('模型显示')} value={geometry} getPopupContainer={trigger => trigger.parentElement!} options={[{value:'visual',label:t('外观（Visual）')},{value:'collision',label:t('碰撞（Collision）')}]} onChange={setGeometry} />
+    <Space wrap className="preview-view-tools"><Button size="small" onClick={() => fitView()}>{t("适应模型")}</Button>{[['front', t("正视")], ['side', t("侧视")], ['top', t("俯视")]].map(([key, label]) => <Button size="small" key={key} onClick={() => fitView(key)}>{label}</Button>)}<Button size="small" onClick={() => applyPose(previewPose(joints).values)}>{t("重置姿态")}</Button></Space>
+    </div>
+    {!!joints.length && <div className="preview-joint-tools"><Select size="small" showSearch optionFilterProp="label" aria-label={t("预览关节")} value={current?.name} getPopupContainer={trigger => trigger.parentElement!} options={joints.map(j => ({ value: j.name, label: `${j.name} · ${j.type === 'prismatic' ? 'm' : 'rad'}` }))} onChange={name => { memory.joint = name; setPoseJoint(name); }} />
       <Slider ariaLabelForHandle={t("关节预览位置")} disabled={!validLimits} min={validLimits ? min : 0} max={validLimits ? max : 1} step={.001} value={pose[current?.name] ?? 0} onChange={value => current && setJoint(current.name, value)} />
-      <small>{t("仅改变预览姿态，不写入 URDF 或驱动器参数。")}</small>
     </div>}
+      <small>{t("仅改变预览姿态，不写入 URDF 或驱动器参数。")}</small>
+    </div>
   </>}</ModelViewport>;
 }

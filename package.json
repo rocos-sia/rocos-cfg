@@ -31,6 +31,7 @@
     "@codemirror/view": "^6.38.0",
     "@tauri-apps/api": "2.12.4",
     "@xmldom/xmldom": "^0.8.11",
+    "@xyflow/react": "12.12.0",
     "antd": "^5.27.0",
     "codemirror": "^6.0.2",
     "fflate": "^0.8.2",
@@ -39,6 +40,7 @@
     "react-dom": "^19.1.0",
     "three": "^0.180.0",
     "urdf-loader": "^0.12.6",
+    "xml-formatter": "3.7.0",
     "yaml": "^2.8.1",
     "zustand": "^5.0.8"
   },
@@ -54,5 +56,5 @@
     "vite": "^7.1.0",
     "vitest": "^3.2.0"
   },
-  "version": "0.1.0-rc.20"
+  "version": "0.1.0-rc.21"
 }

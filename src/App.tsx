@@ -108,7 +108,7 @@ function Workspace({dark,toggle}:{dark:boolean;toggle:()=>void}) {
         {analysis.pending&&<p role="status">{t("正在后台解析当前工程的总线与模型…")}</p>}
         {analysis.error&&<Alert type="error" message={diagnosticText({message:analysis.error,text:analysis.errorTemplate})} action={<Button onClick={analysis.retry}>{t("重新解析")}</Button>}/>}
         {sourceFile?<Card className="space-top diagnostic-source" title={sourceFile.path} extra={<Button onClick={()=>setReveal(undefined)}>{t("返回配置页面")}</Button>}><SourceEditor file={sourceFile} diagnostic={destination}/></Card>:<>
-        {route==='master'&&<Master p={p} analysis={analysis.data} onImport={importFiles}/>}
+        {route==='master'&&<Master p={p} analysis={analysis.data} onImport={importFiles} dark={dark}/>}
         {route==='robot'&&<Robot key={state.workspaceEpoch} p={p} analysis={analysis.data} onImport={importFiles} viewState={modelView.current.value} dark={dark}/>}
         {route==='hardware'&&<Hardware p={p} analysis={analysis.data}/>}
         {route==='app'&&<AppConfig p={p}/>}

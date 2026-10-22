@@ -2,6 +2,22 @@
 
 本记录按版本保留本地验证结果，不代表正式发布或完整首版验收。产物位于本机 `artifacts/`，不随 Git 提交；后续源码修改不会自动更新这些包或本记录。无版本后缀的静态离线 ZIP 及 `test-results/` 会被后续构建/验证替换，应按哈希对应记录。
 
+## 0.1.0-rc.21
+
+2026-10-22，本轮以局部组件改动完成 3D 紧凑覆盖层、URDF 格式化、IgH 从站行操作及配置顺序拓扑。复用现有工程事务、影响确认、撤销和 Ant Design 样式，不变更 `.rcproj` 或运行配置契约。仅验证 Chrome，未构建或运行 Tauri。
+
+| 产物 | SHA-256 |
+| --- | --- |
+| `artifacts/rocos-configurator-0.1.0-rc.21-offline.zip` | `44eb00b5f9d6b6d0a162fddfbe30782d0a696439661a7eb682f098c1747cc0b0` |
+
+- 3D 画布铺满卡片，上下渐变承载标题、视图按钮、关节选择和滑块；桌面控件紧凑排列，触控目标仍至少 44px。检查桌面、390px 窄窗、浅/深色及展开视图，保留相机、姿态、拾取、面板调整和焦点行为。
+- 使用 [xml-formatter](https://github.com/chrisbottin/xml-formatter) 3.7.0 显式生成两空格缩进的 URDF 草稿；应用前文件不变，非法 XML 保留输入。格式化函数保护旧 `<hardware>`、混合文本、CDATA、`xml:space` 内容及注释，不触发旧硬件映射解析。
+- IgH 列表支持拖动到任意行及上移/下移、垃圾桶按钮。复用从站计划同步 ID、Hardware 和关节绑定，应用前确认影响，撤销恢复。新 [React Flow](https://reactflow.dev/api-reference/react-flow) 12.12.0 卡片按配置顺序连接主从站，随排序/删除更新；ECM 为只读 ENI 顺序视图，不推断未解析的端口分支。拓扑组件单独按需加载，未引入额外拖动或自动布局库。
+- `npm test -- --exclude 'tests/consumer/**'`：33 个文件、202 项全部通过，包含多位置移动映射和格式化保真/错误输入。TypeScript 检查与生产构建通过；未执行外部消费端、Rust 或其他浏览器测试。
+- Chrome 仓库内回归共 114 项，命令 `npm run test:ui -- --grep-invert 'local real .* Talon|actual Talon meshes' --workers=2`。首轮 109 项通过，5 项旧断言因覆盖控件进入截图、按钮目标尺寸及标题 DOM 调整失败；改为比较实际 WebGL 帧、区分鼠标/触控尺寸并定位新标题，`model-workspace.spec.ts`、`preview-display.spec.ts`、`typography.spec.ts` 共 11 项复跑全部通过。3 项外部真实工程用例明确排除，不计为通过。新增用例验证拖动取消/确认、绑定同步、删除/撤销、拓扑及 ENI 只读、格式化草稿和窄窗覆盖层。
+- Chrome Pages 子路径离线 4 项通过，额外验证断网后首次加载拓扑和格式化 URDF，再保存工程及导出两类主站运行包。静态 ZIP 实际解压冷启动、本地字体/声明、无外网编辑保存及文件哈希检查通过。执行入口为 `build -- --base /rocos-configurator/`、`test:offline`、`package:offline`、`test:package`；`dist/` 最后保留相对路径离线构建。
+- 使用已安装的 UI UX Pro Max 技能建议，维持既有配色、局部密度优化和拖动的按钮替代操作。六处版本清单同步为 `0.1.0-rc.21`，内部 rc 不创建正式 tag。
+
 ## 0.1.0-rc.20
 
 2026-10-22，本轮按用户要求仅优化参数提示与机器人页面布局，沿用现有 Ant Design、配色与字体，未新增前端依赖或变更工程/运行配置格式。仅验证 Chrome，不构建或运行 Tauri。

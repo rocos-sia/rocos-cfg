@@ -43,7 +43,7 @@ test('bundled weights render interface and source text with mixed-language curso
   await editor.press('ControlOrMeta+Home'); await editor.press('ArrowDown'); await editor.press('Home'); await editor.press('ControlOrMeta+]');
   await expect(editor.locator('.cm-line').nth(1)).toHaveText('    <link name="tool_link"/>');
   await page.getByRole('button', { name: '应用修改', exact: true }).click();
-  await expect(page.locator('.preview-card .ant-card-head-title')).toHaveText('机器臂A');
+  await expect(page.locator('.preview-card .preview-heading strong')).toHaveText('机器臂A');
   await page.getByRole('button', { name: '切换语言', exact: true }).click(); await page.getByRole('menuitem', { name: 'English', exact: true }).click();
   await page.getByRole('button', { name: 'Toggle theme', exact: true }).click(); await assertBundledFonts(page);
   await expect(editor).toHaveCount(0); await expect(page.getByRole('textbox', { name: 'Configuration source', exact: true })).toContainText('机器臂A');

@@ -98,7 +98,7 @@ export function Robot({ p, analysis, onImport, viewState, dark }: { p: Project; 
         <RobotStructureTree ref={treeRef} key={treeKey} viewState={viewState.tree}
           nodes={tree} selected={selected} search={search} onSearchChange={setSearch} onSelect={selectNode} />
       </Card>,
-      <Card key="preview" title={robot.name || t("模型预览")} className="preview-card"><RobotPreview project={p} robot={robot} viewState={viewState.preview} dark={dark} selected={selected} onExpandedChange={onExpandedChange} onSelect={key => { setSelected(key); treeRef.current?.reveal(key); }} /><div className="preview-caption">{t("配置预览 · m / rad · 拖动旋转，滚轮缩放")}</div></Card>,
+      <Card key="preview" className="preview-card"><RobotPreview project={p} robot={robot} viewState={viewState.preview} dark={dark} selected={selected} onExpandedChange={onExpandedChange} onSelect={key => { setSelected(key); treeRef.current?.reveal(key); }} /></Card>,
       <Card key="properties" title={target ? `${target.kind === 'link' ? 'Link' : 'Joint'} · ${target.name || t('未命名')}` : t("节点属性")}>
         {target && <Button className="section-tools" onClick={() => setSourceReveal({ ...target, source: textOf(file), request: (sourceReveal?.request || 0) + 1 })}>{t('定位到 URDF 源码')}</Button>}
         {target?.ambiguous ? <>

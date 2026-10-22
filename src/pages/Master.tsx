@@ -1,3 +1,4 @@
+import { SlaveTable } from '../components/SlaveTable';
 import { useDiagnosticRequest } from '../components/DiagnosticNavigation';
 import { useLocalizedMessage } from '../components/useLocalizedMessage';
 import { errorText, diagnosticText, t } from '../i18n';
@@ -13,10 +14,11 @@ import { Fields } from '../components/Fields';
 import { SourceEditor } from '../components/SourceEditor';
 import { targetStatus } from '../core/project/profiles';
 import { starterData } from '../core/project/templates';
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
+const BusTopology = lazy(() => import('../components/BusTopology'));
 import { igh, ecm } from '../core/documents/config-fields';
 const ighDefaults:Record<string,unknown>=starterData().igh.master;
-export function Master({p,analysis,onImport}:{p:Project;analysis?:ProjectAnalysis;onImport:()=>void}) {
+export function Master({p,analysis,onImport,dark}:{p:Project;analysis?:ProjectAnalysis;onImport:()=>void;dark:boolean}) {
   const file=fileById(p,p.entrypoints.master.fileId),eni=fileById(p,p.entrypoints.master.eniFileId);const message=useLocalizedMessage();
   const [tab,setTab]=useState('slaves');
   const diagnostic=useDiagnosticRequest();
@@ -31,7 +33,7 @@ export function Master({p,analysis,onImport}:{p:Project;analysis?:ProjectAnalysi
     <Card title={t("启动参数")} extra={<Tag>{t("目标")}{p.targets.master.version}</Tag>}><Fields file={file} fields={p.entrypoints.master.kind==='igh'?igh.map(field=>({...field,defaultValue:ighDefaults[field.path.split('.')[1]]})):ecm}/></Card>
     <Card title={t("总线配置视图")} className="space-top" extra={p.entrypoints.master.kind==='igh'?<Button icon={<PlusOutlined aria-hidden />} onClick={addSlave}>{t("新增从站")}</Button>:<Tag color="gold">{t("来自 ENI · 只读")}</Tag>}>
       <Tabs activeKey={tab} onChange={setTab} items={[
-        {key:'slaves',label:t('从站 ({count})',{count:catalog.slaves.length}),children:<Table size="small" scroll={{x:650}} rowKey="id" dataSource={catalog.slaves} pagination={false} columns={[{title:t("运行时 ID"),dataIndex:'id'},{title:t("名称"),dataIndex:'name'},{title:t("固定地址"),dataIndex:'address',render:v=>v??'—'},{title:'Vendor',dataIndex:'vendor',render:v=>v||'—'},{title:'Product',dataIndex:'product',render:v=>v||'—'}]}/>},
+        {key:'slaves',label:t('从站 ({count})',{count:catalog.slaves.length}),children:<SlaveTable p={p} slaves={catalog.slaves}/>},
         {key:'signals',label:t('过程映像 ({count})',{count:catalog.signals.length}),children:<Table size="small" scroll={{x:900}} rowKey="uid" dataSource={catalog.signals} columns={[{title:t("从站"),dataIndex:'slaveId',width:80},{title:t("方向"),dataIndex:'direction',width:100,render:v=><Tag color={v==='input'?'blue':'purple'}>{v==='input'?t("输入 Tx"):t("输出 Rx")}</Tag>},{title:t("运行时名称"),dataIndex:'runtimeName'},{title:t("位宽"),dataIndex:'bitLength',width:70},{title:t("位偏移"),dataIndex:'bitOffset',width:80,render:v=>v??'—'},{title:t("原始名称"),dataIndex:'sourceName'},{title:t("解析"),dataIndex:'resolution',width:100}]}/>},
         ...(p.entrypoints.master.kind==='igh'?[{key:'edit',label:t("PDO / SDO 编辑"),children:<IghEditor p={p}/>}]:[]),
         {key:'source',label:t("源文件"),children:<SourceEditor file={file}/>},
@@ -39,5 +41,6 @@ export function Master({p,analysis,onImport}:{p:Project;analysis?:ProjectAnalysi
       ]}/>
       {catalog.diagnostics.map((d,i)=><Alert className="space-top" key={i} type={d.severity==='error'?'error':'warning'} showIcon message={diagnosticText(d)}/>)}
     </Card>
+    <Suspense fallback={null}><BusTopology catalog={catalog} kind={p.entrypoints.master.kind} dark={dark}/></Suspense>
   </>;
 }

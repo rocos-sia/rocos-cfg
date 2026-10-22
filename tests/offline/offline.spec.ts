@@ -117,6 +117,12 @@ test('both bundled teaching examples remain editable and exportable after a cach
     await page.getByRole('button',{name:kind==='igh'?'打开 IgH 示例':'打开 EC-Master 示例',exact:true}).click();
     if(index)await page.getByRole('button',{name:'打开新工程',exact:true}).click();
     await expect(page.getByText('教学示例',{exact:true})).toBeVisible();
+    await page.getByRole('menuitem',{name:'主站配置',exact:true}).click();
+    await expect(page.locator('.bus-topology .react-flow__node')).toHaveCount(2);
+    await page.getByRole('menuitem',{name:'机器人模型',exact:true}).click();
+    await page.getByRole('button',{name:'格式化 URDF',exact:true}).click();
+    await expect(page.getByRole('button',{name:'放弃草稿',exact:true})).toBeVisible();
+    await page.getByRole('button',{name:'应用修改',exact:true}).click();
     await page.getByRole('menuitem',{name:'APP 配置',exact:true}).click();
     await page.getByRole('spinbutton',{name:'HTTP 端口',exact:true}).fill(String(8090+index));await page.getByRole('spinbutton',{name:'HTTP 端口',exact:true}).blur();
     await page.getByRole('menuitem',{name:'硬件与绑定',exact:true}).click();

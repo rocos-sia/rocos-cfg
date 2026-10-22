@@ -165,3 +165,22 @@
 .model-panel-settings{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-left:auto}
 .visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
 @media(pointer:coarse){.parameter-help,.parameter-input>.parameter-help{flex-basis:44px;width:44px;height:44px}}
+
+/* The canvas fills its card; compact controls sit on readable gradient overlays. */
+.model-pane-preview>.preview-card>.ant-card-body{padding:0;overflow:visible;border-radius:inherit}
+.model-pane-preview .model-viewport-inline .model-viewport-content,.model-viewport-expanded .model-viewport-content{position:relative;display:block;overflow:hidden;border-radius:12px;height:100%;min-height:0;isolation:isolate}
+.model-pane-preview .model-viewport-inline .robot-preview,.model-viewport-expanded .robot-preview{position:absolute;inset:0;height:100%;min-height:0;width:100%}
+.preview-top-overlay,.preview-controls{position:absolute;left:0;right:0;z-index:1;pointer-events:none;color:var(--config-text);padding:12px 16px}
+.preview-top-overlay{top:0;background:linear-gradient(to bottom,var(--config-card),color-mix(in srgb,var(--config-card) 85%,transparent) 65%,transparent);padding-bottom:28px}
+.preview-heading{display:flex;align-items:center;justify-content:space-between;gap:8px}.preview-heading strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:15px}
+.preview-top-overlay small,.preview-controls>small{font-size:12px}.preview-heading .ant-btn{pointer-events:auto}
+.preview-controls{bottom:0;padding-top:28px;background:linear-gradient(to top,var(--config-card),color-mix(in srgb,var(--config-card) 90%,transparent) 70%,transparent)}
+.preview-controls .preview-display-tools{display:flex;justify-content:flex-start;align-items:center;gap:6px;padding:0;flex-wrap:wrap;pointer-events:auto}
+.preview-controls .preview-display-tools .ant-select{min-width:132px}.preview-controls .preview-view-tools{gap:4px!important}
+.preview-controls .preview-joint-tools{display:flex;align-items:center;gap:10px;margin:6px 0 2px;pointer-events:auto}.preview-joint-tools .ant-select{width:150px;min-width:0;flex:0 1 150px}.preview-joint-tools .ant-slider{flex:1;min-width:60px;margin:10px 6px}
+.model-viewport .ant-btn,.preview-controls .ant-select-selector{min-height:32px}.preview-top-overlay .preview-axis-status{margin:4px 0 0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:12px}.preview-axis-status>div{display:inline}
+.preview-notices{position:absolute;top:100px;left:12px;right:12px;z-index:2;max-height:40%;overflow:auto}.preview-notices:empty{display:none}.preview-notices .preview-resource-issues{margin:0;background:var(--config-card)}
+@media(pointer:coarse){.model-viewport .ant-btn,.preview-controls .ant-select-selector{min-height:44px}.preview-controls .ant-select-single{height:44px}}
+.slave-order-help{font-size:12px;margin:0 0 10px}.slave-drag-handle{margin-right:6px;color:var(--config-muted);cursor:grab}.slave-table tr[draggable=true]{cursor:grab}.slave-table .slave-drop-target>td{box-shadow:inset 0 2px 0 var(--config-primary);background:var(--config-workspace)!important}.slave-table .ant-btn{min-width:28px;min-height:28px}
+.bus-topology{height:240px;min-width:0;border:1px solid var(--config-border);border-radius:10px;overflow:hidden}.bus-topology-card .ant-card-body>p{font-size:12px;margin:0 0 12px}.bus-topology .react-flow{--xy-background-color:var(--config-workspace);--xy-node-background-color:var(--config-card);--xy-node-color:var(--config-text);--xy-node-border:1px solid var(--config-border);--xy-edge-stroke:var(--config-primary);--xy-controls-button-background-color:var(--config-card);--xy-controls-button-color:var(--config-text)}.bus-topology .react-flow__node{width:180px;min-height:66px;border-radius:10px;padding:12px;font-family:inherit}.bus-topology .react-flow__node-input{border-color:var(--config-primary);font-weight:600}.bus-topology .react-flow__node span,.bus-topology .react-flow__node small{display:block;overflow-wrap:anywhere}.bus-topology .react-flow__node small{color:var(--config-muted)}
+@media(pointer:coarse){.slave-table .ant-btn{min-width:44px;min-height:44px}}

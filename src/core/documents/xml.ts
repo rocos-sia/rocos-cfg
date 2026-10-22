@@ -20,25 +20,31 @@ export function serializeXml(doc: Document | Element) {
 function retainHardwareSource(doc: Document, text: string) {
   const nodes = Array.from(doc.getElementsByTagName('*')).filter(node => node.localName === 'hardware' && !isLegacyHardware(node.parentNode!));
   if (!nodes.length) return;
+  opaqueXmlRanges(text, name => name.split(':').at(-1) === 'hardware').forEach((range, index) => opaqueHardware.set(nodes[index], text.slice(range.from, range.to)));
+}
+/** Mark opaque fragments without interpreting their contents. Input must be validated XML. */
+export function opaqueXmlRanges(text: string, preserve: (name: string) => boolean) {
+  const ranges: { from: number; to: number }[] = [];
   // Tokenize only markup boundaries. Skip comments, CDATA and processing
   // instructions, and respect quoted '>' characters; hardware values stay opaque.
   const tokens = /<!--[\s\S]*?-->|<!\[CDATA\[[\s\S]*?\]\]>|<\?[\s\S]*?\?>|<\/?[^\s<>/?!]+(?:[^<>"']|"[^"]*"|'[^']*')*>/g;
-  let depth = 0, start = 0, index = 0;
+  let depth = 0, start = 0;
   for (const match of text.matchAll(tokens)) {
     const token = match[0];
     if (token.startsWith('<!') || token.startsWith('<?')) continue;
     const closing = token.startsWith('</'), empty = /\/\s*>$/.test(token);
-    const name = /^<\/?([^\s/>]+)/.exec(token)![1].split(':').at(-1);
-    if (!depth && !closing && name === 'hardware') {
+    const name = /^<\/?([^\s/>]+)/.exec(token)![1];
+    if (!depth && !closing && preserve(name)) {
       start = match.index;
-      if (empty) { opaqueHardware.set(nodes[index++], token); continue; }
+      if (empty) { ranges.push({ from: start, to: start + token.length }); continue; }
       depth = 1;
     } else if (depth) {
       if (closing) depth--;
       else if (!empty) depth++;
-      if (!depth) opaqueHardware.set(nodes[index++], text.slice(start, match.index + token.length));
+      if (!depth) ranges.push({ from: start, to: match.index + token.length });
     }
   }
+  return ranges;
 }
 export const children = (node: Element | Document, tag?: string): Element[] => Array.from(node.childNodes).filter((n): n is Element => n.nodeType === 1 && (!tag || (n as Element).localName === tag));
 export const child = (node: Element | Document, tag: string) => children(node, tag)[0];

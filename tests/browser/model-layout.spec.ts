@@ -1,4 +1,5 @@
 import { projectSnapshot as snapshot } from './helpers/project';
+import { renderedFrame } from './helpers/preview';
 import { expect, test, type Page } from '@playwright/test';
 import { previewProject } from '../fixtures/preview';
 import { saveProject } from '../../src/core/project/archive';
@@ -49,7 +50,7 @@ test('actual container width chooses tabs, keeps pending input and focus, and re
   const canvas = page.locator('.robot-preview canvas'); await canvas.evaluate(el => el.setAttribute('data-layout-identity', 'retained'));
   await page.getByRole('button', { name: /^正\s*视$/ }).click();
   const slider = page.getByRole('slider', { name: '关节预览位置', exact: true }); await slider.focus(); await slider.press('End'); await slider.blur(); await expect(page.getByRole('tooltip')).not.toBeVisible();
-  const image = await canvas.screenshot(), before = await snapshot(page), field = page.getByLabel('位置上限', { exact: true });
+  const image = await renderedFrame(canvas), before = await snapshot(page), field = page.getByLabel('位置上限', { exact: true });
   await field.focus(); await field.fill('temporary invalid value');
   // Resize only the workspace, not the viewport; a media-query-only layout fails.
   await page.locator('.model-workspace-shell').evaluate(el => { (el as HTMLElement).style.width = '820px'; });
@@ -63,7 +64,7 @@ test('actual container width chooses tabs, keeps pending input and focus, and re
   await page.locator('.model-workspace-shell').evaluate(el => { (el as HTMLElement).style.width = ''; });
   await expect(page.locator('.model-workspace-shell')).toHaveAttribute('data-mode', 'wide');
   await expect(canvas).toHaveAttribute('data-layout-identity', 'retained'); await expect(slider).toHaveAttribute('aria-valuenow', '1');
-  await expect.poll(async () => Buffer.compare(image, await canvas.screenshot())).toBe(0); expect(await snapshot(page)).toBe(before);
+  await expect.poll(async () => Buffer.compare(image, await renderedFrame(canvas))).toBe(0); expect(await snapshot(page)).toBe(before);
   await page.screenshot({ path: info.outputPath('restored-panels.png') });
 });
 

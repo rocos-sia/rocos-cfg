@@ -1,5 +1,6 @@
 import { projectSnapshot as snapshot } from './helpers/project';
-import { expect, test, type Page, type Locator } from '@playwright/test';
+import { renderedFrame } from './helpers/preview';
+import { expect, test, type Page } from '@playwright/test';
 import { previewProject } from '../fixtures/preview';
 import { saveProject } from '../../src/core/project/archive';
 
@@ -9,18 +10,6 @@ async function open(page: Page) {
   await page.getByRole('menuitem', { name: '机器人模型', exact: true }).click();
   await expect(page.getByLabel('机器人三维预览')).toBeVisible();
   await page.getByRole('button', { name: '适应模型', exact: true }).click();
-}
-// Element screenshots round fractional CSS bounds outwards and can include an
-// adjacent card-border row. Compare the complete rendered frame, not that row.
-async function renderedFrame(canvas: Locator) {
-  const base64 = await canvas.evaluate(el => new Promise<string>((resolve, reject) => requestAnimationFrame(() => {
-    const surface = el as HTMLCanvasElement, gl = surface.getContext('webgl2')!;
-    const pixels = new Uint8Array(surface.width * surface.height * 4); gl.readPixels(0, 0, surface.width, surface.height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
-    let varied = false; for (let i = 4; i < pixels.length; i += 4) if (pixels[i] !== pixels[0] || pixels[i + 1] !== pixels[1] || pixels[i + 2] !== pixels[2]) { varied = true; break; }
-    if (!varied) { reject(Error('Expected a rendered model/grid frame, not an empty capture')); return; }
-    resolve(surface.toDataURL('image/png').split(',')[1]);
-  })));
-  return Buffer.from(base64, 'base64');
 }
 async function collision(page: Page) {
   await page.locator('.ant-select[aria-label="模型显示"]').click();
@@ -47,14 +36,14 @@ test('page navigation retains camera, pose, selected node, geometry mode, tree e
   const slider = page.getByRole('slider', { name: '关节预览位置' }); await slider.focus(); await slider.press('End');
   await collision(page); await page.getByRole('button', { name: /^正\s*视$/ }).click();
   await page.locator('.model-tree .ant-tree-switcher_open').first().click();
-  const canvas = page.locator('.robot-preview canvas'), image = await canvas.screenshot();
+  const canvas = page.locator('.robot-preview canvas'), image = await renderedFrame(canvas);
   await page.getByRole('menuitem', { name: 'APP 配置', exact: true }).click();
   await page.getByRole('menuitem', { name: '机器人模型', exact: true }).click();
   await expect(slider).toHaveAttribute('aria-valuenow', '1');
   await expect(page.locator('.robot-preview')).toHaveAttribute('data-selected', 'joint:joint_1');
   await expect(page.locator('.robot-preview')).toHaveAttribute('data-geometry', 'collision');
   await expect(page.getByText('joint_1 [revolute]', { exact: true })).not.toBeVisible();
-  await expect.poll(async () => Buffer.compare(image, await canvas.screenshot())).toBe(0);
+  await expect.poll(async () => Buffer.compare(image, await renderedFrame(canvas))).toBe(0);
   const search = page.getByRole('searchbox', { name: '搜索模型节点' }); await search.fill('collision_only');
   await expect(search).toHaveValue('collision_only');
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -86,8 +75,8 @@ for (const { name, touch, viewport } of [{name:'keyboard',touch:false,viewport:{
     expect(await page.locator('.sidebar').evaluate(el => !!el.closest('[inert]'))).toBe(true);
     await expect(page.locator('canvas')).toHaveCount(1); await expect(canvas).toHaveAttribute('data-canvas-identity', 'retained');
     const bounds = (await canvas.boundingBox())!; expect(bounds.width).toBeGreaterThan(Math.min(viewport.width - 50, 1300));
-    const exitBounds = (await exit.boundingBox())!; expect(exitBounds.height).toBeGreaterThanOrEqual(44); expect(exitBounds.y + exitBounds.height).toBeLessThanOrEqual(page.viewportSize()!.height);
-    for (const control of await dialog.getByRole('button').all()) expect((await control.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    const exitBounds = (await exit.boundingBox())!; expect(exitBounds.height).toBeGreaterThanOrEqual(touch ? 44 : 32); expect(exitBounds.y + exitBounds.height).toBeLessThanOrEqual(page.viewportSize()!.height);
+    for (const control of await dialog.getByRole('button').all()) expect((await control.boundingBox())!.height).toBeGreaterThanOrEqual(touch ? 44 : 32);
     for (let i = 0; i < 14; i++) { await page.keyboard.press('Tab'); expect(await page.evaluate(() => !!document.activeElement?.closest('[role=dialog]'))).toBe(true); }
     await dialog.locator('.ant-select[aria-label="Model display"]').click();
     await dialog.locator('.ant-select-item-option[title="Collision"]').click();
