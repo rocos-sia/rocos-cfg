@@ -1,3 +1,5 @@
+import type { DiagnosticRequest } from './DiagnosticNavigation';
+import { diagnosticSourceRange } from '../core/diagnostics/location';
 import { useLocalizedMessage } from './useLocalizedMessage';
 import { errorText, t, useLocale } from '../i18n';
 import { editorPhrases } from '../i18n/editor';
@@ -14,13 +16,13 @@ import { useProject, flushBuffers } from '../store';
 import { textOf, type ProjectFile } from '../core/project/types';
 import { urdfSourceRange, type UrdfSourceReveal } from '../core/documents/urdf-source';
 
-export function SourceEditor({ file, reveal }: { file: ProjectFile; reveal?: UrdfSourceReveal }) {
+export function SourceEditor({ file, reveal, diagnostic }: { file: ProjectFile; diagnostic?:DiagnosticRequest; reveal?: UrdfSourceReveal }) {
   let source: string;
   try { source = textOf(file); }
   catch { return <Alert type="warning" message={t('无法以声明编码显示 {path}，原始字节仍保留在工程中。',{path:file.path})} />; }
-  return <DecodedSourceEditor file={file} source={source} reveal={reveal} />;
+  return <DecodedSourceEditor file={file} source={source} reveal={reveal} diagnostic={diagnostic} />;
 }
-function DecodedSourceEditor({ file, source, reveal }: { file: ProjectFile; source: string; reveal?: UrdfSourceReveal }) {
+function DecodedSourceEditor({ file, source, reveal, diagnostic }: { file: ProjectFile; source: string; diagnostic?:DiagnosticRequest; reveal?: UrdfSourceReveal }) {
   const locale=useLocale(),attributes=useRef(new Compartment()),phrases=useRef(new Compartment());
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
@@ -41,7 +43,7 @@ function DecodedSourceEditor({ file, source, reveal }: { file: ProjectFile; sour
           phrases.current.of(EditorState.phrases.of(editorPhrases(locale))),
           basicSetup, syntax === 'yaml' ? yaml() : syntax === 'xml' ? xml() : [],
           EditorState.readOnly.of(readonly), EditorView.editable.of(!readonly),
-          attributes.current.of(EditorView.contentAttributes.of({ 'aria-label': readonly ? file.role === 'eni' ? t("ENI 只读源码") : t("模块只读源码") : t("配置源码") })),
+          attributes.current.of(EditorView.contentAttributes.of({ ...(readonly?{tabindex:'0'}:{}), 'aria-label': readonly ? file.role === 'eni' ? t("ENI 只读源码") : t("模块只读源码") : t("配置源码") })),
           EditorView.theme({ '&': { height: '350px', fontSize: '14px', fontFamily: 'var(--config-font-family)' }, '.cm-scroller': { overflow: 'auto', fontFamily: 'inherit' } }),
           EditorView.updateListener.of(update => {
             if (update.docChanged && !readonly && !syncing.current) {
@@ -63,7 +65,7 @@ function DecodedSourceEditor({ file, source, reveal }: { file: ProjectFile; sour
     // Reopen just the panel, preserving its query and the editor's history.
     if(searchOpen)closeSearchPanel(editor);
     editor.dispatch({effects:[attributes.current.reconfigure(EditorView.contentAttributes.of({
-      'aria-label':t(readonly?(file.role==='eni'?'ENI 只读源码':'模块只读源码'):'配置源码'),
+      ...(readonly?{tabindex:'0'}:{}),'aria-label':t(readonly?(file.role==='eni'?'ENI 只读源码':'模块只读源码'):'配置源码'),
     })),phrases.current.reconfigure(EditorState.phrases.of(editorPhrases(locale)))]});
     if(searchOpen){openSearchPanel(editor);if(focused instanceof HTMLElement&&focused.isConnected)focused.focus();}
   },[locale,readonly,file.role]);
@@ -93,6 +95,14 @@ function DecodedSourceEditor({ file, source, reveal }: { file: ProjectFile; sour
       editor.focus();
     } catch { message.error(() => t('无法定位该节点，请检查 URDF 源码。')); }
   }, [reveal]);
+
+  useEffect(()=>{
+    const editor=view.current;if(!diagnostic||!editor)return;
+    if(source!==diagnostic.source||editor.state.doc.toString()!==diagnostic.editorText.replace(/\r\n?|\n/g,'\n')){message.error(()=>t('源码已变化，请重新定位。'));return;}
+    const range=diagnostic.draft?{from:0,to:0}:diagnosticSourceRange(editor.state.doc.toString(),syntax,diagnostic.field);
+    host.current?.scrollIntoView({block:'center'});
+    editor.dispatch({selection:{anchor:range.from,head:range.to},effects:EditorView.scrollIntoView(range.from,{y:'center'})});editor.focus();
+  },[diagnostic]);
 
   return <div className="source-editor">
     <Space className="section-tools">

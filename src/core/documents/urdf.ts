@@ -10,12 +10,13 @@ export function readRobot(text: string) {
   const links = children(root,'link').map(l => l.getAttribute('name') || '');
   const jointNodes=children(root,'joint');
   const joints: RobotJoint[] = jointNodes.map(j => ({ name: j.getAttribute('name') || '', type: j.getAttribute('type') || '', parent: child(j,'parent')?.getAttribute('link') || '', child: child(j,'child')?.getAttribute('link') || '', xyz: child(j,'origin')?.getAttribute('xyz') || '0 0 0', rpy: child(j,'origin')?.getAttribute('rpy') || '0 0 0', axis: child(j,'axis')?.getAttribute('xyz') || '1 0 0', lower: child(j,'limit')?.getAttribute('lower') || '', upper: child(j,'limit')?.getAttribute('upper') || '', velocity: child(j,'limit')?.getAttribute('velocity') || '', effort: child(j,'limit')?.getAttribute('effort') || '', mimic: child(j,'mimic')?.getAttribute('joint') || '' }));
-  const issues: DiagnosticMessage[] = [];
+  const issues: (DiagnosticMessage&{field?:string})[] = [];
   if(!root.getAttribute('name'))issues.push(msg("URDF robot 缺少 name"));
   if (new Set(links).size !== links.length || links.includes('')) issues.push(msg("Link 名称重复或为空"));
   if (new Set(joints.map(j=>j.name)).size !== joints.length || joints.some(j=>!j.name)) issues.push(msg("Joint 名称重复或为空"));
   const parents = new Set<string>();
   for (const [index,j] of joints.entries()) {
+    const firstIssue=issues.length;
     const limit=child(jointNodes[index],'limit');
     if (!links.includes(j.parent) || !links.includes(j.child)) issues.push(msg("{v0} 的父/子 Link 不存在", {v0:String(j.name)}));
     if (parents.has(j.child)) issues.push(msg("{v0} 存在多个父关节", {v0:String(j.child)})); parents.add(j.child);
@@ -27,6 +28,7 @@ export function readRobot(text: string) {
     if (['revolute','prismatic'].includes(j.type)||j.type==='continuous'&&limit) for (const key of ['velocity','effort'] as const) if (!j[key].trim() || !Number.isFinite(Number(j[key])) || Number(j[key]) < 0) issues.push(msg("{v0} {v1} 必须为非负数", {v0:String(j.name), v1:String(key)}));
     if (j.mimic && (!joints.some(target => target.name === j.mimic) || j.mimic === j.name)) issues.push(msg("{v0} 的 mimic 目标无效", {v0:String(j.name)}));
     if (['revolute','prismatic'].includes(j.type) && (!j.lower || !j.upper || !Number.isFinite(Number(j.lower)) || !Number.isFinite(Number(j.upper)) || Number(j.lower)>Number(j.upper))) issues.push(msg("{v0} 位置限位无效", {v0:String(j.name)}));
+    for(const issue of issues.slice(firstIssue))issue.field=`joint.${index}`;
   }
   // Legacy <hardware> is opaque XML. Hardware YAML and explicit bindings own hardware configuration.
   for (const joint of joints) { const seen = new Set<string>(); let cursor: RobotJoint | undefined = joint; while (cursor?.mimic) { if (seen.has(cursor.name)) { issues.push(msg("mimic 关系存在环：{v0}", {v0:String(joint.name)})); break; } seen.add(cursor.name); cursor = joints.find(j => j.name === cursor!.mimic); } }

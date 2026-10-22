@@ -40,7 +40,7 @@ export interface Diagnostic {
 export interface BusSignal {
   uid: string; slaveId: number; direction: 'input' | 'output'; sourceName: string; runtimeName: string;
   bitLength: number; bitOffset?: number; storageBytes: number; index?: number; subIndex?: number;
-  dataType?: string; resolution: 'resolved' | 'ambiguous' | 'unresolved';
+  source?: {fileId:string;field:string}; dataType?: string; resolution: 'resolved' | 'ambiguous' | 'unresolved';
 }
 export interface BusSlave { id: number; name: string; address?: number; vendor?: string; product?: string }
 export interface BusCatalog { masterId?: number; cycleUs?: number; slaves: BusSlave[]; signals: BusSignal[]; diagnostics: Diagnostic[] }

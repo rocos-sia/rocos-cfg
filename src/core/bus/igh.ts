@@ -106,7 +106,7 @@ export function buildIghCatalog(file: ProjectFile): BusCatalog {
           const sub = integer([...ep, 'sub_index'], 'uint8');
           const bits = integer([...ep, 'bit_length'], 'uint8', 1n);
           result.signals.push({ uid: `${file.id}:${i}:${direction}:${p}:${n}`, slaveId: i, direction, sourceName: entryName, runtimeName: entryName,
-            bitLength: Number(bits), storageBytes: Math.ceil(Number(bits) / 8), index: Number(index), subIndex: Number(sub),
+            source:{fileId:file.id,field:label(ep)},bitLength: Number(bits), storageBytes: Math.ceil(Number(bits) / 8), index: Number(index), subIndex: Number(sub),
             resolution: index === undefined || sub === undefined || bits === undefined ? 'unresolved' : 'resolved' });
         });
       });

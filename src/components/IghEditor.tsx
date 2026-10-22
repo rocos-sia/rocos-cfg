@@ -1,3 +1,4 @@
+import { DiagnosticField, useDiagnosticRequest } from './DiagnosticNavigation';
 import { useLocalizedMessage } from './useLocalizedMessage';
 import { m as msg, MessageError } from '../core/project/messages';
 import { diagnosticText, errorText, t } from '../i18n';
@@ -11,14 +12,14 @@ import { editProjectYaml, masterFileId, modifySequence, planSlaveChange, setInte
 import { useProject } from '../store';
 import { Fields } from './Fields';
 
-function TextCell({ label, value, commit }: { label: string; value: unknown; commit: (value: string) => void }) {
+function TextCell({ label, value, commit, fileId, field }: { label: string; value: unknown; fileId:string;field:string; commit: (value: string) => void }) {
   const saved = value == null ? '' : String(value);
   const [text, setText] = useState(saved);
   const message=useLocalizedMessage();
   useEffect(() => setText(saved), [saved]);
-  return <Input aria-label={label} value={text} onChange={event => setText(event.target.value)}
+  return <DiagnosticField fileId={fileId} field={field}><Input aria-label={label} value={text} onChange={event => setText(event.target.value)}
     onBlur={() => { if (text !== saved) try { commit(text); } catch (error) { message.error(()=>(errorText(error,true))); } }}
-    onPressEnter={event => event.currentTarget.blur()} />;
+    onPressEnter={event => event.currentTarget.blur()} /></DiagnosticField>;
 }
 const hex = (value: unknown) => typeof value === 'bigint' || typeof value === 'number' ? '0x' + value.toString(16).toUpperCase() : String(value ?? '');
 
@@ -27,6 +28,8 @@ export function IghEditor({ p }: { p: Project }) {
   const [pending,setPending]=useState<{plan:SlavePlan;revision:number;epoch:number}>();
   const [selected, setSelected] = useState(0);
   const file = fileById(p, p.entrypoints.master.fileId)!;
+  const diagnostic=useDiagnosticRequest();
+  useEffect(()=>{if(diagnostic?.mode==='field'&&diagnostic.fileId===file.id&&diagnostic.index!==undefined)setSelected(diagnostic.index);},[diagnostic]);
   let config: any;
   try { config = readYaml(textOf(file)); } catch { return <Alert type="error" message={t("请先在源文件中修复 YAML 语法")} />; }
   const slaves = Array.isArray(config?.slaves) ? config.slaves : [];
@@ -49,7 +52,7 @@ export function IghEditor({ p }: { p: Project }) {
     <Button size="small" danger aria-label={t('{label}删除',{label})} onClick={() => run(() => edit(doc => modifySequence(doc, path, 'remove', row)))}>{t("删除")}</Button>
   </Space>;
   const integerCell = (label: string, value: unknown, path: (string | number)[], type: string, showHex = false) =>
-    <TextCell label={label} value={showHex ? hex(value) : value} commit={text => {
+    <TextCell fileId={file.id} field={path.join('.')} label={label} value={showHex ? hex(value) : value} commit={text => {
       let parsed: bigint;
       try { parsed = exactInteger(text, type); }
       catch (error) {
@@ -105,7 +108,7 @@ export function IghEditor({ p }: { p: Project }) {
               </Space>
               {!entries.length && <Alert type="info" message={t("运行时待发现：保留空 entries，启动时由主站发现并回写。")} />}
               {!!entries.length && <Table size="small" pagination={false} scroll={{ x: 880 }} rowKey={(_, i) => String(i)} dataSource={entries} columns={[
-                { title: t("名称（区分大小写）"), width: 230, render: (_, entry, ei) => <TextCell label={t('{prefix} 条目 {index} 名称',{prefix,index:ei+1})} value={entry?.name} commit={value => edit(doc => doc.setIn([...ep, ei, 'name'], value))} /> },
+                { title: t("名称（区分大小写）"), width: 230, render: (_, entry, ei) => <TextCell fileId={file.id} field={[...ep,ei,'name'].join('.')} label={t('{prefix} 条目 {index} 名称',{prefix,index:ei+1})} value={entry?.name} commit={value => edit(doc => doc.setIn([...ep, ei, 'name'], value))} /> },
                 { title: 'Index', width: 135, render: (_, entry, ei) => integerCell(t('{prefix} 条目 {index} Index',{prefix,index:ei+1}), entry?.index, [...ep, ei, 'index'], 'uint16', true) },
                 { title: 'Sub-index', width: 115, render: (_, entry, ei) => integerCell(t('{prefix} 条目 {index} Sub-index',{prefix,index:ei+1}), entry?.sub_index, [...ep, ei, 'sub_index'], 'uint8', true) },
                 { title: t("实际位宽"), width: 110, render: (_, entry, ei) => integerCell(t('{prefix} 条目 {index} 位宽',{prefix,index:ei+1}), entry?.bit_length, [...ep, ei, 'bit_length'], 'uint8') },
@@ -119,10 +122,10 @@ export function IghEditor({ p }: { p: Project }) {
         <p className="muted">{t("按列表顺序执行。64 位值支持精确十进制和非负十六进制；保留已有 Type/Value 或 type/value 字段形式。未通过校验的输入仍可保存工程，运行导出会被阻止。")}</p>
         <Table size="small" pagination={false} scroll={{ x: 1050 }} rowKey={(_, i) => String(i)} dataSource={Array.isArray(slave.init_commands) ? slave.init_commands : []} columns={[
           { title: '#', width: 50, render: (_, __, i) => i + 1 },
-          { title: t("名称（可选）"), width: 170, render: (_, cmd, i) => <TextCell label={t('SDO {index} 名称',{index:i+1})} value={cmd?.name} commit={value => edit(doc => { const path = ['slaves', index, 'init_commands', i, 'name']; if (value) doc.setIn(path, value); else doc.deleteIn(path); })} /> },
+          { title: t("名称（可选）"), width: 170, render: (_, cmd, i) => <TextCell fileId={file.id} field={`slaves.${index}.init_commands.${i}.name`} label={t('SDO {index} 名称',{index:i+1})} value={cmd?.name} commit={value => edit(doc => { const path = ['slaves', index, 'init_commands', i, 'name']; if (value) doc.setIn(path, value); else doc.deleteIn(path); })} /> },
           { title: 'Index', width: 120, render: (_, cmd, i) => integerCell(`SDO ${i + 1} Index`, cmd?.index, ['slaves', index, 'init_commands', i, 'index'], 'uint16', true) },
           { title: 'Sub-index', width: 110, render: (_, cmd, i) => integerCell(`SDO ${i + 1} Sub-index`, cmd?.sub_index, ['slaves', index, 'init_commands', i, 'sub_index'], 'uint8', true) },
-          { title: t("整数类型"), width: 120, render: (_, cmd, i) => <Select style={{width:'100%'}} aria-label={t('SDO {index} 类型',{index:i+1})} value={cmd?.Type ?? cmd?.type} options={SDO_TYPES.map(value => ({ value, label: value }))} onChange={value => run(() => edit(doc => doc.setIn(['slaves', index, 'init_commands', i, Object.hasOwn(cmd, 'Type') ? 'Type' : 'type'], value)))} /> },
+          { title: t("整数类型"), width: 120, render: (_, cmd, i) => <DiagnosticField fileId={file.id} field={`slaves.${index}.init_commands.${i}.${Object.hasOwn(cmd??{},'Type')?'Type':'type'}`}><Select style={{width:'100%'}} aria-label={t('SDO {index} 类型',{index:i+1})} value={cmd?.Type ?? cmd?.type} options={SDO_TYPES.map(value => ({ value, label: value }))} onChange={value => run(() => edit(doc => doc.setIn(['slaves', index, 'init_commands', i, Object.hasOwn(cmd, 'Type') ? 'Type' : 'type'], value)))} /></DiagnosticField> },
           { title: t("精确整数值"), width: 250, render: (_, cmd, i) => integerCell(t('SDO {index} 值',{index:i+1}), cmd?.Value ?? cmd?.value, ['slaves', index, 'init_commands', i, Object.hasOwn(cmd ?? {}, 'Value') ? 'Value' : 'value'], cmd?.Type ?? cmd?.type) },
           { title: t("操作"), width: 190, render: (_, __, i) => rowActions(['slaves', index, 'init_commands'], i, slave.init_commands.length, `SDO ${i + 1} `) },
         ]} />

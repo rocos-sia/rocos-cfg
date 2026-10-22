@@ -1134,5 +1134,13 @@
   "关闭导航": "Close navigation",
   "展开导航": "Expand navigation",
   "收起导航": "Collapse navigation",
-  "更多操作": "More actions"
+  "更多操作": "More actions",
+  "字段 / 对象": "Field / object",
+  "定位": "Locate",
+  "诊断位置": "Diagnostic location",
+  "返回诊断结果": "Back to diagnostics",
+  "返回配置页面": "Back to configuration",
+  "诊断基于已应用配置；当前源码草稿保持不变，请先核对草稿。": "Diagnostics refer to applied configuration. The source draft is unchanged; review it first.",
+  "诊断结果已过期，请重新校验后定位。": "Diagnostics are out of date. Validate again before locating an issue.",
+  "源码已变化，请重新定位。": "The source has changed. Locate the issue again."
 }

@@ -43,4 +43,4 @@ IgH 原始 PDO 不提供 APP 所引用的 `Analog Input 1` 和辅助位置反馈
 
 执行结果写入各用例的 `test-results/ui/` 或 `test-results/compat/` 输出目录，`report.json` 留存来源证明、输入哈希、显式修正及历史资源副本数。按版本的实际执行记录见 [BUILD-VERIFICATION.md](BUILD-VERIFICATION.md)。
 
-这仍是同机浏览器自动化，不替代独立离线电脑往返、实际 Safari/Pad、Windows、SDK 和真实控制器验收。诊断列表到具体字段的跳转以及其他页面的布局检查仍需补齐，见 [ACCEPTANCE.md](ACCEPTANCE.md)。
+这仍是同机浏览器自动化，不替代独立离线电脑往返、实际 Safari/Pad、Windows、SDK 和真实控制器验收。诊断到字段、设备、资源或源码的跳转及窄窗检查见 [DIAGNOSTICS.md](DIAGNOSTICS.md)；完整验收跟踪与本轮用户指定范围见 [ACCEPTANCE.md](ACCEPTANCE.md)。

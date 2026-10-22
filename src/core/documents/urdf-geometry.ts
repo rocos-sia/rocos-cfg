@@ -36,9 +36,10 @@ export function editGeometry(text: string, name: string, group: 'visual' | 'coll
   }
   return serializeXml(doc);
 }
-export function geometryDiagnostics(text: string, names: string[], parsed?: Document): DiagnosticMessage[] {
-  const byName = new Map(children((parsed || xmlDocument(text)).documentElement, 'link').map(link => [link.getAttribute('name') || '', link]));
-  const errors: DiagnosticMessage[] = [];
+export function geometryDiagnostics(text: string, names: string[], parsed?: Document): (DiagnosticMessage&{field?:string})[] {
+  const linkNodes=children((parsed || xmlDocument(text)).documentElement,'link');
+  const byName = new Map(linkNodes.map(link => [link.getAttribute('name') || '', link]));
+  const errors: (DiagnosticMessage&{field?:string})[] = [];
   const tuple = (value: string, label: string, nonzero = false, positive = false) => {
     const v = value.trim().split(/\s+/).map(Number);
     if (v.length !== 3 || v.some(n => !Number.isFinite(n) || (nonzero && n === 0) || (positive && n <= 0))) errors.push(msg("{v0} 需要三个{v1}数值", {v0:String(label), v1:(positive ? msg("正").text : (nonzero ? msg("非零").text : msg("有限").text))}));
@@ -48,6 +49,7 @@ export function geometryDiagnostics(text: string, names: string[], parsed?: Docu
   };
   for (const name of names) {
     const element = byName.get(name); if (!element) continue;
+    const firstIssue=errors.length;
     const properties = propertiesOfLink(element);
     for (const group of ['visual', 'collision'] as const) for (const g of properties[group]) {
       const label = `${name}.${group}[${g.index}]`; tuple(g.xyz, label + '.xyz'); tuple(g.rpy, label + '.rpy');
@@ -66,6 +68,7 @@ export function geometryDiagnostics(text: string, names: string[], parsed?: Docu
         if ([A, D, F, A * D - B * B, A * F - C * C, D * F - E * E, A * D * F + 2 * B * C * E - A * E * E - D * C * C - F * B * B].some(v => v < -eps)) errors.push(msg("{v0} 惯性矩阵不是半正定矩阵", {v0:String(name)}));
       }
     }
+    for(const issue of errors.slice(firstIssue))issue.field=`link.${linkNodes.indexOf(element)}`;
   }
   return errors;
 }

@@ -147,3 +147,10 @@
 .sidebar-slot[data-phone=true] { flex-basis:64px; width:64px; }
 
 .workspace>.ant-space,.welcome>.ant-space { flex-wrap:wrap; max-width:100%; }
+
+/* Diagnostic navigation is view state; focused fields do not modify the project. */
+[data-diagnostic-target="true"]{outline:2px solid var(--config-primary);outline-offset:4px;border-radius:6px;scroll-margin-block:24px}.diagnostic-location{margin-bottom:16px}.diagnostic-location .ant-alert-description{overflow-wrap:anywhere}.diagnostic-location .ant-alert-action{margin-left:12px}.diagnostic-table .ant-table-cell{vertical-align:top}
+
+@media(max-width:760px){.workspace .ant-card-head-wrapper{flex-wrap:wrap;gap:8px;padding-block:12px}.workspace .ant-card-head-title{white-space:normal;overflow-wrap:anywhere}.workspace .ant-card-extra{max-width:100%;min-width:0;margin-inline-start:0}.workspace .ant-card-extra>.ant-select{max-width:100%}.page-heading>.ant-space{max-width:100%}}
+
+.source-editor .cm-editor{max-width:100%}.source-editor .section-tools .ant-tag{max-width:100%;white-space:normal;overflow-wrap:anywhere}
