@@ -63,8 +63,8 @@ try {
   await page.getByRole('button', { name: '新建工程', exact: true }).click();
   await page.getByRole('button', { name: '创建工程', exact: true }).click();
   await page.getByRole('menuitem', { name: '主站配置' }).click();
-  await page.getByLabel('通信周期').fill('5000');
-  await page.getByLabel('通信周期').blur();
+  await page.getByRole('spinbutton',{name:/^通信周期/}).fill('5000');
+  await page.getByRole('spinbutton',{name:/^通信周期/}).blur();
   const downloaded = page.waitForEvent('download');
   await page.getByRole('button', { name: '下载工程', exact: true }).click();
   const file = await downloaded;

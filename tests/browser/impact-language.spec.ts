@@ -19,7 +19,7 @@ test('updates a pending model plan and retains translated review notices through
   await page.goto('/');await page.locator('input[type=file]').first().setInputFiles({name:'review.rcproj',mimeType:'application/zip',buffer:Buffer.from(await saveProject(p))});
   await page.getByRole('menuitem',{name:'机器人模型',exact:true}).click();
   await page.getByText('工程总览-{v0} [revolute]',{exact:true}).click();
-  await page.getByRole('button',{name:'重命名节点',exact:true}).click();await page.getByLabel('节点新名称').fill('工具');
+  await page.getByRole('button',{name:'重命名节点',exact:true}).click();await page.getByLabel('节点新名称',{exact:true}).fill('工具');
   await page.getByRole('button',{name:'查看变更',exact:true}).click();
   await expect(page.getByRole('dialog',{name:'确认模型与引用变更'})).toContainText('控制链：工程总览-{v0} → 工具；请复核绑定。');
   await locale(page,'en-US');
@@ -69,7 +69,7 @@ for(const kind of ['hardware','slave','robot'] as const)test(`${kind} plan canno
     await page.getByRole('menuitem',{name:'主站配置',exact:true}).click();await page.getByRole('tab',{name:'PDO / SDO 编辑',exact:true}).click();await page.getByRole('button',{name:'删除从站',exact:true}).click();
   }else{
     await page.getByRole('menuitem',{name:'机器人模型',exact:true}).click();await page.getByText('工程总览-{v0} [revolute]',{exact:true}).click();
-    await page.getByRole('button',{name:'重命名节点',exact:true}).click();await page.getByLabel('节点新名称').fill('不应写入');await page.getByRole('button',{name:'查看变更',exact:true}).click();
+    await page.getByRole('button',{name:'重命名节点',exact:true}).click();await page.getByLabel('节点新名称',{exact:true}).fill('不应写入');await page.getByRole('button',{name:'查看变更',exact:true}).click();
   }
   const name=kind==='hardware'?'确认硬件变更':kind==='slave'?'确认从站及绑定变更':'确认模型与引用变更';
   const dialog=page.getByRole('dialog',{name});await expect(dialog).toBeVisible();

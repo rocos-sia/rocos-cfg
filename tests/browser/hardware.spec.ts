@@ -25,8 +25,8 @@ test('builds a reviewable driver draft from an explicit joint and slave choice a
   await page.goto('/');await page.locator('input[type=file]').first().setInputFiles({name:'empty-hardware.rcproj',mimeType:'application/zip',buffer:Buffer.from(await saveProject(p))});
   await page.getByRole('menuitem',{name:'硬件与绑定'}).click();await page.getByRole('button',{name:'新增 driver',exact:true}).click();
   const modal=page.getByRole('dialog',{name:'新增 driver'});
-  await modal.getByLabel('目标从站').click();await page.getByText('Slave 0 · Drive',{exact:true}).click();
-  await modal.getByLabel('控制关节（可稍后绑定）').click();await page.locator('.ant-select-dropdown:visible .ant-select-item-option-content').getByText('joint',{exact:true}).click();
+  await modal.getByLabel('目标从站',{exact:true}).click();await page.getByText('Slave 0 · Drive',{exact:true}).click();
+  await modal.getByLabel('控制关节（可稍后绑定）',{exact:true}).click();await page.locator('.ant-select-dropdown:visible .ant-select-item-option-content').getByText('joint',{exact:true}).click();
   await modal.getByRole('button',{name:'预览配置草稿'}).click();const preview=page.getByRole('dialog',{name:'确认硬件变更'});
   await expect(preview).toContainText('joint → Drive 0 → Slave 0');await expect(preview).toContainText('换算比例、零点');await preview.getByRole('button',{name:'应用变更'}).click();
   await expect(page.getByRole('spinbutton',{name:'ratio',exact:true})).toHaveValue('');await expect(page.getByRole('spinbutton',{name:'lower',exact:true})).toHaveValue('-1');

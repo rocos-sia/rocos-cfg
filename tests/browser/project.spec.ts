@@ -5,13 +5,13 @@ test('create, edit, archive, reopen and recover a project',async({page,browser},
   await page.goto('/');await page.getByRole('button',{name:'新建工程',exact:true}).click();
   await page.getByRole('dialog').getByRole('textbox').fill('浏览器回归工程');await page.getByRole('button',{name:'创建工程',exact:true}).click();
   await expect(page.getByText('浏览器回归工程',{exact:true})).toBeVisible();
-  await page.getByRole('menuitem',{name:'主站配置'}).click();await page.getByLabel('通信周期').fill('2000');await page.getByLabel('通信周期').blur();
+  await page.getByRole('menuitem',{name:'主站配置'}).click();await page.getByRole('spinbutton',{name:/^通信周期/}).fill('2000');await page.getByRole('spinbutton',{name:/^通信周期/}).blur();
   await page.getByRole('button',{name:'新增从站',exact:true}).click();await expect(page.getByRole('cell',{name:'EtherCAT Drive',exact:true})).toBeVisible();
   const downloaded=page.waitForEvent('download');await page.getByRole('button',{name:'下载工程',exact:true}).click();const file=await downloaded;expect(file.suggestedFilename()).toBe('浏览器回归工程.rcproj');
   const archive=testInfo.outputPath('roundtrip.rcproj');await file.saveAs(archive);
   const fresh=await browser.newContext();const reopened=await fresh.newPage();await reopened.goto(uiOrigin);
   await reopened.locator('input[type=file]').first().setInputFiles(archive);
-  await expect(reopened.getByText('浏览器回归工程',{exact:true})).toBeVisible();await reopened.getByRole('menuitem',{name:'主站配置'}).click();await expect(reopened.getByLabel('通信周期')).toHaveValue('2000');
+  await expect(reopened.getByText('浏览器回归工程',{exact:true})).toBeVisible();await reopened.getByRole('menuitem',{name:'主站配置'}).click();await expect(reopened.getByRole('spinbutton',{name:/^通信周期/})).toHaveValue('2000');
   await reopened.screenshot({path:testInfo.outputPath('master.png'),fullPage:true});await fresh.close();
   expect(errors).toEqual([]);
 });
@@ -49,9 +49,9 @@ test('invalid source draft survives navigation, archive and reopening, then appl
   const original = await reopened.getByLabel('配置源码').innerText();
   await reopened.getByLabel('配置源码').fill(original.replace('period_us: 1000', 'period_us: 4000'));
   await reopened.getByRole('button', { name: '应用修改', exact: true }).click();
-  await expect(reopened.getByLabel('通信周期')).toHaveValue('4000');
+  await expect(reopened.getByRole('spinbutton',{name:/^通信周期/})).toHaveValue('4000');
   await reopened.getByRole('button', { name: '撤销', exact: true }).click();
-  await expect(reopened.getByLabel('通信周期')).toHaveValue('1000');
+  await expect(reopened.getByRole('spinbutton',{name:/^通信周期/})).toHaveValue('1000');
   await expect(reopened.getByLabel('配置源码')).toContainText('period_us: 4000');
   await fresh.close();
 });

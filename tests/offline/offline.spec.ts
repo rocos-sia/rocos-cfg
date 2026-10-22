@@ -41,8 +41,8 @@ test('complete precache supports unopened pages and project roundtrip offline un
   await offline.getByRole('button', { name: '创建工程', exact: true }).click();
   await expect(offline.getByText('快照已核对', { exact: true })).toHaveCount(2);
   await offline.getByRole('menuitem', { name: '主站配置' }).click();
-  await offline.getByLabel('通信周期').fill('3000');
-  await offline.getByLabel('通信周期').blur();
+  await offline.getByRole('spinbutton',{name:/^通信周期/}).fill('3000');
+  await offline.getByRole('spinbutton',{name:/^通信周期/}).blur();
   for (const name of ['机器人模型', '硬件与绑定', 'APP 配置']) {
     await offline.getByRole('menuitem', { name }).click();
     await expect(offline.locator('main h1')).toBeVisible();
@@ -60,7 +60,7 @@ test('complete precache supports unopened pages and project roundtrip offline un
   await offline.locator('input[type=file]').first().setInputFiles({name:'offline-large.rcproj',mimeType:'application/zip',buffer:Buffer.from(await saveProject(saved))});
   await offline.getByRole('button', { name: '打开新工程', exact: true }).click();
   await offline.getByRole('menuitem', { name: '主站配置' }).click();
-  await expect(offline.getByLabel('通信周期')).toHaveValue('3000');
+  await expect(offline.getByRole('spinbutton',{name:/^通信周期/})).toHaveValue('3000');
   await offline.screenshot({ path: testInfo.outputPath('offline-master.png'), fullPage: true });
   await offline.getByRole('menuitem',{name:'机器人模型'}).click();await expect(offline.locator('.model-tree')).toContainText('arm_joint_2');
   const contents=unpackZip(await readFile(archive));contents.set('master/igh.yaml',utf8.encode('damaged master'));

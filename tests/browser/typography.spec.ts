@@ -56,6 +56,6 @@ test('a font download failure keeps the configuration workflow usable through sy
   await expect.poll(() => blocked.length).toBeGreaterThan(0); await page.evaluate(() => document.fonts.ready.then(() => undefined));
   expect(await page.evaluate(() => [...document.fonts].some(font => font.family === 'AlibabaPuHuiTi' && font.status === 'error'))).toBe(true);
   await page.getByRole('button', { name: '新建工程', exact: true }).click(); await page.getByRole('button', { name: '创建工程', exact: true }).click();
-  await page.getByRole('menuitem', { name: '主站配置', exact: true }).click(); await page.getByLabel('通信周期').fill('2500'); await page.getByLabel('通信周期').blur();
-  await expect(page.getByLabel('通信周期')).toHaveValue('2500'); await expect(page.getByRole('button', { name: '下载工程', exact: true })).toBeVisible();
+  await page.getByRole('menuitem', { name: '主站配置', exact: true }).click(); await page.getByRole('spinbutton',{name:/^通信周期/}).fill('2500'); await page.getByRole('spinbutton',{name:/^通信周期/}).blur();
+  await expect(page.getByRole('spinbutton',{name:/^通信周期/})).toHaveValue('2500'); await expect(page.getByRole('button', { name: '下载工程', exact: true })).toBeVisible();
 });

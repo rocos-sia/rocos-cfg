@@ -1,11 +1,12 @@
 import { useCallback, useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { Button, Space } from 'antd';
 import { t } from '../i18n';
+import { ParameterHelp } from './ParameterHelp';
 import { createModelLayoutState, layoutMode, modelLayout, panelGap, type ModelLayoutState, type ModelPanel } from './modelLayout';
 
 /** Keep all three panes mounted while changing their grid tracks/visibility. */
-export function ModelWorkspace({ state, onShowTree, children }: {
-  state: ModelLayoutState; onShowTree: () => void;
+export function ModelWorkspace({ state, onShowTree, actions, children }: {
+  state: ModelLayoutState; onShowTree: () => void; actions?: ReactNode;
   children: (onPreviewExpanded: (expanded: boolean) => void) => [ReactNode, ReactNode, ReactNode];
 }) {
   const root = useRef<HTMLDivElement>(null), reset = useRef<HTMLButtonElement>(null), id = useId();
@@ -124,6 +125,8 @@ export function ModelWorkspace({ state, onShowTree, children }: {
     for (const panel of ['properties', 'preview'] as const) if (element.matches(scrollSelectors[panel])) state.scroll[panel] = element.scrollTop;
   }}>
     <div className="model-panel-tools">
+      {actions}
+      <div className="model-panel-settings">
       {layout.mode !== 'wide' && <div role="tablist" aria-label={t('模型面板')}>
         {panels.map(panel => <button key={panel} ref={node => { tabs.current[panel] = node; }} role="tab" id={tabId(panel)} aria-controls={panelId(panel)} aria-selected={visible(panel) && (panel !== 'tree' || layout.mode === 'single')}
           tabIndex={visible(panel) ? 0 : -1} onClick={() => update({ active: panel })} onKeyDown={event => tabKey(event, panel)}>{label(panel)}</button>)}
@@ -131,9 +134,11 @@ export function ModelWorkspace({ state, onShowTree, children }: {
       <Space wrap>
         {layout.mode === 'wide' && <Button aria-expanded={!layout.collapsed} aria-controls={panelId('properties')} onClick={() => update({ propertiesCollapsed: !preferences.propertiesCollapsed })}>{layout.collapsed ? t('显示属性') : t('收起属性')}</Button>}
         <Button ref={reset} onClick={() => update({ ...createModelLayoutState(), scroll: state.scroll })}>{t('重置面板布局')}</Button>
+        <ParameterHelp name={t('重置面板布局')} help="拖动分隔条，或聚焦后用方向键调整宽度；Shift 加速，Home / End 到边界。" />
       </Space>
+      </div>
     </div>
-    <p className="model-layout-help" id={`${id}-help`} hidden={layout.mode === 'single'}>{t('拖动分隔条，或聚焦后用方向键调整宽度；Shift 加速，Home / End 到边界。')}</p>
+    <span className="visually-hidden" id={`${id}-help`}>{t('拖动分隔条，或聚焦后用方向键调整宽度；Shift 加速，Home / End 到边界。')}</span>
     <div className={`robot-workspace${resizing ? ' is-resizing' : ''}`} style={{ gridTemplateColumns: track, height }}>
       {([tree, preview, properties] as const).map((content, index) => {
         const panel = (['tree', 'preview', 'properties'] as const)[index], tabbed = layout.mode === 'single' || layout.mode === 'dual' && panel !== 'tree';

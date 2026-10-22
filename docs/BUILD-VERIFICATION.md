@@ -2,6 +2,21 @@
 
 本记录按版本保留本地验证结果，不代表正式发布或完整首版验收。产物位于本机 `artifacts/`，不随 Git 提交；后续源码修改不会自动更新这些包或本记录。无版本后缀的静态离线 ZIP 及 `test-results/` 会被后续构建/验证替换，应按哈希对应记录。
 
+## 0.1.0-rc.20
+
+2026-10-22，本轮按用户要求仅优化参数提示与机器人页面布局，沿用现有 Ant Design、配色与字体，未新增前端依赖或变更工程/运行配置格式。仅验证 Chrome，不构建或运行 Tauri。
+
+| 产物 | SHA-256 |
+| --- | --- |
+| `artifacts/rocos-configurator-0.1.0-rc.20-offline.zip` | `27544ba0fda369e8c8d87bf4c1f6308b4be39f2f7b4e6416dbd835b65c75bbc4` |
+
+- 主站、APP、Hardware/绑定、URDF 关节/几何/惯性、payload、资源映射和工程创建参数接入共享问号提示，支持中英文、悬停/聚焦/点击、Escape 关闭。保留既有标签/单位与必要的常驻说明；诊断跳转排除提示按钮，仍聚焦实际参数。字段含义按当前适配基线描述，不改变主站字段定义。
+- 模型结构操作与面板操作合并为一条工具栏，宽屏左右分组同排、窄窗换行；分隔条说明收进提示，同时保留辅助技术描述。已查看桌面模型、390px 窄窗和主站提示截图；缩放、面板焦点/滚动及画布保持回归通过。
+- 使用 skill-installer 在本机安装并阅读 [UI UX Pro Max](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill)，固定来源提交 `623a9a9037d006ea727f8213f084d02a6b6f11b5`。采用其中的视觉一致性、布局分组、焦点和悬停/点击建议；技能不是产品运行依赖，未将整个技能目录纳入仓库。
+- Chrome 仓库内回归覆盖 110 项：`npm run test:ui -- --grep-invert 'local real .* Talon|actual Talon meshes' --workers=2`。首轮 107 项通过，3 项因新增提示按钮与测试的模糊标签匹配冲突失败；改为精确匹配后，`impact-language.spec.ts`、`provenance.spec.ts` 和 `parameter-help.spec.ts` 共 9 项复跑全通过，相关断言保留。3 项外部真实工程用例本轮明确排除，不计为通过；另有模型布局、硬件编辑及诊断定位定向回归 19 项通过，不重复计入 110 项。
+- TypeScript 编译及 Pages 子路径生产构建通过。最终 Chrome 子路径离线检查 4 项通过；静态离线 ZIP 实际解压、冷启动、本地字体/声明、无外网编辑保存和工程文件哈希检查通过，版本为 `0.1.0-rc.20`。对应入口为 `test:offline`、`package:offline`、`test:package`；离线及 ZIP 测试的数值控件选择器同步改为按 spinbutton 角色定位。根目录 `dist/` 最后保留相对路径静态构建。
+- 领域解析、归档及 Rust 代码未修改，本轮不重复单元、C++/ABI 或桌面验证；历史结果不作为新版已执行项。同步六处版本清单，内部 rc 不创建正式 tag。
+
 ## 0.1.0-rc.19
 
 2026-10-22，按用户最新指令以 Chrome 浏览器端工作正常、Web/静态离线产物重建和内部测试提交作为本轮完成条件。Firefox/WebKit 和 Tauri 本地打包/运行不在本轮执行范围；其他完整规格验收保留为后续事项。

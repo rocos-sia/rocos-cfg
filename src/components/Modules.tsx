@@ -1,3 +1,4 @@
+import { ParameterLabel } from './ParameterHelp';
 import { useLocalizedMessage } from './useLocalizedMessage';
 import { m as msg, MessageError } from '../core/project/messages';
 import { errorText, diagnosticText, t } from '../i18n';
@@ -48,8 +49,8 @@ export function Modules({ p }: { p: Project }) {
         setCreating(false); setSelected(createdId);
       } catch (e) { message.error(()=>(errorText(e,true))); }
     }}>
-      <label>{t("配置类型")}<Select aria-label={t("附加配置类型")} style={{ width: '100%' }} value={kind} options={moduleUI.filter(u => u.create).map(u => ({ value: u.id, label: t(u.title) }))} onChange={setKind} /></label>
-      <label>{t("工程内路径")}<Input aria-label={t("附加配置路径")} value={path} onChange={e => setPath(e.target.value)} /></label>
+      <div className="field"><ParameterLabel htmlFor="module-kind" role="resource" path="module">{t("配置类型")}</ParameterLabel><Select id="module-kind" aria-label={t("附加配置类型")} style={{ width: '100%' }} value={kind} options={moduleUI.filter(u => u.create).map(u => ({ value: u.id, label: t(u.title) }))} onChange={setKind} /></div>
+      <div className="field"><ParameterLabel htmlFor="module-path" role="resource" path="path">{t("工程内路径")}</ParameterLabel><Input id="module-path" aria-label={t("附加配置路径")} value={path} onChange={e => setPath(e.target.value)} /></div>
       <p>{t("创建后关联 APP，并保留原有文件。已有同名文件时，请选择新路径或直接编辑原文件。")}</p>
     </Modal>
   </>;

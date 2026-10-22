@@ -78,8 +78,8 @@ test('large ENI catalogs come from background parsing and startup edits preserve
   await page.goto('/');await open(page,p);await page.getByRole('menuitem',{name:'主站配置'}).click();
   await expect(page.getByRole('tab',{name:'从站 (7)',exact:true})).toBeVisible();
   await expect(page.getByRole('tab',{name:'过程映像 (91)',exact:true})).toBeVisible();
-  await page.getByLabel('通信周期').fill('2000');await page.getByLabel('通信周期').blur();
-  await expect(page.getByLabel('通信周期')).toHaveValue('2000');
+  await page.getByRole('spinbutton',{name:/^通信周期/}).fill('2000');await page.getByRole('spinbutton',{name:/^通信周期/}).blur();
+  await expect(page.getByRole('spinbutton',{name:/^通信周期/})).toHaveValue('2000');
   await expect.poll(()=>page.evaluate(()=>(window as any).__analysisJobs.some((job:any)=>job.revision===1&&job.terminated))).toBe(true);
   const download=page.waitForEvent('download');await page.getByRole('button',{name:'下载工程',exact:true}).click();
   const path=testInfo.outputPath('large-eni.rcproj');await(await download).saveAs(path);

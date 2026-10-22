@@ -12,7 +12,7 @@ export function DiagnosticField({fileId,field,mode='field',className,children}:{
   const matches=request?.mode===mode&&request.fileId===fileId&&request.field===field;
   useEffect(()=>{
     if(!matches)return;
-    const element=host.current,target=element?.querySelector<HTMLElement>('input:not([type=hidden]),textarea,[role=switch],button');
+    const element=host.current,target=element?.querySelector<HTMLElement>('input:not([type=hidden]),textarea,[role=switch],button:not(.parameter-help)');
     if(!element||!target)return;
     element.scrollIntoView({block:'center',inline:'nearest'});target.focus({preventScroll:true});
   },[matches,request?.request]);

@@ -1,3 +1,5 @@
+import { ParameterHelp, ParameterLabel } from '../components/ParameterHelp';
+import { parameterHelp } from '../components/parameterHelp';
 import { useLocalizedMessage } from '../components/useLocalizedMessage';
 import { useLocalizedModal } from '../components/useLocalizedModal';
 import { diagnosticText, errorText, t } from '../i18n';
@@ -84,15 +86,14 @@ export function Robot({ p, analysis, onImport, viewState, dark }: { p: Project; 
       {pending?.plan.warningMessages.map((issue,i)=><Alert key={i} type="warning" message={diagnosticText(issue)}/>)}
       <p>{t("整次操作可撤销。")}</p>
     </Modal>
-    <div className="page-heading"><div><h1>{t("机器人模型")}</h1><p>{t("编辑结构与属性，预览模型；预览不会驱动真实设备。")}</p></div><Button onClick={onImport}>{t("导入 URDF / Mesh")}</Button></div>
+    <div className="page-heading robot-page-heading"><div><h1>{t("机器人模型")}</h1><p>{t("编辑结构与属性，预览模型；预览不会驱动真实设备。")}</p></div><Button onClick={onImport}>{t("导入 URDF / Mesh")}</Button></div>
     {(p.editor.notices || []).filter(n => n.fileId === file.id).map((n, i) => <Alert key={`notice-${i}`} message={diagnosticText(n)} type="warning" className="space-top" action={<Button size="small" onClick={() => useProject.getState().change(next => { next.editor.notices = next.editor.notices?.filter(item => item.fileId !== n.fileId || item.message !== n.message); })}>{t("已核对")}</Button>} />)}
     {robot.issues.map((e, i) => <Alert key={i} message={diagnosticText(e)} type="error" className="space-top" />)}
-    <Space wrap className="section-tools space-top">
+    <ModelWorkspace state={layoutState} onShowTree={() => treeRef.current?.reveal(selected)} actions={<Space wrap>
       <Button onClick={() => setForm({ kind: 'add', node: 'joint', name: '', value: '', link: '', parent: selectedParent })}>{t("新增关节与 Link")}</Button>
       <Button disabled={!joint && !link} onClick={() => setForm({ kind: 'rename', node: selectedKind, name: selectedName, value: selectedName, link: '', parent: '' })}>{t("重命名节点")}</Button>
       <Button danger disabled={(!joint && !link) || robot.roots.includes(link || '')} onClick={deleteNode}>{t("删除节点")}</Button>
-    </Space>
-    <ModelWorkspace state={layoutState} onShowTree={() => treeRef.current?.reveal(selected)}>{onExpandedChange => [
+    </Space>}>{onExpandedChange => [
       <Card key="tree" title={t("Link / Joint 结构")}><Input.Search aria-label={t("搜索模型节点")} placeholder={t("搜索节点名称")} value={search} onChange={e => setSearch(e.target.value)} allowClear />
         <RobotStructureTree ref={treeRef} key={treeKey} viewState={viewState.tree}
           nodes={tree} selected={selected} search={search} onSearchChange={setSearch} onSelect={selectNode} />
@@ -105,10 +106,10 @@ export function Robot({ p, analysis, onImport, viewState, dark }: { p: Project; 
           <p>{t('文件中的第 {index} 个 {kind}', { index: target.index + 1, kind: target.kind === 'link' ? 'Link' : 'Joint' })}</p>
           {target.kind === 'joint' && <><p>{t('父 Link：{name}', { name: robot.joints[target.index].parent || t('未提供') })}</p><p>{t('子 Link：{name}', { name: robot.joints[target.index].child || t('未提供') })}</p></>}
         </> : joint ? <div className="fields single">
-          <div className="field"><label htmlFor="joint-parent">{t("父 Link（重挂接）")}</label><Select id="joint-parent" value={joint.parent} options={robot.links.map(value => ({ value, label: value }))} onChange={parent => prepare({ kind: 'reparent', joint: joint.name, parent })} /></div>
-          <div className="field"><label htmlFor="joint-child">{t("子 Link")}</label><Select id="joint-child" value={joint.child} options={robot.links.map(value => ({ value, label: value }))} onChange={child => prepare({ kind: 'rechild', joint: joint.name, child })} /></div><p className="muted">{t("调整子树位置通常使用父 Link；子 Link 变更也必须保持树结构完整。")}</p>
+          <div className="field"><ParameterLabel htmlFor="joint-parent" role="urdf" path="parent">{t("父 Link（重挂接）")}</ParameterLabel><Select id="joint-parent" value={joint.parent} options={robot.links.map(value => ({ value, label: value }))} onChange={parent => prepare({ kind: 'reparent', joint: joint.name, parent })} /></div>
+          <div className="field"><ParameterLabel htmlFor="joint-child" role="urdf" path="child">{t("子 Link")}</ParameterLabel><Select id="joint-child" value={joint.child} options={robot.links.map(value => ({ value, label: value }))} onChange={child => prepare({ kind: 'rechild', joint: joint.name, child })} /></div><p className="muted">{t("调整子树位置通常使用父 Link；子 Link 变更也必须保持树结构完整。")}</p>
           {(['type', 'xyz', 'rpy', ...(['fixed', 'floating'].includes(joint.type) ? [] : ['axis']), ...(['revolute', 'prismatic'].includes(joint.type) ? ['lower', 'upper'] : []), ...(['revolute', 'continuous', 'prismatic'].includes(joint.type) ? ['velocity', 'effort'] : [])] as (keyof RobotJointParameters)[]).map(key => <div className="field" key={key}>
-            <label htmlFor={`joint-${key}`}>{({ type: t("关节类型"), xyz: t("位置 xyz (m)"), rpy: t("旋转 rpy (rad)"), axis: t("轴向 xyz"), lower: t("位置下限"), upper: t("位置上限"), velocity: t("速度上限"), effort: t("力 / 力矩上限") } as Record<string, string>)[key]}</label>
+            <ParameterLabel htmlFor={`joint-${key}`} role="urdf" path={key}>{({ type: t("关节类型"), xyz: t("位置 xyz (m)"), rpy: t("旋转 rpy (rad)"), axis: t("轴向 xyz"), lower: t("位置下限"), upper: t("位置上限"), velocity: t("速度上限"), effort: t("力 / 力矩上限") } as Record<string, string>)[key]}</ParameterLabel>
             {key === 'type' ? <Select id={`joint-${key}`} value={joint[key]} options={['fixed', 'revolute', 'continuous', 'prismatic', 'floating', 'planar'].map(value => ({ value, label: value }))} onChange={v => edit(key, v)} />
               : <Input id={`joint-${key}`} key={joint.name + key + joint[key]} defaultValue={joint[key]} onBlur={e => { if (e.target.value !== joint[key]) edit(key, e.target.value); }} />}
           </div>)}
@@ -116,8 +117,8 @@ export function Robot({ p, analysis, onImport, viewState, dark }: { p: Project; 
         </div> : link ? <><p>Link：{link}</p><p>{t("父关节：")}{robot.joints.find(j => j.child === link)?.name || t("根节点")}</p><p>{t("直接子关节：")}{robot.joints.filter(j => j.parent === link).length}</p><LinkProperties text={textOf(file)} name={link} /></> : <p className="muted">{t("选择 Link 或 Joint 编辑结构与属性。")}</p>}
       </Card>
     ]}</ModelWorkspace>
-    <Card className="space-top" title={t("控制关节链")}><Space wrap><label htmlFor="base-link">Base Link</label><Select id="base-link" value={startup?.robot?.base_link} style={{ width: 200 }} options={robot.links.map(value => ({ value, label: value }))} onChange={base => prepare({ kind: 'chain', base, tip: robot.links.includes(startup?.robot?.tip_link) ? startup.robot.tip_link : base })} />
-      <label htmlFor="tip-link">Tip Link</label><Select id="tip-link" value={startup?.robot?.tip_link} style={{ width: 200 }} options={robot.links.map(value => ({ value, label: value }))} onChange={tip => prepare({ kind: 'chain', base: robot.links.includes(startup?.robot?.base_link) ? startup.robot.base_link : robot.roots[0], tip })} /></Space>
+    <Card className="space-top" title={t("控制关节链")}><Space wrap><ParameterLabel htmlFor="base-link" role="urdf" path="base">Base Link</ParameterLabel><Select id="base-link" value={startup?.robot?.base_link} style={{ width: 200 }} options={robot.links.map(value => ({ value, label: value }))} onChange={base => prepare({ kind: 'chain', base, tip: robot.links.includes(startup?.robot?.tip_link) ? startup.robot.tip_link : base })} />
+      <ParameterLabel htmlFor="tip-link" role="urdf" path="tip">Tip Link</ParameterLabel><Select id="tip-link" value={startup?.robot?.tip_link} style={{ width: 200 }} options={robot.links.map(value => ({ value, label: value }))} onChange={tip => prepare({ kind: 'chain', base: robot.links.includes(startup?.robot?.base_link) ? startup.robot.base_link : robot.roots[0], tip })} /></Space>
     </Card>
     <Card className="space-top" title={t("URDF 源文件")}><SourceEditor file={file} reveal={sourceReveal} /></Card>
     <Modal title={form?.kind === 'add' ? t("新增固定关节与 Link") : t("重命名节点")} open={!!form} okText={t("查看变更")} cancelText={t("取消")} onCancel={() => setForm(null)} onOk={() => {
@@ -126,9 +127,9 @@ export function Robot({ p, analysis, onImport, viewState, dark }: { p: Project; 
       if (prepare(action)) setForm(null);
     }}>
       {form && <Space direction="vertical" style={{ width: '100%' }}>
-        {form.kind === 'add' && <Select aria-label={t("新增节点的父 Link")} style={{ width: '100%' }} value={form.parent} options={robot.links.map(value => ({ value, label: value }))} onChange={parent => setForm({ ...form, parent })} />}
-        <Input aria-label={form.kind === 'add' ? t("新关节名称") : t("节点新名称")} value={form.value} onChange={e => setForm({ ...form, value: e.target.value })} />
-        {form.kind === 'add' && <Input aria-label={t("新 Link 名称")} value={form.link} onChange={e => setForm({ ...form, link: e.target.value })} />}
+        {form.kind === 'add' && <div className="parameter-input"><Select aria-label={t("新增节点的父 Link")} style={{ width: '100%' }} value={form.parent} options={robot.links.map(value => ({ value, label: value }))} onChange={parent => setForm({ ...form, parent })} /><ParameterHelp name={t("新增节点的父 Link")} help={parameterHelp("urdf","parent")} /></div>}
+        <div className="parameter-input"><Input aria-label={form.kind === 'add' ? t("新关节名称") : t("节点新名称")} value={form.value} onChange={e => setForm({ ...form, value: e.target.value })} /><ParameterHelp name={t("节点新名称")} help={parameterHelp("urdf","name")} /></div>
+        {form.kind === 'add' && <div className="parameter-input"><Input aria-label={t("新 Link 名称")} value={form.link} onChange={e => setForm({ ...form, link: e.target.value })} /><ParameterHelp name={t("新 Link 名称")} help={parameterHelp("urdf","name")} /></div>}
       </Space>}
     </Modal>
   </>;

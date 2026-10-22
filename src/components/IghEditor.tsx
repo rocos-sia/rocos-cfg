@@ -1,3 +1,5 @@
+import { ParameterHelp } from './ParameterHelp';
+import { parameterHelp } from './parameterHelp';
 import { DiagnosticField, useDiagnosticRequest } from './DiagnosticNavigation';
 import { useLocalizedMessage } from './useLocalizedMessage';
 import { m as msg, MessageError } from '../core/project/messages';
@@ -17,9 +19,9 @@ function TextCell({ label, value, commit, fileId, field }: { label: string; valu
   const [text, setText] = useState(saved);
   const message=useLocalizedMessage();
   useEffect(() => setText(saved), [saved]);
-  return <DiagnosticField fileId={fileId} field={field}><Input aria-label={label} value={text} onChange={event => setText(event.target.value)}
+  return <DiagnosticField className="parameter-input" fileId={fileId} field={field}><Input aria-label={label} value={text} onChange={event => setText(event.target.value)}
     onBlur={() => { if (text !== saved) try { commit(text); } catch (error) { message.error(()=>(errorText(error,true))); } }}
-    onPressEnter={event => event.currentTarget.blur()} /></DiagnosticField>;
+    onPressEnter={event => event.currentTarget.blur()} /><ParameterHelp name={label} help={parameterHelp("igh", field)} /></DiagnosticField>;
 }
 const hex = (value: unknown) => typeof value === 'bigint' || typeof value === 'number' ? '0x' + value.toString(16).toUpperCase() : String(value ?? '');
 
@@ -125,7 +127,7 @@ export function IghEditor({ p }: { p: Project }) {
           { title: t("名称（可选）"), width: 170, render: (_, cmd, i) => <TextCell fileId={file.id} field={`slaves.${index}.init_commands.${i}.name`} label={t('SDO {index} 名称',{index:i+1})} value={cmd?.name} commit={value => edit(doc => { const path = ['slaves', index, 'init_commands', i, 'name']; if (value) doc.setIn(path, value); else doc.deleteIn(path); })} /> },
           { title: 'Index', width: 120, render: (_, cmd, i) => integerCell(`SDO ${i + 1} Index`, cmd?.index, ['slaves', index, 'init_commands', i, 'index'], 'uint16', true) },
           { title: 'Sub-index', width: 110, render: (_, cmd, i) => integerCell(`SDO ${i + 1} Sub-index`, cmd?.sub_index, ['slaves', index, 'init_commands', i, 'sub_index'], 'uint8', true) },
-          { title: t("整数类型"), width: 120, render: (_, cmd, i) => <DiagnosticField fileId={file.id} field={`slaves.${index}.init_commands.${i}.${Object.hasOwn(cmd??{},'Type')?'Type':'type'}`}><Select style={{width:'100%'}} aria-label={t('SDO {index} 类型',{index:i+1})} value={cmd?.Type ?? cmd?.type} options={SDO_TYPES.map(value => ({ value, label: value }))} onChange={value => run(() => edit(doc => doc.setIn(['slaves', index, 'init_commands', i, Object.hasOwn(cmd, 'Type') ? 'Type' : 'type'], value)))} /></DiagnosticField> },
+          { title: t("整数类型"), width: 120, render: (_, cmd, i) => <DiagnosticField className="parameter-input" fileId={file.id} field={`slaves.${index}.init_commands.${i}.${Object.hasOwn(cmd??{},'Type')?'Type':'type'}`}><Select style={{width:'100%'}} aria-label={t('SDO {index} 类型',{index:i+1})} value={cmd?.Type ?? cmd?.type} options={SDO_TYPES.map(value => ({ value, label: value }))} onChange={value => run(() => edit(doc => doc.setIn(['slaves', index, 'init_commands', i, Object.hasOwn(cmd, 'Type') ? 'Type' : 'type'], value)))} /><ParameterHelp name={t('SDO {index} 类型',{index:i+1})} help={parameterHelp('igh','slaves.0.init_commands.0.Type')} /></DiagnosticField> },
           { title: t("精确整数值"), width: 250, render: (_, cmd, i) => integerCell(t('SDO {index} 值',{index:i+1}), cmd?.Value ?? cmd?.value, ['slaves', index, 'init_commands', i, Object.hasOwn(cmd ?? {}, 'Value') ? 'Value' : 'value'], cmd?.Type ?? cmd?.type) },
           { title: t("操作"), width: 190, render: (_, __, i) => rowActions(['slaves', index, 'init_commands'], i, slave.init_commands.length, `SDO ${i + 1} `) },
         ]} />

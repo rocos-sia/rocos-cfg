@@ -1,3 +1,4 @@
+import { ParameterLabel } from './ParameterHelp';
 import { useLocalizedMessage } from './useLocalizedMessage';
 import { errorText, t } from '../i18n';
 import { Alert, Descriptions, Input, Tabs } from 'antd';
@@ -12,7 +13,7 @@ export function LinkProperties({ text, name }: { text: string; name: string }) {
       {!properties[group].length && <p className="muted">{t('此 Link 没有 {group} 节点。',{group})}</p>}
       {properties[group].map(g => <div key={g.index} className="fields single space-top"><strong>{g.name || `${group} ${g.index + 1}`} · {g.kind}</strong>
         {(['xyz', 'rpy', ...({ box: ['size'], sphere: ['radius'], cylinder: ['radius', 'length'], mesh: ['filename', 'scale'] }[g.kind] || [])] as (keyof GeometryView)[]).map(field => <div className="field" key={field}>
-          <label htmlFor={`${group}-${g.index}-${field}`}>{labels[field]}</label>
+          <ParameterLabel htmlFor={`${group}-${g.index}-${field}`} role="urdf" path={field}>{labels[field]}</ParameterLabel>
           <Input id={`${group}-${g.index}-${field}`} key={`${name}:${g[field]}`} defaultValue={String(g[field])} onBlur={event => {
             if (event.target.value === g[field]) return;
             try { useProject.getState().change(p => changeLinkGeometry(p, name, group, g.index, field, event.target.value)); }
@@ -21,6 +22,6 @@ export function LinkProperties({ text, name }: { text: string; name: string }) {
         </div>)}
       </div>)}
     </> })),
-    { key: 'inertial', label: t("惯性"), children: properties.inertial ? <><Alert type="info" message={t("现有惯性数据只读保留；质量单位 kg，惯性单位 kg·m²。")} /><Descriptions column={1} size="small" items={Object.entries({ mass: properties.inertial.mass, xyz: properties.inertial.xyz, rpy: properties.inertial.rpy, ...properties.inertial.inertia }).map(([label, children]) => ({ key: label, label, children }))} /></> : <p className="muted">{t("此 Link 没有 inertial 节点。")}</p> },
+    { key: 'inertial', label: t("惯性"), children: properties.inertial ? <><Alert type="info" message={t("现有惯性数据只读保留；质量单位 kg，惯性单位 kg·m²。")} /><Descriptions column={1} size="small" items={Object.entries({ mass: properties.inertial.mass, xyz: properties.inertial.xyz, rpy: properties.inertial.rpy, ...properties.inertial.inertia }).map(([label, children]) => ({ key: label, label: <ParameterLabel role="urdf" path={label.startsWith("i") ? "inertia" : label}>{label}</ParameterLabel>, children }))} /></> : <p className="muted">{t("此 Link 没有 inertial 节点。")}</p> },
   ]} />;
 }

@@ -17,13 +17,13 @@ test('model rename, chain selection and subtree deletion update exported files a
   await page.getByRole('button', { name: '应用模型变更', exact: true }).click();
   await page.getByText('wrist [fixed]', { exact: true }).click();
   await page.getByRole('button', { name: '重命名节点', exact: true }).click();
-  await page.getByLabel('节点新名称').fill('tool_joint');
+  await page.getByLabel('节点新名称',{exact:true}).fill('tool_joint');
   await page.getByRole('button', { name: '查看变更', exact: true }).click();
   await page.getByRole('button', { name: '应用模型变更', exact: true }).click();
   await expect(page.getByText('tool_joint [fixed]', { exact: true })).toBeVisible();
   await page.getByText('tool [控制链端点]', { exact: true }).click();
   await page.getByRole('button', { name: '重命名节点', exact: true }).click();
-  await page.getByLabel('节点新名称').fill('tcp');
+  await page.getByLabel('节点新名称',{exact:true}).fill('tcp');
   await page.getByRole('button', { name: '查看变更', exact: true }).click();
   await expect(page.getByRole('dialog')).toContainText('APP tip_link：tool → tcp');
   await page.getByRole('button', { name: '应用模型变更', exact: true }).click();

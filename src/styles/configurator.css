@@ -21,7 +21,6 @@
 .model-panel-tools [role=tablist] { display:flex; flex-wrap:wrap; gap:4px; }
 .model-panel-tools [role=tab] { min-width:64px; min-height:44px; padding:8px 14px; border:1px solid var(--config-border); border-radius:8px; background:var(--config-card); color:var(--config-text); cursor:pointer; }
 .model-panel-tools [role=tab][aria-selected=true] { border-color:var(--config-primary); box-shadow:inset 0 -3px 0 var(--config-primary); }
-.model-layout-help { margin:8px 0; font-size:12px; color:var(--config-muted); }
 .robot-workspace { display:grid; align-items:stretch; min-width:0; height:clamp(360px,calc(100dvh - 320px),680px); }
 .model-pane { min-width:0; min-height:0; grid-row:1; }
 .model-pane-tree { grid-column:1; }
@@ -154,3 +153,15 @@
 @media(max-width:760px){.workspace .ant-card-head-wrapper{flex-wrap:wrap;gap:8px;padding-block:12px}.workspace .ant-card-head-title{white-space:normal;overflow-wrap:anywhere}.workspace .ant-card-extra{max-width:100%;min-width:0;margin-inline-start:0}.workspace .ant-card-extra>.ant-select{max-width:100%}.page-heading>.ant-space{max-width:100%}}
 
 .source-editor .cm-editor{max-width:100%}.source-editor .section-tools .ant-tag{max-width:100%;white-space:normal;overflow-wrap:anywhere}
+
+/* Shared parameter help keeps input labels and configuration behavior intact. */
+.field-heading{display:inline-flex;align-items:center;gap:4px;min-width:0;min-height:24px;color:var(--config-muted);font-size:12px}
+.field-heading label{flex:1;min-width:0;overflow-wrap:anywhere}.field-heading .unit{margin-left:8px;float:right}
+.parameter-help{display:inline-flex;align-items:center;justify-content:center;flex:0 0 24px;width:24px;height:24px;padding:0;border:0;border-radius:6px;background:transparent;color:var(--config-muted);cursor:pointer;touch-action:manipulation}
+.parameter-help:hover,.parameter-help:focus-visible{color:var(--config-primary);background:var(--config-workspace)}
+.parameter-help:focus-visible{outline:2px solid var(--config-focus);outline-offset:2px}
+.parameter-input{display:flex;align-items:center;gap:4px;min-width:0}.parameter-input>:first-child{flex:1;min-width:0}.parameter-input>.parameter-help{flex:0 0 24px}
+.robot-page-heading{margin-bottom:12px}.model-panel-tools{padding:8px 12px;margin-bottom:12px;border:1px solid var(--config-border);border-radius:10px;background:var(--config-card);gap:8px 16px}
+.model-panel-settings{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-left:auto}
+.visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
+@media(pointer:coarse){.parameter-help,.parameter-input>.parameter-help{flex-basis:44px;width:44px;height:44px}}
