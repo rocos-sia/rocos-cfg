@@ -55,7 +55,7 @@ export function WorkspaceNavigation({ items, route, hasProject, navigate }: {
     else if (!event.shiftKey && last && (last === focused || last.contains(focused))) { event.preventDefault(); first?.focus(); }
   };
   return <div className="sidebar-slot" data-collapsed={collapsed} data-phone={phone}>
-    {phone && open && <div className="nav-backdrop" data-nav-backdrop onPointerDown={() => setOpen(false)} />}
+    {phone && <div className="nav-backdrop" data-nav-backdrop data-open={open} aria-hidden="true" onPointerDown={() => setOpen(false)} />}
     <aside className="sidebar" ref={aside} id="workspace-navigation" data-collapsed={collapsed} data-overlay={phone && open}
       role={phone && open ? 'dialog' : undefined} aria-modal={phone && open || undefined} aria-label={t('工程导航')} onKeyDown={keys}>
       <button ref={toggle} className="brand brand-toggle" type="button" aria-label={phone && open ? t('关闭导航') : collapsed ? t('展开导航') : t('收起导航')}
