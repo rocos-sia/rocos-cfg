@@ -1,6 +1,6 @@
 import { invoke, isTauri } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import { digest } from '../core/project/types';
+import { digest, uid } from '../core/project/types';
 import { checkPaths } from '../core/project/paths';
 import { LIMITS } from '../core/project/zip';
 import { m as msg, MessageError, errorMessage, messageFields, validMessageTemplate, type MessageInput, type MessageTemplate } from '../core/project/messages';
@@ -66,7 +66,7 @@ export class BrowserFileAccess implements FileAccess {
     if(!picker)throw new Error('当前浏览器不支持目录导出，请使用桌面版或下载 ZIP 文件夹');
     checkPaths(files.map(f=>f.path));
     let parent:any;try{parent=await picker();}catch(e){if(e instanceof DOMException&&e.name==='AbortError')return;throw e;}
-    const folder=(name.replace(/[\\/:*?"<>|]/g,'_').trim()||'rocos')+'-'+crypto.randomUUID();
+    const folder=(name.replace(/[\\/:*?"<>|]/g,'_').trim()||'rocos')+'-'+uid();
     const root=await parent.getDirectoryHandle(folder,{create:true});let completed=0;
     for(const file of files){check(options);const parts=file.path.split('/');let dir=root;for(const part of parts.slice(0,-1))dir=await dir.getDirectoryHandle(part,{create:true});const handle=await dir.getFileHandle(parts.at(-1),{create:true}),writer=await handle.createWritable();try{await writer.write(new Uint8Array(file.bytes));await writer.close();}catch(e){await writer.abort();throw e;}options.progress?.(++completed,files.length);}
     return {displayPath:folder,files:completed};

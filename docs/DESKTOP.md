@@ -30,7 +30,7 @@ npm run desktop:build -- --config src-tauri/tauri.windows.conf.json --bundles ns
 
 配置采用 `offlineInstaller`，在构建时获取并打入 WebView2 离线安装器，避免目标电脑在安装阶段现场下载 WebView。该配置及其安装器行为见 [Tauri Windows installer](https://v2.tauri.app/distribute/windows-installer/)。产物位于 `src-tauri/target/release/bundle/nsis/`。Windows 的实际构建、断网安装与运行仍需在 Windows 平台验收。
 
-`.github/workflows/desktop.yml` 提供手动触发的 Linux/Windows 构建工作流，只上传构建产物，不自动打 tag、推送或创建 Release。根目录 `VERSION` 为应用版本来源，提交与发布按仓库版本技能同步 npm、Cargo 和 Tauri 版本；界面由 Vite 在构建时注入同一版本。
+桌面构建按上述命令在本地执行；仓库仅保留 GitHub Pages 部署工作流。根目录 `VERSION` 为应用版本来源，提交与发布按仓库版本技能同步 npm、Cargo 和 Tauri 版本；界面由 Vite 在构建时注入同一版本。
 
 ## 工程文件操作
 

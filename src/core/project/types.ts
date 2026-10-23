@@ -49,7 +49,4 @@ export const utf8 = new TextEncoder();
 export const textOf = (file: ProjectFile) => new TextDecoder(file.encoding || 'utf-8', { fatal: true }).decode(file.bytes);
 export const fileById = (p: Project, id: string | null | undefined) => p.files.find(f => f.id === id);
 export const roleFile = (p: Project, role: FileRole) => p.files.find(f => f.role === role);
-export const uid = () => crypto.randomUUID();
-export async function digest(bytes: Uint8Array): Promise<string> {
-  return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new Uint8Array(bytes).buffer)), b => b.toString(16).padStart(2, '0')).join('');
-}
+export { uid, digest } from './crypto';

@@ -113,7 +113,7 @@ Talon 浏览器测试从指定源码目录读取 URDF 和八个 STL，检查实�
 
 仓库 Settings → Pages 的 Source 选择 GitHub Actions，然后运行 **Deploy GitHub Pages** 工作流。工作流根据 Pages 的实际 base path 构建，上传 `dist/`。工作流目前由手动触发；源码编辑不会直接发布网站。
 
-`.github/workflows/check.yml` 在 PR 和 main 推送时执行单元测试、构建、浏览器流程及子路径离线测试，并产出静态离线 ZIP。发布工作流与浏览器测试尚需在远端实际执行后才能确认仓库权限和 Pages 环境可用。
+仓库仅保留 `.github/workflows/pages.yml` 部署工作流，发布前执行依赖安装、单元测试和构建。浏览器、离线验证及离线 ZIP 打包可按本文命令在本地执行。
 
 路由使用 Hash；应用资源、manifest 和 Service Worker 均限定在当前站点路径。构建路径遵循 [Vite 的 GitHub Pages 部署说明](https://vite.dev/guide/static-deploy.html#github-pages)。
 

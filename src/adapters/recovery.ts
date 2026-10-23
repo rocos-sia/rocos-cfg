@@ -1,6 +1,6 @@
 import { m as msg, MessageError } from '../core/project/messages';
 import { delMany, get, getMany, keys, setMany } from 'idb-keyval';
-import type { Project } from '../core/project/types';
+import { uid, type Project } from '../core/project/types';
 import { openProject, saveProject } from '../core/project/archive';
 
 const PREFIX='rocos-recovery-session:', META='rocos-recovery-summary:', LEGACY='rocos-recovery';
@@ -14,7 +14,7 @@ function summary(key:string,p:Project):RecoverySummary {
     bytes:p.files.reduce((sum,f)=>sum+f.bytes.byteLength,0)};
 }
 function validKey(key:string){return /^rocos-recovery-session:[0-9a-f-]{36}$/.test(key);}
-export const newRecoveryKey=()=>PREFIX+crypto.randomUUID();
+export const newRecoveryKey=()=>PREFIX+uid();
 export async function writeRecovery(key:string,project:Project):Promise<void>{
   if(!validKey(key))throw new MessageError(msg("草稿缓存标识无效"));
   const snapshot=structuredClone(project);
