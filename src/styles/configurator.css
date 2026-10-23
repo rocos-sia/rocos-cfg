@@ -309,6 +309,17 @@
 .overview-page #project-description{flex:1;min-height:88px}
 @media(max-width:760px){.overview-page>.overview-grid{flex:none}}
 
+.quick-navigation{flex-shrink:0;margin-top:24px}
+.quick-navigation h2{margin:0 0 12px;font-size:16px;font-weight:600}
+.quick-navigation-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,280px),1fr));gap:16px}
+.quick-navigation-card{display:flex;align-items:flex-start;gap:14px;min-width:0;padding:20px;border:1px solid var(--config-border);border-radius:8px;background:var(--config-card);color:var(--config-text);box-shadow:0 2px 8px rgb(25 43 69 / 4%);text-decoration:none;transition:border-color 160ms ease,background-color 160ms ease}
+.quick-navigation-card:hover,.quick-navigation-card:focus-visible{border-color:var(--config-focus);background:var(--config-topbar-bg);color:var(--config-text)}
+.quick-navigation-icon{padding:10px;border-radius:10px;background:var(--config-workspace);color:var(--config-focus);font-size:22px}
+.quick-navigation-content{display:flex;flex-direction:column;gap:4px;min-width:0;overflow-wrap:anywhere}
+.quick-navigation-content strong{font-size:15px;font-weight:600}
+.quick-navigation-content>span{font-size:13px;color:var(--config-muted)}
+.quick-navigation-content small{margin-top:4px;font-size:12px;color:var(--config-muted)}
+
 /* A single display toolbar; joint posing appears only for a selected tree joint. */
 .preview-controls{width:max-content;max-width:calc(100% - 24px);padding:0 0 8px;background:none}
 .preview-toggles{flex-wrap:nowrap;gap:4px}

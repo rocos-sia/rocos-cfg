@@ -1,25 +1,38 @@
-import { configure } from './configuration';
+import { configuration, configure, masterProject } from './configuration';
 import { m as msg, MessageError } from './messages';
-import { type Project, type ProjectFile, type FileRole, type TargetProfile, uid } from './types';
+import { type Project, type ProjectFile, type FileRole, type TargetProfile, fileById, textOf, uid, utf8 } from './types';
 import { modules } from '../modules';
 import type { ModuleRegistry } from '../modules/registry';
-import { fileModule } from '../modules/project';
+import { assertEditableFile, fileModule } from '../modules/project';
 import { decodeXml, xmlDocument } from '../documents/xml';
-import { checkPaths, resourceFilename } from './paths';
+import { checkPaths, relativePath, resourceFilename } from './paths';
+import { patchYaml } from '../documents/yaml';
 import { collectReferences } from './references';
 import { attachProfile, baseTarget } from './profiles';
 
-export type ImportSlot = 'master' | 'eni' | 'app' | 'urdf' | 'hardware' | 'binding';
+export type ImportTarget = 'ecm' | 'igh' | 'urdf' | 'hardware' | 'app.payload' | 'mujoco' | 'mjcf';
+export type ImportSlot = 'master' | 'eni' | 'app' | 'urdf' | 'hardware' | 'binding' | 'payload' | 'simulation' | 'mjcf';
 export interface ImportPlan {
-  projectId: string; revision: number; single: boolean; files: ProjectFile[]; matchUrdfMeshes?: boolean;
+  projectId: string; revision: number; single: boolean; files: ProjectFile[]; matchUrdfMeshes?: boolean; target?: ImportTarget;
 }
 export type ImportSelection = Partial<Record<ImportSlot, string | 'keep'>>;
 export const importSlot = (role: FileRole): ImportSlot | undefined => role === 'igh' || role === 'ecm' ? 'master' :
   ['eni', 'app', 'urdf', 'hardware', 'binding'].includes(role) ? role as ImportSlot : undefined;
 export function activeImportFile(p: Project, slot: ImportSlot) {
+  if (slot === 'simulation') return configuration(p).simulationFileId;
+  if (slot === 'payload' || slot === 'mjcf') {
+    const source = slot === 'payload' ? p.entrypoints.app : configuration(p).simulationFileId;
+    return collectReferences(p).find(r => r.sourceFileId === source && r.field === (slot === 'payload' ? 'robot.payload' : 'model'))?.targetFileId;
+  }
   return slot === 'master' ? p.entrypoints.master.fileId : slot === 'eni' ? p.entrypoints.master.eniFileId : p.entrypoints[slot];
 }
-export function inspectImport(p: Project, entries: Map<string, Uint8Array>, single = false, registry: ModuleRegistry = modules): ImportPlan {
+function planSlot(plan: ImportPlan, file: ProjectFile): ImportSlot | undefined {
+  if (plan.target === 'app.payload' && file.role === 'app.payload') return 'payload';
+  if (plan.target === 'mujoco' && file.role === 'mujoco') return 'simulation';
+  if (plan.target === 'mjcf' && file.role === 'mjcf') return xmlDocument(textOf(file)).documentElement.localName === 'mujoco' ? 'mjcf' : undefined;
+  return importSlot(file.role);
+}
+export function inspectImport(p: Project, entries: Map<string, Uint8Array>, single = false, registry: ModuleRegistry = modules, target?: ImportTarget): ImportPlan {
   checkPaths([...entries.keys()]);
   const files: ProjectFile[] = [];
   for (const [path, bytes] of entries) {
@@ -31,16 +44,20 @@ export function inspectImport(p: Project, entries: Map<string, Uint8Array>, sing
       role = /\.(ya?ml|xml|urdf)$/i.test(path) ? 'attachment' : 'resource';
     } catch { role = 'attachment'; readable = false; }
     const file = { id: uid(), path, role, owner: role, bytes, encoding };
-    const candidates = readable ? registry.detect(file) : [];
+    const candidates = readable ? registry.detect(file).filter(m => !target || m.role === target || (target === 'urdf' || target === 'mjcf') && m.role === 'resource' || target === 'mjcf' && m.role === 'hardware') : [];
     if (candidates.length > 1) throw new MessageError(msg("文件用途不唯一：{v0}（{v1}）", {v0:String(path), v1:String(candidates.map(m => m.id).join('、'))}));
     if (candidates.length === 1) { file.role = candidates[0].role; file.owner = candidates[0].id; }
+    if (target === 'mjcf' && file.role === 'hardware') file.role = file.owner = 'simulation-hardware';
     files.push(file);
   }
-  return { projectId: p.id, revision: p.revision, single, files };
+  if (target && !files.some(f => f.role === target && (target !== 'mjcf' || xmlDocument(textOf(f)).documentElement.localName === 'mujoco'))) {
+    throw new MessageError(msg('未找到所选类型的配置文件：{type}', { type: target }));
+  }
+  return { projectId: p.id, revision: p.revision, single, files, target };
 }
 export function importCandidates(plan: ImportPlan) {
   const groups = new Map<ImportSlot, ProjectFile[]>();
-  for (const file of plan.files) { const slot = importSlot(file.role); if (slot) groups.set(slot, [...(groups.get(slot) || []), file]); }
+  for (const file of plan.files) { const slot = planSlot(plan, file); if (slot) groups.set(slot, [...(groups.get(slot) || []), file]); }
   return groups;
 }
 export function defaultImportSelection(plan: ImportPlan): ImportSelection {
@@ -56,9 +73,10 @@ export function applyImport(p: Project, plan: ImportPlan, selection = defaultImp
   }
   const replaced = new Set<string>();
   for (const incoming of plan.files) {
-    const file = structuredClone(incoming), slot = importSlot(file.role);
+    const file = structuredClone(incoming), slot = planSlot(plan, file);
     // Only an explicitly selected single configuration adopts its current active path.
-    const active = slot && next.files.find(f => f.id === activeImportFile(p, slot));
+    const view = plan.target && slot === 'master' ? masterProject(p, file.role as 'igh' | 'ecm') : p;
+    const active = slot && next.files.find(f => f.id === activeImportFile(view, slot));
     if (plan.single && slot && selection[slot] === incoming.id && active?.role === file.role) file.path = active.path;
     if (plan.single && file.role === 'eni' && !active && !file.path.includes('/')) file.path = 'master/' + file.path;
     const old = next.files.find(f => f.path === file.path);
@@ -86,9 +104,26 @@ export function applyImport(p: Project, plan: ImportPlan, selection = defaultImp
       const changedKind=kind!==next.entrypoints.master.kind;
       if (changedKind) {configure(next).masters[next.entrypoints.master.kind]={entry:structuredClone(next.entrypoints.master),target:structuredClone(next.targets.master)};next.targets.master = masterProfile(kind);next.entrypoints.master.eniFileId=null;}
       next.entrypoints.master.kind = kind; next.entrypoints.master.fileId = id;
+      if (plan.target) {
+        const config = configure(next);
+        config.disabledMasters = config.disabledMasters?.filter(k => k !== kind);
+        if (changedKind) next.entrypoints.master.eniFileId = config.masters[kind]?.entry.eniFileId ?? null;
+      }
       if(changedKind)attachProfile(next,'master');
     } else if (slot === 'eni') next.entrypoints.master.eniFileId = id;
+    else if (slot === 'simulation') configure(next).simulationFileId = id;
+    else if (slot === 'payload' || slot === 'mjcf') { /* Linked below through the owning configuration. */ }
     else next.entrypoints[slot] = id;
+    if (plan.target && ['urdf', 'hardware', 'payload', 'mjcf'].includes(slot)) {
+      const source = fileById(next, slot === 'mjcf' ? configuration(next).simulationFileId : next.entrypoints.app);
+      if (!source) throw new MessageError(msg('缺少用于关联导入文件的配置'));
+      assertEditableFile(next, source);
+      if (next.editor.buffers[source.id]) throw new MessageError(msg('请先处理关联配置的源码草稿'));
+      const field = slot === 'mjcf' ? ['model'] : ['robot', slot === 'hardware' ? 'hardware_config' : slot];
+      source.bytes = utf8.encode(patchYaml(textOf(source), field, relativePath(source.path, file.path)));
+      source.encoding = 'utf-8';
+      next.references = next.references.filter(r => !(r.sourceFileId === source.id && r.field === field.join('.')));
+    }
     bindingChanged = true;
   }
   if (bindingChanged || [...replaced].some(id => { const f = p.files.find(f => f.id === id); return f && importSlot(f.role); })) next.editor.confirmations = {};

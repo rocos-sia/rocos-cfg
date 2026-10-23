@@ -1,4 +1,5 @@
 import { EniImport } from '../components/EniImport';
+import { ConfigurationImportMenu } from '../components/ConfigurationImportMenu';
 import { synchronizeBus, masterKinds, selectMaster, configure, configuration } from '../core/project/configuration';
 import { PdoTemplateSelect, pdoTemplateDescription } from '../components/PdoTemplateSelect';
 import type { DevicePreset } from '../core/project/templates';
@@ -28,7 +29,7 @@ export function Master(props:MasterProps) {
   const {p,analysis}=props;const message=useLocalizedMessage();
   const catalog=analysis?.catalog, file=fileById(p,p.entrypoints.master.fileId);
   const actions=file&&catalog&&targetStatus(p,'master').supported?<>{p.entrypoints.master.kind==='igh'&&<Button onClick={()=>{if(p.editor.buffers[file.id]){message.error(()=>(t("请先应用源码草稿")));return;}if(catalog.diagnostics.some(d=>d.severity==='error')){message.error(()=>(t("请先修复主站配置错误")));return;}download(file.bytes,'igh.yaml');message.success(()=>(t("已生成主站文件下载")));}}>{t("导出 ROCOS-IGH 主站文件")}</Button>}{masterKinds(p).length>1&&<Button onClick={()=>useProject.getState().change(n=>{const old=n.entrypoints.master.kind;selectMaster(n,old==='igh'?'ecm':'igh');configure(n).disabledMasters=[...(configuration(n).disabledMasters??[]),old];if(configuration(n).appMaster===old)configure(n).appMaster=n.entrypoints.master.kind;})}>{t("停用当前主站")}</Button>}</>:null;
-  return <><div className="page-heading"><div><h1>{t("主站配置")}</h1><p>{t("先定义总线，再关联机器人硬件。")}</p></div><Space wrap className="master-primary-actions"><EniImport/>{masterKinds(p).length>1&&<Button disabled={!catalog} onClick={()=>{try{if(catalog?.masterId===undefined||catalog.cycleUs===undefined)throw new Error("请先填写主站 ID 和周期");useProject.getState().change(n=>synchronizeBus(n,catalog.masterId!,catalog.cycleUs!));}catch(e){message.error(()=>errorText(e,true));}}}>{t("同步公共 ID / 周期到两个主站")}</Button>}{actions}</Space></div>
+  return <><div className="page-heading"><div><h1>{t("主站配置")}</h1><p>{t("先定义总线，再关联机器人硬件。")}</p></div><Space wrap className="master-primary-actions"><EniImport/>{masterKinds(p).length>1&&<Button disabled={!catalog} onClick={()=>{try{if(catalog?.masterId===undefined||catalog.cycleUs===undefined)throw new Error("请先填写主站 ID 和周期");useProject.getState().change(n=>synchronizeBus(n,catalog.masterId!,catalog.cycleUs!));}catch(e){message.error(()=>errorText(e,true));}}}>{t("同步公共 ID / 周期到两个主站")}</Button>}{actions}<ConfigurationImportMenu targets={['ecm','igh']}/></Space></div>
     <Tabs className="master-tabs configuration-tabs" activeKey={p.entrypoints.master.kind} onChange={kind=>useProject.getState().change(n=>selectMaster(n,kind as 'igh'|'ecm'))} items={(['igh','ecm'] as const).map(kind=>({key:kind,label:kind.toUpperCase(),children:kind===p.entrypoints.master.kind?<MasterContent key={kind} {...props}/>:null}))}/></>;
 }
 function MasterContent({p,analysis,dark}:MasterProps) {

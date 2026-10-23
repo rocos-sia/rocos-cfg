@@ -46,7 +46,7 @@ export const simulationModules:ConfigModule[]=[{
  },references:()=>[],export:(_,ctx)=>[{path:ctx.path,bytes:ctx.file.bytes,fileId:ctx.file.id}]
 },{
  id:'mjcf',version:1,role:'mjcf',syntax:'xml',capabilities,
- detect:f=>/\.xml$/i.test(f.path)&&xmlDocument(textOf(f)).documentElement.localName==='mujoco',parse:f=>xmlDocument(textOf(f)),
+ detect:f=>/\.xml$/i.test(f.path)&&['mujoco','mujocoinclude'].includes(xmlDocument(textOf(f)).documentElement.localName),parse:f=>xmlDocument(textOf(f)),
  validate:(doc,{file})=>['mujoco','mujocoinclude'].includes(doc.documentElement.localName)?[]:[{code:'simulation.mjcf',severity:'error',message:'MJCF 根节点必须为 mujoco 或 mujocoinclude',fileId:file.id}],
  references:doc=>{
   const compiler=elements(doc,'compiler')[0];

@@ -8,6 +8,7 @@ import { m as msg, MessageError, errorMessage, messageFields, validMessageTempla
 export interface FileHandle { token:string; name:string; displayPath:string; size:number; sha256:string|null; relativePath?:string|null }
 export interface OpenedFile { name:string; bytes:Uint8Array; handle?:FileHandle }
 export interface TransferOptions { signal?:AbortSignal; progress?:(completed:number,total:number)=>void }
+export interface ImportOptions extends TransferOptions { accept?:string; multiple?:boolean }
 export interface WriteOptions extends TransferOptions { target?:FileHandle; exclude?:FileHandle; protectedTargets?:FileHandle[] }
 export type WriteResult = { kind:'downloaded' } | { kind:'written'; handle:FileHandle; backupPath?:string|null; warning?:string|null; warningText?:MessageTemplate };
 export interface DirectoryFile { path:string; bytes:Uint8Array }
@@ -17,7 +18,7 @@ export interface FileAccess {
   readonly busy?:boolean;
   open(options?:TransferOptions):Promise<OpenedFile|undefined>;
   read(handle:FileHandle,options?:TransferOptions):Promise<OpenedFile>;
-  import(directory:boolean,options?:TransferOptions):Promise<File[]|undefined>;
+  import(directory:boolean,options?:ImportOptions):Promise<File[]|undefined>;
   write(bytes:Uint8Array,name:string,options?:WriteOptions):Promise<WriteResult|undefined>;
   writeDirectory?(files:DirectoryFile[],name:string,options?:TransferOptions):Promise<DirectoryWritten|undefined>;
   refresh(handle:FileHandle,options?:TransferOptions):Promise<OpenedFile>;
@@ -58,7 +59,7 @@ export async function readBrowserFile(file:File,options:TransferOptions={}):Prom
 export class BrowserFileAccess implements FileAccess {
   readonly kind='browser' as const;
   async open(options:TransferOptions={}){const files=await pick('.rcproj,.zip');return files?.[0]?readBrowserFile(files[0],options):undefined;}
-  async import(directory:boolean,options:TransferOptions={}){check(options);return pick(undefined,directory,true);}
+  async import(directory:boolean,options:ImportOptions={}){check(options);return pick(options.accept,directory,options.multiple??true);}
   async write(bytes:Uint8Array,name:string,options:WriteOptions={}):Promise<WriteResult>{check(options);browserDownload(bytes,name);return {kind:'downloaded'};}
   async writeDirectory(files:DirectoryFile[],name:string,options:TransferOptions={}):Promise<DirectoryWritten|undefined>{
     const picker=(window as unknown as {showDirectoryPicker?:()=>Promise<any>}).showDirectoryPicker;
