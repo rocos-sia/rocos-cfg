@@ -1431,6 +1431,7 @@
   "IGH 和 ECM 将直接引用同一份原始 ENI，并更新公共 ID 和周期；现有 IGH 内联从站配置及其源码草稿将被替换。已有硬件映射保留，导入后请重新核对。": "IGH and ECM will reference the same original ENI and update the shared ID and cycle. Existing inline IGH topology and its draft will be replaced. Hardware mappings are retained; review them after importing.",
   "请先在工程总览更新主站目标规则": "Update the master target profile in the project overview first.",
   "命令超时": "Command timeout",
+  "创建后导入一份 ENI，即可配置 IGH 和 ECM 总线。": "Import one ENI after creating the project to configure both IGH and ECM buses.",
   "旧版 PDO 模板（可选）": "Legacy PDO template (optional)",
   "总线拓扑由 ENI 提供，创建工程后导入 ENI。产品 PDO 模板用于兼容旧版 IgH 内联配置。": "Bus topology comes from ENI. Import an ENI after creating the project. Product PDO templates support legacy inline IgH configurations.",
   "省略时沿用 ENI 的 DC 设置": "When omitted, use the DC settings from ENI.",

@@ -15,9 +15,8 @@ test('create, edit, archive, reopen and recover a project',async({page,browser},
   await reopened.screenshot({path:testInfo.outputPath('master.png'),fullPage:true});await fresh.close();
   expect(errors).toEqual([]);
 });
-test('new ECM project offers ENI import and prevents invalid runtime export',async({page})=>{
+test('new ENI project offers ENI import and prevents invalid runtime export',async({page})=>{
   await page.goto('/');await page.getByRole('button',{name:'新建工程',exact:true}).click();
-  await page.getByRole('dialog').locator('.ant-select[aria-label="主站类型"]').click();await page.getByTitle('ROCOS-ECM',{exact:true}).click();
   await page.getByRole('button',{name:'创建工程',exact:true}).click();await page.getByRole('menuitem',{name:'主站配置'}).click();await expect(page.getByText('请导入 ENI 文件',{exact:true})).toBeVisible();
   await page.getByRole('button',{name:'校验工程',exact:true}).click();await expect(page.getByRole('cell',{name:'请导入 ENI 文件',exact:true})).toBeVisible();
 });

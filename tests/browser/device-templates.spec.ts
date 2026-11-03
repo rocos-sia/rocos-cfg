@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { openProject } from '../../src/core/project/archive';
+import { createProject } from '../../src/core/project/create';
+import { openProject, saveProject } from '../../src/core/project/archive';
 import { fileById, textOf } from '../../src/core/project/types';
 import { readYaml } from '../../src/core/documents/yaml';
 import { validateTemplates } from '../../src/core/project/templates';
@@ -10,11 +11,10 @@ const choose = async (page: import('@playwright/test').Page, label: string) => {
   await select.click(); await select.getByRole('combobox').fill(label);
   await page.locator('.ant-select-dropdown:visible').getByTitle(label, { exact: true }).click();
 };
-test('brand/model templates seed new masters, append through both controls, undo and survive an archive', async ({ page }, info) => {
-  await page.goto('/'); await page.getByRole('button', { name: '新建工程', exact: true }).click();
-  await choose(page, 'Elmo · Twitter · Talon');
-  await page.getByRole('button', { name: '创建工程', exact: true }).click();
-  await page.getByRole('menuitem', { name: '主站配置', exact: true }).click();
+test('legacy brand/model templates append through both controls, undo and survive an archive', async ({ page }, info) => {
+  await page.goto('/');
+  await page.locator('input[type=file]').first().setInputFiles({name:'legacy.rcproj',mimeType:'application/zip',buffer:Buffer.from(await saveProject(createProject('legacy','igh',{pdoTemplate:'drive-talon'})))});
+  await page.getByRole('menuitem', { name: '总线配置', exact: true }).click();
   await expect(page.getByRole('cell', { name: 'Elmo Twitter Drive', exact: true })).toBeVisible();
   await choose(page, 'XJC · 型号未注明 · ZeroErr6');
   await page.getByRole('button', { name: '新增从站', exact: true }).click();
@@ -36,12 +36,27 @@ test('brand/model templates seed new masters, append through both controls, undo
   await page.getByRole('tab', { name: /^从站/ }).click();
   await page.screenshot({ path: info.outputPath('pdo-templates.png'), fullPage: true });
 });
-test('ECM hides the PDO library and blank IGH projects stay empty', async ({ page }) => {
+for(const view of [{name:'desktop',width:1440,dark:false},{name:'mobile-dark',width:390,dark:true}])
+test(`new ENI projects need no master choice or PDO template (${view.name})`, async ({ page }, info) => {
+  await page.setViewportSize({width:view.width,height:1000});
+  await page.addInitScript(dark=>localStorage.setItem('rocos-theme',dark?'dark':'light'),view.dark);
   await page.goto('/'); await page.getByRole('button', { name: '新建工程', exact: true }).click();
-  await page.getByRole('dialog').locator('.ant-select[aria-label="主站类型"]').click(); await page.getByTitle('ROCOS-ECM', { exact: true }).click();
-  await expect(page.locator('.ant-select[aria-label="PDO 模板"]')).toHaveCount(0);
-  await page.getByRole('dialog').locator('.ant-select[aria-label="主站类型"]').click(); await page.getByTitle('ROCOS-IGH', { exact: true }).click();
-  await page.getByRole('button', { name: '创建工程', exact: true }).click();
-  await page.getByRole('menuitem', { name: '主站配置', exact: true }).click();
-  await expect(page.getByRole('tab', { name: '从站 (0)', exact: true })).toBeVisible();
+  const dialog=page.getByRole('dialog',{name:'新建配置工程'});
+  await expect(dialog.getByRole('combobox',{name:'主站类型'})).toHaveCount(0);
+  await expect(dialog.getByRole('combobox',{name:'PDO 模板'})).toHaveCount(0);
+  await expect(dialog).toContainText('创建后导入一份 ENI，即可配置 IGH 和 ECM 总线。');
+  await dialog.getByLabel('工程名称',{exact:true}).click({position:{x:4,y:20}});
+  await expect(dialog.getByLabel('工程名称',{exact:true})).toBeFocused();
+  await expect(page.locator('body')).toHaveJSProperty('scrollWidth',view.width);
+  await page.screenshot({path:info.outputPath('new-eni-project.png')});
+  await dialog.getByRole('button', { name: '创建工程', exact: true }).press('Enter');
+  await expect(dialog).not.toBeVisible();
+  await page.setViewportSize({width:1440,height:1000});
+  await page.getByRole('menuitem', { name: '总线配置', exact: true }).click();
+  for(const kind of ['ECM','IGH']){
+    await page.getByRole('tab',{name:kind,exact:true}).click();
+    await expect(page.getByRole('tab', { name: '从站 (0)', exact: true })).toBeVisible();
+    await expect(page.getByText('来自 ENI · 只读',{exact:true})).toBeVisible();
+    await expect(page.getByRole('button',{name:'新增从站',exact:true})).toHaveCount(0);
+  }
 });

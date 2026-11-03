@@ -20,7 +20,7 @@ IGH 和 ECM 均通过启动 YAML 的 `eni` 引用原始 ENI，公共参数为顶
 
 工程格式仍为首版 v1。逐版本迁移基础设施、变更预览和首次另存保护已接入；当前没有更早的正式格式，具体边界及后续版本接入要求见 [工程模型迁移](docs/MIGRATIONS.md)。
 
-新建工程默认生成 ENI 引用配置；需要导入实际 ENI。为兼容旧格式，ROCOS-IGH 仍可显式选择产品 PDO 模板（Elmo/Talon、ZeroErr、XJC、AX58200 GPIO），生成内联 PDO YAML；这类工程支持新增从站。模板以 JSON 保存品牌、型号、配置变体、来源和 PDO，按设备类型分组并可搜索；所用快照随工程归档，详见 [模板库](templates/README.md)。
+新建工程无需选择主站，自动生成 IGH 和 ECM 的 ENI 引用配置；创建后导入一份实际 ENI 即可供两者使用。旧版 IgH 内联 PDO 工程仍可打开或导入，支持通过产品 PDO 模板（Elmo/Talon、ZeroErr、XJC、AX58200 GPIO）新增从站。模板以 JSON 保存品牌、型号、配置变体、来源和 PDO，按设备类型分组并可搜索；所用快照随工程归档，详见 [模板库](templates/README.md)。
 
 过程映像支持原始顺序和 Rx / Tx 分组查看，保留原始位偏移。ENI 工程的 PDO 信号由 XML 提供；旧内联 PDO 信号可手动配置，空条目不显示运行时发现提示；完整 APP 导出仍检查所需输入、输出信号。
 

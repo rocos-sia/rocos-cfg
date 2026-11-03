@@ -5,6 +5,7 @@ import { attachProfile, baseTarget } from './profiles';
 import { recordTemplate, robotTemplate, starterData, starterTemplate, deviceTemplate, type DevicePreset } from './templates';
 import { xmlDocument, serializeXml } from '../documents/xml';
 import { uid, utf8, type Project, type FileRole, type MasterKind } from './types';
+import { selectMaster } from './configuration';
 export function makeFile(path: string, role: FileRole, text: string) {
   return { id: uid(), path, role, owner: role, bytes: utf8.encode(text), encoding: 'utf-8' };
 }
@@ -41,6 +42,14 @@ export function createProject(name: string, kind: MasterKind, options:ProjectOpt
     recordTemplate(project,template,{prefix,linkLength:length},[robot.id,app.id]);
     project.editor.notices=[{fileId:robot.id,message:template.notice}];
   }
+  return project;
+}
+
+/** Both consumers start from the same ENI reference in new projects. */
+export function createEniProject(name: string, options: Omit<ProjectOptions, 'pdoTemplate'> = {}): Project {
+  const project = createProject(name, 'igh', options);
+  selectMaster(project, 'ecm');
+  selectMaster(project, 'igh');
   return project;
 }
 

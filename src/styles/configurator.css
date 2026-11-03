@@ -153,6 +153,7 @@
 }
 .sidebar-slot[data-phone=true] { flex-basis:64px; width:64px; }
 .sidebar-slot[data-phone=true] .sidebar{position:fixed;inset:0 auto 0 0;width:64px;height:100dvh;z-index:1101;transition:width var(--sidebar-motion) var(--sidebar-easing),padding-inline var(--sidebar-motion) var(--sidebar-easing),box-shadow var(--sidebar-motion) ease}
+.sidebar-slot[data-phone=true] .sidebar[data-collapsed=true]{z-index:999}
 .sidebar-slot[data-phone=true] .sidebar[data-collapsed=false]{width:min(280px,calc(100vw - 24px))}
 .sidebar .brand-toggle{transition:padding-inline var(--sidebar-motion) var(--sidebar-easing),background-color 140ms ease}
 

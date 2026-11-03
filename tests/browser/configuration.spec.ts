@@ -1,5 +1,7 @@
 import {test,expect} from '@playwright/test';
 import {projectSnapshot} from './helpers/project';
+import {createProject} from '../../src/core/project/create';
+import {saveProject} from '../../src/core/project/archive';
 
 test('optional APP supports manual hardware and distinct application tabs',async({page})=>{
  await page.goto('/');await page.getByRole('button',{name:'新建工程',exact:true}).click();
@@ -39,9 +41,8 @@ test('simulation-only MJCF preview and folder export',async({page})=>{
 });
 
 test('dual master navigation retains both configurations',async({page})=>{
- await page.goto('/');await page.getByRole('button',{name:'新建工程',exact:true}).click();
- const preset=page.locator('.ant-select[aria-label="PDO 模板"]:visible');await preset.click();await preset.getByRole('combobox').fill('Elmo · Twitter · Talon');await page.getByTitle('Elmo · Twitter · Talon',{exact:true}).click();
- await page.getByRole('button',{name:'创建工程',exact:true}).click();
+ await page.goto('/');
+ await page.locator('input[type=file]').first().setInputFiles({name:'legacy.rcproj',mimeType:'application/zip',buffer:Buffer.from(await saveProject(createProject('legacy','igh',{pdoTemplate:'drive-talon'})))});
  await page.getByRole('menuitem',{name:'总线配置',exact:true}).click();await page.getByRole('tab',{name:'ECM',exact:true}).click();
  await expect(page.getByText('来自 ENI · 只读',{exact:true})).toBeVisible();await page.getByRole('tab',{name:'IGH',exact:true}).click();await expect(page.getByRole('tab',{name:'PDO / SDO 编辑',exact:true})).toBeVisible();
  await page.getByRole('menuitem',{name:'应用配置',exact:true}).click();

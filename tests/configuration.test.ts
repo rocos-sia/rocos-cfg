@@ -1,6 +1,9 @@
 import { describe,it,expect } from 'vitest';
 import { createExample } from '../src/core/project/examples';
-import { createProject,makeFile } from '../src/core/project/create';
+import { createEniProject,createProject,makeFile } from '../src/core/project/create';
+import { planEniImport } from '../src/core/bus/eni-import';
+import { teachingTemplate } from '../src/core/project/templates';
+import { targetStatus } from '../src/core/project/profiles';
 import { configuration,configure,selectMaster,masterKinds,masterProject,enableSimulation,applicationProject,synchronizeBus } from '../src/core/project/configuration';
 import { validateProject } from '../src/core/validation';
 import { activeFileIds } from '../src/core/project/references';
@@ -11,6 +14,25 @@ import { fileById,utf8 } from '../src/core/project/types';
 import { planHardware } from '../src/core/hardware/edit';
 
 describe('optional configuration modules',()=>{
+ it('creates both ENI consumers, imports one shared XML and retains both runtime roots after reopening',async()=>{
+  const blank=createEniProject('Shared ENI',{robotTemplate:'robot.two-axis',parameters:{prefix:'shared',linkLength:0.4}});
+  expect(masterKinds(blank)).toEqual(['igh','ecm']);
+  for(const kind of masterKinds(blank)){
+   const view=masterProject(blank,kind);
+   expect(targetStatus(view,'master').supported).toBe(true);
+   expect(buildBusCatalog(view).diagnostics.some(d=>d.code==='eni.missing')).toBe(true);
+  }
+  const bytes=utf8.encode(teachingTemplate().data.eni),{project,overwrite}=planEniImport(blank,bytes);
+  expect(overwrite).toBe(false);configure(project).enabled.app=false;
+  const restored=await openProject(await saveProject(project));
+  const igh=masterProject(restored,'igh'),ecm=masterProject(restored,'ecm');
+  expect(igh.entrypoints.master.eniFileId).toBe(ecm.entrypoints.master.eniFileId);
+  expect(restored.editor.templateUses?.find(t=>t.templateId==='robot.two-axis')?.overrides).toEqual({prefix:'shared',linkLength:0.4});
+  const runtime=planRuntime(restored);
+  expect(runtime.files.map(f=>f.path)).toEqual(expect.arrayContaining(['master/igh.yaml','master/ecm.yaml']));
+  expect(runtime.files.filter(f=>f.path.endsWith('.xml'))).toHaveLength(1);
+  expect(runtime.files.find(f=>f.path.endsWith('.xml'))!.bytes).toEqual(bytes);
+ });
  it('exports a bus-only project without requiring APP/URDF/hardware',()=>{
   const p=createExample('igh');configure(p).enabled.app=false;
   expect(validateProject(p).filter(d=>d.severity==='error')).toEqual([]);
