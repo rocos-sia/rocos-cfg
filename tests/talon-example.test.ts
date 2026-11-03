@@ -26,7 +26,7 @@ for (const kind of ['ecm', 'igh'] as const) it(`Talon ${kind} preserves both mas
   expect(analysis.robot!.links).toHaveLength(8);
   expect(bus.diagnostics).toEqual([]);
   expect(bus.slaves).toHaveLength(7);
-  expect(bus.signals.length).toBe(kind === 'igh' ? 77 : 91);
+  expect(bus.signals.length).toBe(kind === 'igh' ? 105 : 91);
   expect(p.files.filter(f => /\.stl$/i.test(f.path))).toHaveLength(8);
   expect(p.references.length).toBeGreaterThan(20);
   expect(p.references.every(r => r.state === 'internal')).toBe(true);
@@ -37,8 +37,8 @@ for (const kind of ['ecm', 'igh'] as const) it(`Talon ${kind} preserves both mas
   expect(app.robot.tip_link).toBe('link_7');
   expect(readYaml(textOf(p.files.find(f => f.path === 'ecm/config.yaml')!)).license).toBe('');
   const active = activeFileIds(p);
-  expect(active.has(p.files.find(f => f.path === (kind === 'ecm' ? 'igh/talon_pdo.yaml' : 'ecm/config.yaml'))!.id)).toBe(false);
-  expect(active.has(p.files.find(f => f.path === 'ecm/eni7.xml')!.id)).toBe(kind === 'ecm');
+  expect(active.has(p.files.find(f => f.path === (kind === 'ecm' ? 'igh/igh.yaml' : 'ecm/config.yaml'))!.id)).toBe(false);
+  expect(active.has(p.files.find(f => f.path === 'ecm/eni7.xml')!.id)).toBe(true);
   const errors = validateProject(p).filter(d => d.severity === 'error');
   expect(errors.filter(d => d.code === 'hardware.confirmation')).toHaveLength(7);
   expect([...new Set(errors.map(d => d.code))].sort()).toEqual(['hardware.confirmation']);
@@ -55,7 +55,7 @@ for (const kind of ['ecm', 'igh'] as const) it(`Talon ${kind} preserves both mas
   const runtime = planRuntime(restored);
   expect(runtime.external).toEqual([]);
   expect(runtime.files.filter(f => /\.stl$/i.test(f.path))).toHaveLength(8);
-  expect(runtime.files.some(f => f.path.startsWith(kind === 'ecm' ? 'igh/' : 'ecm/'))).toBe(false);
+  expect(runtime.files.some(f => f.path === (kind === 'ecm' ? 'igh/igh.yaml' : 'ecm/config.yaml'))).toBe(false);
   if (kind === 'ecm') expect(await digest(runtime.files.find(f => f.path === 'ecm/eni7.xml')!.bytes)).toBe(await digest(entries.get('ecm/eni7.xml')!));
   // Opening another copy must not share mutable bytes with the source or prior project.
   const mesh = p.files.find(f => /\.stl$/i.test(f.path))!;

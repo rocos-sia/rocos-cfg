@@ -6,13 +6,13 @@ import { textOf, type ProjectFile } from '../project/types';
 import { ecmRules } from '../project/profiles';
 export const ecmLinkDrivers = ecmRules.linkDrivers;
 
-// rocos-ecm d85a6f3, Main/Common/EcConfig.cpp. Values are interpreted
+// rocos-ecm e112a32, Main/Common/EcConfig.cpp. Values are interpreted
 // using yaml-cpp's scalar rules, independently of YAML 1.2 JS conversion.
 export const ecmDefaults = { id:0, eni:'eni7.xml', duration:0, cycle:1000, verbose:3,
   cpuidx:0, perf:1, auxclk:0, sp:null, log:'', flash:null, dcmmode:1,
   ctloff:false, link:ecmRules.defaultLink, instance:1, mode:1, state:'op', license:'',
-  maxbusslaves:256, mbxsrv:null };
-const ranges:Record<string,[number,number]>={id:[0,2147483647],duration:[0,2147483647],cycle:[1,2147483],verbose:[0,2147483647],cpuidx:[0,31],perf:[0,2],auxclk:[0,0],sp:[1,65535],flash:[0,65535],dcmmode:[0,5],instance:[1,2147483647],mode:[0,1],maxbusslaves:[1,2147483647],mbxsrv:[1,65535]};
+  command_timeout_ms:1000, maxbusslaves:256, mbxsrv:null };
+const ranges:Record<string,[number,number]>={command_timeout_ms:[1,60000],id:[0,2147483647],duration:[0,2147483647],cycle:[1,2147483],verbose:[0,2147483647],cpuidx:[0,31],perf:[0,2],auxclk:[0,0],sp:[1,65535],flash:[0,65535],dcmmode:[0,5],instance:[1,2147483647],mode:[0,1],maxbusslaves:[1,2147483647],mbxsrv:[1,65535]};
 const optional=new Set(['sp','flash','mbxsrv']);
 function scalar(doc:Document,key:string):string|undefined {
   const n=nativeNode(doc,[key]);return isScalar(n)&&n.value!==null?String(n.source??n.value):undefined;

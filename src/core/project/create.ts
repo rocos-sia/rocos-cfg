@@ -13,7 +13,7 @@ export function createProject(name: string, kind: MasterKind, options:ProjectOpt
   const now = new Date().toISOString(),data=starterData();
   if(options.pdoTemplate && options.pdoTemplate!=='blank' && kind!=='igh')throw new MessageError(msg('PDO 模板仅适用于 ROCOS-IGH；ROCOS-ECM 请导入 ENI。'));
   const preset=options.pdoTemplate&&options.pdoTemplate!=='blank'?deviceTemplate(options.pdoTemplate):undefined;
-  const master = makeFile(`master/${kind}.yaml`, kind, stringify(preset?{...data.igh,slaves:[{id:0,name:preset.defaults.name,...preset.data,dc_ref:true}]}:data[kind]));
+  const master = makeFile(`master/${kind}.yaml`, kind, stringify(preset?{version:1,master:{master_id:0,period_us:1000,cpu:null,dc:'off',preop_timeout_ms:10000,op_timeout_ms:60000,pdo_config_attempts:5},slaves:[{id:0,name:preset.defaults.name,...preset.data,dc_ref:true}]}:data[kind]));
   const robot = makeFile('models/robot.urdf', 'urdf', `<?xml version="1.0"?>\n<robot name="${data.robot.name}">\n  <link name="${data.robot.root}"/>\n</robot>\n`);
   const hardware = makeFile('app/hardware_config.yaml', 'hardware', stringify(data.hardware));
   const binding = makeFile('app/joint_binding.yaml', 'binding', stringify(data.binding));

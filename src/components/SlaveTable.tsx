@@ -7,8 +7,8 @@ import { useProject } from '../store';
 import { diagnosticText, errorText, t } from '../i18n';
 import { useLocalizedMessage } from './useLocalizedMessage';
 
-export function SlaveTable({ p, slaves }: { p: Project; slaves: BusSlave[] }) {
-  const message = useLocalizedMessage(), editable = p.entrypoints.master.kind === 'igh';
+export function SlaveTable({ p, slaves, editable }: { p: Project; slaves: BusSlave[]; editable: boolean }) {
+  const message = useLocalizedMessage();
   const [pending, setPending] = useState<{ plan: SlavePlan; epoch: number; revision: number }>();
   const drag = useRef<{ index: number; epoch: number; revision: number } | undefined>(undefined);
   const [over, setOver] = useState<number>();

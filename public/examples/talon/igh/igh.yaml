@@ -1,0 +1,9 @@
+# IgH startup configuration; topology and PDOs come from the shared ENI.
+eni: ../ecm/eni7.xml
+id: 0
+cycle: 1000
+cpuidx: null
+dc: on
+preop_timeout_ms: 10000
+op_timeout_ms: 60000
+pdo_config_attempts: 5

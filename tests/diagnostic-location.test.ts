@@ -1,3 +1,5 @@
+import legacyTeaching from '../templates/projects/teaching.v2.json';
+import { stringify } from 'yaml';
 import { expect, it } from 'vitest';
 import { diagnosticLocation, diagnosticSourceRange } from '../src/core/diagnostics/location';
 import { createExample } from '../src/core/project/examples';
@@ -14,7 +16,7 @@ it('selects hardware by document index, uses source for unsupported fields and n
   expect(diagnosticLocation(p,diagnostic('missing'))).toBeUndefined();expect(diagnosticLocation(p,diagnostic(undefined))).toBeUndefined();
 });
 it('routes startup and PDO fields to their actual forms and references to mapping controls',()=>{
-  const p=createExample('igh'),id=p.entrypoints.master.fileId!;
+  const p=createExample('igh'),id=p.entrypoints.master.fileId!;fileById(p,id)!.bytes=utf8.encode(stringify(legacyTeaching.data.igh));
   expect(diagnosticLocation(p,diagnostic(id,'master.period_us'))).toMatchObject({mode:'field',route:'master'});
   expect(diagnosticLocation(p,diagnostic(id,'slaves.0.rx_pdos.0.entries.0.bit_length'))).toMatchObject({mode:'field',index:0});
   expect(diagnosticLocation(p,diagnostic(id,'slaves.0.rx_pdos.4.index'))?.mode).toBe('source');
@@ -47,7 +49,7 @@ it('locates XML occurrences despite comments, namespaces, repeated siblings and 
 });
 it('retains ECM startup field paths and points ENI diagnostics at the ENI rather than startup YAML',()=>{
   const p=createExample('ecm'),master=p.entrypoints.master.fileId!,eni=fileById(p,p.entrypoints.master.eniFileId)!;
-  editProjectYaml(p,master,doc=>doc.set('cycle',0));eni.bytes=utf8.encode(textOf(eni).replace('<PhysAddr>1001</PhysAddr>','<PhysAddr>9999</PhysAddr>'));
+  editProjectYaml(p,master,doc=>doc.set('cycle',0));eni.bytes=utf8.encode(textOf(eni).replace('<PhysAddr>1001</PhysAddr>','<PhysAddr>0</PhysAddr>'));
   const catalog=buildBusCatalog(p);
   expect(catalog.diagnostics.find(d=>d.code==='ecm.startup')).toMatchObject({fileId:master,field:'cycle'});
   expect(catalog.diagnostics.find(d=>d.code==='ecm.address')).toMatchObject({fileId:eni.id,field:'Config.Slave.0.Info.PhysAddr'});

@@ -1,4 +1,5 @@
-import { createProject, makeFile } from '../../src/core/project/create';
+import { createLegacyProject as createProject } from './legacy-project';
+import { makeFile } from '../../src/core/project/create';
 import { fileById, textOf, utf8, type Project } from '../../src/core/project/types';
 import { patchYaml } from '../../src/core/documents/yaml';
 import { setPackagePath, mapReference } from '../../src/core/project/resources';

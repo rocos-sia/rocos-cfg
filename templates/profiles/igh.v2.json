@@ -1,0 +1,22 @@
+{
+  "format": "rocos-target-profile",
+  "id": "rocos.igh",
+  "version": 2,
+  "target": {
+    "version": "9001c87",
+    "configVersion": 1,
+    "abi": "unverified"
+  },
+  "rules": {
+    "maxSlaves": 50,
+    "variablesPerDirection": 25,
+    "variableNameBytes": 71,
+    "slaveNameBytes": 79,
+    "minCycleUs": 1000,
+    "maxDcCycleUs": 4294967
+  },
+  "sources": [
+    "rocos-igh@9001c87: src/pdo_config.cpp, src/eni_config.cpp and rocos-shm ABI v2"
+  ],
+  "scope": "ENI 引用 YAML、活动 SM2/SM3 PDO、DC 与初始化 SDO；兼容旧内联 PDO YAML。仅离线加载规则，实机与目标 ABI 未验证。"
+}

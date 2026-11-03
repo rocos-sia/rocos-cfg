@@ -1,5 +1,6 @@
+import { createLegacyProject as createProject } from './fixtures/legacy-project';
 import { describe, expect, it } from 'vitest';
-import { createProject, makeFile } from '../src/core/project/create';
+import { makeFile } from '../src/core/project/create';
 import { buildBusCatalog } from '../src/core/bus/catalog';
 import { buildIghCatalog, exactInteger } from '../src/core/bus/igh';
 import { editProjectYaml, masterFileId, modifySequence, planSlaveChange, setInteger } from '../src/core/bus/igh-edit';

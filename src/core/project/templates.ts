@@ -3,14 +3,17 @@ import drive from '../../../templates/devices/igh-drive-talon.v1.json' with {typ
 import ftSensor from '../../../templates/devices/igh-ft-xjc.v1.json' with {type:'json'};
 import io from '../../../templates/devices/igh-io-ax58200.v1.json' with {type:'json'};
 import { m as msg, messageFields, MessageError, type MessageInput } from './messages';
-import starter from '../../../templates/projects/starter.v2.json' with {type:'json'};
+import starterV2 from '../../../templates/projects/starter.v2.json' with {type:'json'};
+import starter from '../../../templates/projects/starter.v3.json' with {type:'json'};
 import starterV1 from '../../../templates/projects/starter.v1.json' with {type:'json'};
 import robot from '../../../templates/robots/two-axis.v2.json' with {type:'json'};
 import robotV1 from '../../../templates/robots/two-axis.v1.json' with {type:'json'};
 import device from '../../../templates/devices/igh-discovery.v1.json' with {type:'json'};
-import teaching from '../../../templates/projects/teaching.v2.json' with {type:'json'};
+import teachingV2 from '../../../templates/projects/teaching.v2.json' with {type:'json'};
+import teaching from '../../../templates/projects/teaching.v3.json' with {type:'json'};
 import teachingV1 from '../../../templates/projects/teaching.v1.json' with {type:'json'};
-import talon from '../../../templates/projects/talon.v1.json' with {type:'json'};
+import talonV1 from '../../../templates/projects/talon.v1.json' with {type:'json'};
+import talon from '../../../templates/projects/talon.v2.json' with {type:'json'};
 import { canonicalData, targetStatus } from './profiles';
 import { fileById, textOf, uid, utf8, type Diagnostic, type Project, type EditorState } from './types';
 type TemplateUse=NonNullable<EditorState['templateUses']>[number];
@@ -30,7 +33,7 @@ export const teachingTemplate=()=>structuredClone(teaching);
 export const talonTemplate=()=>structuredClone(talon);
 type Definition=typeof starter|typeof robot|typeof device|typeof teaching|typeof talon|(typeof devicePresets)[keyof typeof devicePresets];
 export function recordTemplate(p:Project,definition:Definition,parameters:Record<string,string|number>,outputs:string[]){
-  for(const slot of ['app','master'] as const){const status=targetStatus(p,slot);if(!status.supported)throw new MessageError(status);if(!definition.profiles.includes(`${status.definition!.id}@${status.definition!.version}`))throw new MessageError(msg("模板不适用于当前目标规则"));}
+  for(const slot of ['app','master'] as const){const status=targetStatus(p,slot);if(!status.supported)throw new MessageError(status);if(!definition.profiles.includes(`${status.definition!.id}@${status.definition!.version}`) && !(slot==='master' && p.entrypoints.master.kind==='igh' && definition.profiles.includes('rocos.igh@1')) && !(slot==='master' && p.entrypoints.master.kind==='ecm' && definition.profiles.includes('rocos.ecm@2')))throw new MessageError(msg("模板不适用于当前目标规则"));}
   const path=`project-data/templates/${definition.id}.v${definition.version}.json`,bytes=utf8.encode(JSON.stringify(definition,null,2)+'\n');
   let file=p.files.find(f=>f.path===path);
   if(file){if(file.role!=='template'||file.owner!=='template'||file.bytes.length!==bytes.length||file.bytes.some((b,i)=>b!==bytes[i]))throw new MessageError(msg("模板快照已存在不同内容：{v0}", {v0:String(path)}));}
@@ -43,7 +46,7 @@ export function validateTemplates(p:Project):Diagnostic[]{
   if(p.editor.templateUses!==undefined&&!Array.isArray(p.editor.templateUses))return [{code:'template.state',severity:'error',...msg("模板使用记录格式不受支持")}];
   for(const use of p.editor.templateUses||[]){
     if(!validTemplateUse(use)){result.push({code:'template.state',severity:'error',...msg("模板使用记录无效")});continue;}
-    const file=fileById(p,use.snapshotFileId),definition=[starter,starterV1,robot,robotV1,device,teaching,teachingV1,talon,...Object.values(devicePresets)].find(t=>t.id===use.templateId&&t.version===use.version);
+    const file=fileById(p,use.snapshotFileId),definition=[starter,starterV2,starterV1,robot,robotV1,device,teaching,teachingV2,teachingV1,talon,talonV1,...Object.values(devicePresets)].find(t=>t.id===use.templateId&&t.version===use.version);
     let message:MessageInput|undefined;
     if(!file||file.role!=='template')message=msg("实际使用的模板快照缺失：{v0} v{v1}", {v0:String(use.templateId), v1:String(use.version)});
     else if(file.bytes.length>1024*1024)message=msg("模板快照超过 1 MiB 解释限额：{v0}；保留原文件，不重新应用", {v0:String(use.templateId)});

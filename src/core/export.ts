@@ -8,12 +8,28 @@ import { modules } from './modules';
 import type { ModuleRegistry } from './modules/registry';
 import { fileModule } from './modules/project';
 import { validateProject } from './validation';
+import { buildBusCatalog } from './bus/catalog';
 export interface RuntimePlan {
   files: { path: string; bytes: Uint8Array; fileId?: string }[];
   rewrites: { fileId: string; field: string; from: string; to: string }[];
   external: FileReference[];
 }
 const toolRoles = new Set(['editor-state', 'profile', 'template']);
+/** Export a master independently of APP bindings, retaining its ENI dependency. */
+export function exportMaster(project: Project): Uint8Array {
+  const file = fileById(project, project.entrypoints.master.fileId);
+  if (!file || project.editor.buffers[file.id] || buildBusCatalog(project).diagnostics.some(d => d.severity === 'error')) throw new MessageError(msg('请先修复主站配置错误'));
+  const ref = collectReferences(project).find(r => r.sourceFileId === file.id && r.field === 'eni');
+  if (!ref) return file.bytes;
+  const eni = fileById(project, ref.targetFileId);
+  if (!eni || ref.state !== 'internal') throw new MessageError(msg('请导入 ENI 文件'));
+  const adapter = fileModule(project, file)!;
+  const path = file.path.replace(/[^/]+$/, `${project.entrypoints.master.kind}.yaml`);
+  const value = relativePath(path, eni.path);
+  const output = adapter.export(adapter.parse(file), {project, file, path, rewrites: value === ref.original ? [] : [{field:'eni',value}]});
+  checkPaths([...output.map(f=>f.path),eni.path]);
+  return packZip(new Map([...output.map(f => [f.path, f.bytes] as const), [eni.path, eni.bytes]]));
+}
 export function planRuntime(project: Project, registry: ModuleRegistry = modules): RuntimePlan {
   const p = structuredClone(project), refs = collectReferences(p, registry), active = activeFileIds(p, refs, registry);
   const errors = validateProject(p, registry).filter(d => d.severity === 'error');

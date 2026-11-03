@@ -32,6 +32,6 @@ export function EniImport() {
   };
   return <><Button loading={busy} disabled={!!pending} onClick={()=>void select()}>{t('导入 ENI')}</Button>
     <Modal title={t('覆盖已有 IGH 配置？')} open={!!pending} okText={t('覆盖并导入')} cancelText={t('取消')} onCancel={()=>setPending(undefined)} onOk={()=>{try{if(pending)apply(pending);}catch(e){message.error(()=>errorText(e,true));setPending(undefined);}}}>
-      <p>{t('将用 ENI 中的 PDO 配置覆盖现有 IGH 从站配置及其源码草稿，并更新 ECM 的 ENI 和公共周期。已有硬件映射保留，导入后请重新核对。')}</p>
+      <p>{t('IGH 和 ECM 将直接引用同一份原始 ENI，并更新公共 ID 和周期；现有 IGH 内联从站配置及其源码草稿将被替换。已有硬件映射保留，导入后请重新核对。')}</p>
     </Modal></>;
 }

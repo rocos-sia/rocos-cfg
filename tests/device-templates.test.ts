@@ -9,7 +9,8 @@ import { readYaml } from '../src/core/documents/yaml';
 
 const config = (p: ReturnType<typeof createProject>) => readYaml(textOf(fileById(p, p.entrypoints.master.fileId)!));
 it('keeps blank projects blank and rejects device templates for read-only ECM PDOs', () => {
-  expect(config(createProject('blank', 'igh', { pdoTemplate: 'blank' })).slaves).toEqual([]);
+  expect(config(createProject('blank', 'igh', { pdoTemplate: 'blank' }))).toMatchObject({eni:'eni.xml',id:0n,cycle:1000n});
+  expect(config(createProject('blank','igh')).slaves).toBeUndefined();
   expect(() => createProject('ecm', 'ecm', { pdoTemplate: 'ft-xjc' })).toThrow('ENI');
 });
 for (const preset of Object.keys(devicePresets) as Exclude<DevicePreset, 'blank'>[]) it(`${preset} creates and appends editable PDOs with durable model-specific snapshots`, async () => {

@@ -8,7 +8,7 @@ ROCOS 控制器的本地工程配置工具。采用 React、TypeScript 和 Vite�
 
 3D 场景铺满预览卡片，顶部居中图标视角栏在鼠标接近时渐显，离开后渐隐；键盘聚焦可见，触屏常显。底部可独立切换世界坐标轴、关节轴、Collision、Visual、网格和整体半透明显示；左下角 Gizmo 支持点击/拖动旋转，也可聚焦后按 X/Y/Z（Shift 反方向）。坐标轴使用加粗箭杆与箭头；旋转关节显示右手正方向弧形箭头，移动关节保留直线方向箭头。半透明关闭后恢复原材质。显示选项只保留在工作区会话中。下方源码提供“格式化 URDF”（两空格缩进），先生成草稿，再通过“应用修改”写入配置；旧 `<hardware>` 和有文本语义的扩展片段保留原文。
 
-IgH 从站列表支持行末垃圾桶删除、拖动排序及上移/下移按钮；确认影响后同步调整 Hardware/关节绑定，支持撤销。React Flow 拓扑卡片随配置顺序更新；EC-Master 显示 ENI 从站顺序且只读，不推断物理端口分支。
+IGH 和 ECM 均通过启动 YAML 的 `eni` 引用原始 ENI，公共参数为顶层 `id / cycle / cpuidx`。导入 ENI 后，两种主站共用同一份只读 XML；运行包保留其原始字节和相对路径。IGH 单独导出会下载包含 YAML 与 ENI 的 `igh-config.zip`。IgH 从 ENI 活动 SM2/SM3 PDO 生成自身信号布局，ECM 使用 ProcessImage，二者的信号数和偏移不要求相同。旧内联 IgH YAML 仍可编辑从站、PDO/SDO 和排序；ENI 工程的拓扑只读，不推断物理端口分支。
 
 一级导航可主动收放并保留本机偏好；手机上展开为导航覆盖层。窄窗顶栏通过“更多操作”访问恢复草稿、离线状态、主站版本、语言和主题，打开与保存保持可见。
 
@@ -20,9 +20,9 @@ IgH 从站列表支持行末垃圾桶删除、拖动排序及上移/下移按钮
 
 工程格式仍为首版 v1。逐版本迁移基础设施、变更预览和首次另存保护已接入；当前没有更早的正式格式，具体边界及后续版本接入要求见 [工程模型迁移](docs/MIGRATIONS.md)。
 
-新建 ROCOS-IGH 工程或新增从站时，可选择空白 PDO 或产品模板（Elmo/Talon、ZeroErr、XJC、AX58200 GPIO）。模板以 JSON 保存品牌、型号、配置变体、来源和 PDO，按设备类型分组并可搜索；所用快照随工程归档，详见 [模板库](templates/README.md)。
+新建工程默认生成 ENI 引用配置；需要导入实际 ENI。为兼容旧格式，ROCOS-IGH 仍可显式选择产品 PDO 模板（Elmo/Talon、ZeroErr、XJC、AX58200 GPIO），生成内联 PDO YAML；这类工程支持新增从站。模板以 JSON 保存品牌、型号、配置变体、来源和 PDO，按设备类型分组并可搜索；所用快照随工程归档，详见 [模板库](templates/README.md)。
 
-过程映像支持原始顺序和 Rx / Tx 分组查看，保留原始位偏移。PDO 信号由用户手动配置，空条目不再显示运行时发现提示；完整 APP 导出仍检查所需输入、输出信号。
+过程映像支持原始顺序和 Rx / Tx 分组查看，保留原始位偏移。ENI 工程的 PDO 信号由 XML 提供；旧内联 PDO 信号可手动配置，空条目不显示运行时发现提示；完整 APP 导出仍检查所需输入、输出信号。
 
 启动页或工程总览可“打开示例”，体验包含模型、硬件、绑定、APP 和附件的两套完整教学工程。ECM 示例 ENI 仅供解析演示，机械参数默认待人工确认，详见 [示例说明](docs/EXAMPLES.md)。
 
@@ -66,15 +66,15 @@ PLAYWRIGHT_CHANNEL=chromium npm run test:offline
 
 离线测试会在 `/rocos-configurator/` 下启动构建产物，完成缓存后断网，打开未访问的配置页面，并编辑、校验、下载及重新打开工程。测试服务只监听 `127.0.0.1`。
 
-IgH 消费端契约测试可使用本机的 `rocos-igh` 源码运行，当前锁定提交 `3c92f2a`，需要 `g++` 和 `yaml-cpp` 开发库：
+IgH 消费端契约测试可使用本机的 `rocos-igh` 源码运行，当前锁定提交 `9001c87`，需要 `g++`、`yaml-cpp` 和 `libxml2` 开发库：
 
 ```sh
 ROCOS_IGH_SOURCE=/path/to/rocos-igh npm test
 ```
 
-该测试仅编译原生文件加载器，核对有效/无效配置与 64 位 SDO 编码，不连接 EtherCAT、共享内存或设备。未设置 `ROCOS_IGH_SOURCE` 时，消费端测试明确跳过；其余单元测试照常执行。
+该测试仅编译原生文件加载器，核对有效/无效配置、ENI 相对路径、生成配置包与 64 位 SDO 编码，不连接 EtherCAT、共享内存或设备。未设置 `ROCOS_IGH_SOURCE` 时，消费端测试明确跳过；其余单元测试照常执行。
 
-EC-Master 启动配置加载器测试锁定 `d85a6f3`（支持字符形式 `link`）；允许该基线的后代提交，但参与核对的加载器文件必须保持基线字节且无本地修改。同样需要 `g++` 和 yaml-cpp：
+EC-Master 启动配置加载器测试锁定 `e112a32`（支持字符形式 `link` 和 `command_timeout_ms`）；允许该基线的后代提交，但参与核对的加载器文件必须保持基线字节且无本地修改。同样需要 `g++` 和 yaml-cpp：
 
 ```sh
 ROCOS_ECM_SOURCE=/path/to/rocos-ecm npm test -- tests/consumer/ecm.test.ts

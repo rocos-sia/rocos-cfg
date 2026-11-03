@@ -23,9 +23,8 @@ export function configurationStatus(project: Project) {
   if (config.enabled.bus) for (const kind of masterKinds(project)) {
     const entry = masterProject(project, kind).entrypoints.master;
     add(entry.fileId, `master:${kind}`);
-    if (kind === 'ecm') {
-      if (entry.eniFileId) add(entry.eniFileId, 'master:eni');
-      else reference(entry.fileId, 'eni', 'master:eni');
+    if (kind === 'ecm' || references.some(r=>r.sourceFileId===entry.fileId&&r.field==='eni')) {
+      reference(entry.fileId, 'eni', 'master:eni');
     }
   }
   if (config.enabled.app) {

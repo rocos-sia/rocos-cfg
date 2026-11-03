@@ -1,3 +1,4 @@
+import { readYaml } from '../documents/yaml';
 import { configuration, configure, masterProject } from './configuration';
 import { m as msg, MessageError } from './messages';
 import { type Project, type ProjectFile, type FileRole, type TargetProfile, fileById, textOf, uid, utf8 } from './types';
@@ -44,7 +45,8 @@ export function inspectImport(p: Project, entries: Map<string, Uint8Array>, sing
       role = /\.(ya?ml|xml|urdf)$/i.test(path) ? 'attachment' : 'resource';
     } catch { role = 'attachment'; readable = false; }
     const file = { id: uid(), path, role, owner: role, bytes, encoding };
-    const candidates = readable ? registry.detect(file).filter(m => !target || m.role === target || (target === 'urdf' || target === 'mjcf') && m.role === 'resource' || target === 'mjcf' && m.role === 'hardware') : [];
+    const forcedMaster = readable && (target==='igh'||target==='ecm') && /\.ya?ml$/i.test(path) && (()=>{try{return !!readYaml(text).eni;}catch{return false;}})();
+    const candidates = forcedMaster ? [registry.get(target!)!].filter(Boolean) : readable ? registry.detect(file).filter(m => !target || m.role === target || (target==='igh'||target==='ecm')&&m.role==='eni' || (target === 'urdf' || target === 'mjcf') && m.role === 'resource' || target === 'mjcf' && m.role === 'hardware') : [];
     if (candidates.length > 1) throw new MessageError(msg("文件用途不唯一：{v0}（{v1}）", {v0:String(path), v1:String(candidates.map(m => m.id).join('、'))}));
     if (candidates.length === 1) { file.role = candidates[0].role; file.owner = candidates[0].id; }
     if (target === 'mjcf' && file.role === 'hardware') file.role = file.owner = 'simulation-hardware';
@@ -137,6 +139,8 @@ export function applyImport(p: Project, plan: ImportPlan, selection = defaultImp
       return candidates.length===1?{...ref,state:'internal',targetFileId:candidates[0].id}:ref;
     });
   }
+  const masterRef=next.references.find(r=>r.sourceFileId===next.entrypoints.master.fileId&&r.field==='eni');
+  if(masterRef?.targetFileId)next.entrypoints.master.eniFileId=masterRef.targetFileId;
   return next;
 }
 export function masterProfile(kind: 'igh' | 'ecm'): TargetProfile {

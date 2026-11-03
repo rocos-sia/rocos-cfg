@@ -3,6 +3,7 @@ import { yamlDocument } from '../documents/yaml';
 import { textOf, utf8 } from './types';
 import { makeFile } from './create';
 import { baseTarget, attachProfile } from './profiles';
+import { collectReferences } from './references';
 import { starterData } from './templates';
 import type { Project, MasterKind, EntryPoints, TargetProfile } from './types';
 
@@ -39,7 +40,8 @@ export function selectMaster(p:Project,kind:MasterKind) {
     const file=existing??makeFile(`master/${kind}.yaml`,kind,stringify(starterData()[kind]));
     if(!existing&&p.files.some(f=>f.path===file.path))throw new Error(`路径已存在：${file.path}，请先导入已有配置`);
     if(!existing)p.files.push(file);
-    selected={entry:{kind,fileId:file.id,eniFileId:null},target:baseTarget(kind)};
+    const eniFileId=collectReferences(p).find(r=>r.sourceFileId===file.id&&r.field==='eni')?.targetFileId??null;
+    selected={entry:{kind,fileId:file.id,eniFileId},target:baseTarget(kind)};
     config.masters[kind]=selected;
   }
   p.entrypoints.master=structuredClone(selected.entry);p.targets.master=structuredClone(selected.target);
@@ -61,8 +63,9 @@ export function synchronizeBus(p:Project,id:number,cycle:number) {
   if(!file)continue;
   if(p.editor.buffers[file.id])throw new Error('请先处理主站源码草稿');
   const doc=yamlDocument(textOf(file));
-  doc.setIn(kind==='igh'?['master','master_id']:['id'],id);
-  doc.setIn(kind==='igh'?['master','period_us']:['cycle'],cycle);
+  const legacy=kind==='igh'&&doc.has('master');
+  doc.setIn(legacy?['master','master_id']:['id'],id);
+  doc.setIn(legacy?['master','period_us']:['cycle'],cycle);
   file.bytes=utf8.encode(doc.toString());
  }
 }

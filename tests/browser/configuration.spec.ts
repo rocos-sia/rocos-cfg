@@ -99,7 +99,7 @@ test('direct Talon example opens both masters and horizontal application tabs',a
  await expect(page.getByRole('tab',{name:'过程映像 (91)',exact:true})).toBeVisible();
  await expect(page.getByRole('tab',{name:'ENI 原文 · 只读',exact:true})).toBeVisible();
  await page.getByRole('tab',{name:'IGH',exact:true}).click();
- await expect(page.getByRole('tab',{name:'过程映像 (77)',exact:true})).toBeVisible();
+ await expect(page.getByRole('tab',{name:'过程映像 (105)',exact:true})).toBeVisible();
  await page.getByRole('menuitem',{name:'应用配置',exact:true}).click();
  const nav=page.locator('.application-tabs');
  await expect(nav.locator(':scope > .ant-tabs-nav').getByRole('tab')).toHaveText(['启动参数','模型','硬件','绑定','负载']);

@@ -22,8 +22,8 @@ export async function createTalonExample(kind: MasterKind, entries: Map<string, 
   p.editor = {buffers: {}, confirmations: {}};
   const id = (path: string) => files.find(file => file.path === path)!.id;
   p.entrypoints = {
-    master: {kind, fileId: id(kind === 'igh' ? 'igh/talon_pdo.yaml' : 'ecm/config.yaml'),
-      eniFileId: kind === 'ecm' ? id('ecm/eni7.xml') : null},
+    master: {kind, fileId: id(kind === 'igh' ? 'igh/igh.yaml' : 'ecm/config.yaml'),
+      eniFileId: id('ecm/eni7.xml')},
     app: id('app/config.yaml'), urdf: id('app/talon/robot.urdf'),
     hardware: id('app/hardware_talon_config.yaml'), binding: id('app/joint_binding.yaml'),
   };

@@ -1,5 +1,5 @@
 import { isMap, isSeq, parseDocument } from 'yaml';
-import { app, ecm, igh } from '../documents/config-fields';
+import { app, ecm, igh, ighFlat } from '../documents/config-fields';
 import { hardwareDocument, signals, isRecord, type HardwareType } from '../hardware/schema';
 import { readYaml } from '../documents/yaml';
 import { children, xmlDocument } from '../documents/xml';
@@ -11,13 +11,13 @@ export interface DiagnosticLocation { fileId:string; field?:string; route:'maste
 export function diagnosticLocation(p:Project,d:Diagnostic):DiagnosticLocation|undefined {
   const file=fileById(p,d.fileId);if(!file)return;
   const field=d.field,active=file.id===p.entrypoints.master.fileId;
-  const route=active||file.id===p.entrypoints.master.eniFileId?'master':file.id===p.entrypoints.hardware||file.id===p.entrypoints.binding?'hardware':file.id===p.entrypoints.urdf?'robot':'app';
+  const route=active||(file.id===p.entrypoints.master.eniFileId||collectReferences(p).some(r=>r.sourceFileId===p.entrypoints.master.fileId&&r.field==='eni'&&r.targetFileId===file.id))?'master':file.id===p.entrypoints.hardware||file.id===p.entrypoints.binding?'hardware':file.id===p.entrypoints.urdf?'robot':'app';
   const source:DiagnosticLocation={fileId:file.id,field,route,mode:'source'};
   if(p.editor.buffers[file.id]||!field)return source;
   try {
     if(d.code.startsWith('reference.')&&collectReferences(p).some(ref=>ref.sourceFileId===file.id&&ref.field===field))return {...source,mode:'resource',route:'app'};
     if(!isRecord(readYaml(textOf(file)))||active&&!targetStatus(p,'master').supported)return source;
-    if((active?(p.entrypoints.master.kind==='igh'?igh:ecm):file.id===p.entrypoints.app?app:[]).some(spec=>spec.path===field))return {...source,mode:'field'};
+    if((active?(p.entrypoints.master.kind==='igh'?[...igh,...ighFlat]:ecm):file.id===p.entrypoints.app?app:[]).some(spec=>spec.path===field))return {...source,mode:'field'};
     if(file.id===p.entrypoints.hardware){
       const match=/^hardware\.(\d+)(?:\.(.+))?$/.exec(field),index=match?Number(match[1]):-1;
       const device=hardwareDocument(file).devices[index];if(!isRecord(device))return source;

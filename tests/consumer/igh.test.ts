@@ -1,10 +1,15 @@
+import { createLegacyProject as createProject } from '../fixtures/legacy-project';
+import { verifySourceBaseline } from './source';
+import { planEniImport } from '../../src/core/bus/eni-import';
+import { exportMaster } from '../../src/core/export';
+import { unpackZip } from '../../src/core/project/zip';
 import { createExample } from '../../src/core/project/examples';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { makeFile, createProject } from '../../src/core/project/create';
+import { makeFile } from '../../src/core/project/create';
 import { buildIghCatalog } from '../../src/core/bus/igh';
 import { editProjectYaml, masterFileId, planSlaveChange, modifySequence } from '../../src/core/bus/igh-edit';
 import { fileById, textOf } from '../../src/core/project/types';
@@ -37,16 +42,15 @@ const cases = [
   ['invalid reference boolean', base + '    dc_ref: "true"\n', false],
 ] as const;
 
-describe.skipIf(!source)('IgH 3c92f2a native loader contract (no hardware)', () => {
+describe.skipIf(!source)('IgH 9001c87 native loader contract (no hardware)', () => {
   let temporary: string;
   let executable: string;
   beforeAll(() => {
-    const revision = execFileSync('git', ['-C', source!, 'rev-parse', '--short=7', 'HEAD'], { encoding: 'utf8' }).trim();
-    expect(revision, 'Update the profile deliberately before changing its consumer baseline').toBe('3c92f2a');
+    verifySourceBaseline(source!,'9001c87',['src/pdo_config.cpp','src/pdo_config.hpp','src/eni_config.cpp','src/runtime_options.hpp']);
     temporary = mkdtempSync(resolve(tmpdir(), 'rocos-igh-contract-'));
     executable = resolve(temporary, 'igh-loader');
-    execFileSync('g++', ['-std=c++17', '-DROCOS_IGH_BUILD_MASTER=0', '-I' + resolve(source!, 'src'),
-      'tests/consumer/igh-loader.cpp', resolve(source!, 'src/pdo_config.cpp'), '-lyaml-cpp', '-o', executable]);
+    execFileSync('g++', ['-std=c++17', '-DROCOS_IGH_BUILD_MASTER=0', '-I' + resolve(source!, 'src'), '-I'+resolve(source!, '3rdparty/rocos-shm/include'), '-I/usr/include/libxml2',
+      'tests/consumer/igh-loader.cpp', resolve(source!, 'src/pdo_config.cpp'),resolve(source!,'src/eni_config.cpp'), '-lyaml-cpp','-lxml2', '-o', executable]);
   }, 30000);
   afterAll(() => { if (temporary) rmSync(temporary, { recursive: true, force: true }); });
   it.each(cases)('%s matches the native parser', (_, text, expected) => {
@@ -72,7 +76,16 @@ describe.skipIf(!source)('IgH 3c92f2a native loader contract (no hardware)', () 
     expect(buildIghCatalog(makeFile('igh.yaml', 'igh', readFileSync(file, 'utf8'))).diagnostics.filter(d => d.severity === 'error')).toEqual([]);
   });
   it('loads the bundled IgH teaching configuration with explicit PDO entries',()=>{
-    const p=createExample('igh'),file=resolve(temporary,'teaching.yaml');writeFileSync(file,textOf(fileById(p,p.entrypoints.master.fileId)!));
+    const p=createExample('igh'),file=resolve(temporary,'teaching.yaml');writeFileSync(resolve(temporary,'eni.xml'),fileById(p,p.entrypoints.master.eniFileId)!.bytes);writeFileSync(file,textOf(fileById(p,p.entrypoints.master.fileId)!));
     const result=spawnSync(executable,[file],{encoding:'utf8'});expect(result.status,result.stderr).toBe(0);
+  });
+  it('loads the generated ENI startup package without converting or rewriting XML',()=>{
+    const bytes=readFileSync('public/examples/talon/ecm/eni7.xml');
+    const p=planEniImport(createProject('native ENI','igh'),bytes).project;
+    const files=unpackZip(exportMaster(p));
+    for(const [path,data] of files){const out=resolve(temporary,path);mkdirSync(dirname(out),{recursive:true});writeFileSync(out,data);}
+    expect(files.get('master/imported-eni.xml')).toEqual(new Uint8Array(bytes));
+    const loaded=spawnSync(executable,[resolve(temporary,'master/igh.yaml')],{encoding:'utf8'});
+    expect(loaded.status,loaded.stderr).toBe(0);
   });
 });

@@ -20,7 +20,7 @@ for (const kind of ['igh', 'ecm'] as const) test(`Talon ${kind} opens with its f
     await expect(page.locator('.ant-select').filter({has: page.getByRole('combobox', {name: /^链路驱动/})})).toContainText('IntelGbeRec');
   }
   await expect(page.getByRole('tab', {name: '从站 (7)', exact: true})).toBeVisible();
-  await expect(page.getByRole('tab', {name: `过程映像 (${kind === 'igh' ? 77 : 91})`, exact: true})).toBeVisible();
+  await expect(page.getByRole('tab', {name: `过程映像 (${kind === 'igh' ? 105 : 91})`, exact: true})).toBeVisible();
   await page.getByRole('menuitem', {name: '应用配置', exact: true}).click();
   await page.getByRole('tab', {name: '模型', exact: true}).click();
   await expect(page.getByText('joint_7 [continuous]', {exact: true})).toBeVisible();
@@ -39,7 +39,7 @@ for (const kind of ['igh', 'ecm'] as const) test(`Talon ${kind} opens with its f
   const p = await openProject(await readFile(path));
   expect(p.files.filter(f => /\.stl$/i.test(f.path))).toHaveLength(8);
   expect(p.files.some(f => f.path === 'ecm/eni7.xml')).toBe(true);
-  expect(p.files.some(f => f.path === 'igh/talon_pdo.yaml')).toBe(true);
+  expect(p.files.some(f => f.path === 'igh/igh.yaml')).toBe(true);
   expect(textOf(fileById(p, p.entrypoints.urdf)!)).toContain('robot name="talon"');
   expect(buildBusCatalog(p).slaves).toHaveLength(7);
   const fresh = await browser.newContext(), reopened = await fresh.newPage();

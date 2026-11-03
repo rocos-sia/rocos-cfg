@@ -125,6 +125,8 @@ const descriptions: Record<string, string> = {
   "project.length": "演示模板连杆的长度，单位 m；不会自动推导驱动器机械参数。",
   "resource.module": "选择附加配置模块类型，决定新文件的参数结构和 APP 引用。"
 };
+for(const key of ['master_id','period_us','cpu','dc','preop_timeout_ms','op_timeout_ms','pdo_config_attempts'])descriptions['igh.'+(({master_id:'id',period_us:'cycle',cpu:'cpuidx'} as Record<string,string>)[key]??key)]=descriptions['igh.master.'+key];
+descriptions['igh.eni']=descriptions['ecm.eni'];
 export function parameterHelp(role: string, path: string): string {
   let key = role + '.' + path.replace(/\.\d+(?=\.|$)/g, '.#');
   if (role === 'hardware') key = key.replace('hardware.hardware.#.', 'hardware.');

@@ -20,12 +20,15 @@ const yaml = (id: string, detect: (v: any) => boolean): ConfigModule => ({ id, v
     return [{ path: ctx.path, bytes: utf8.encode(doc.toString()), fileId: ctx.file.id }];
   },
 });
+const ighHint = (f: {path:string}, v:any) => /(?:^|[/_.-])igh(?:[/_.-]|$)/i.test(f.path) || ['dc','preop_timeout_ms','op_timeout_ms','pdo_config_attempts','master'].some(k=>has(v,k));
 const has = (v: any, key: string) => v && typeof v === 'object' && !Array.isArray(v) && key in v;
 // Legacy hardware subtrees are opaque, including any mesh/texture-like fields.
 const urdfResources = (doc: Document, tag: string) => elements(doc, tag).filter(node => !isLegacyHardware(node));
 export const nativeModules: ConfigModule[] = [
-  yaml('igh', v => has(v, 'slaves') && has(v, 'version')),
-  { ...yaml('ecm', v => has(v, 'eni')), parse:file=>ecmDocument(file).data, references: v => refs([['eni', v?.eni]]) },
+  { ...yaml('igh', v => has(v, 'slaves') && has(v, 'version')),
+    detect: f => /\.ya?ml$/i.test(f.path) && (()=>{const v=readYaml(textOf(f));return has(v,'slaves')&&has(v,'version')||has(v,'eni')&&ighHint(f,v);})(),
+    references: v => refs([['eni', v?.eni]]) },
+  { ...yaml('ecm', v => has(v, 'eni')), detect: f => /\.ya?ml$/i.test(f.path) && (()=>{const v=readYaml(textOf(f));return has(v,'eni')&&!ighHint(f,v);})(), parse:file=>ecmDocument(file).data, references: v => refs([['eni', v?.eni]]) },
   yaml('hardware', v => has(v, 'hardware')), yaml('binding', v => has(v, 'joint_bindings')),
   { ...yaml('app', v => has(v, 'robot') || has(v, 'http_port')), parse:file=>appDocument(file).data,
     validate:(_,ctx)=>appDocument(ctx.file).diagnostics.map(d=>({...d,code:'app.startup',severity:'error',fileId:ctx.file.id})), references: v => refs([

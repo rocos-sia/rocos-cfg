@@ -7,7 +7,7 @@ int main(int argc,char** argv) {
     try {
         const auto c=LoadEcConfig(argv[1]);
         YAML::Node n;
-        n["id"]=c.id;n["cpuidx"]=c.cpuidx;n["cycle"]=c.cycle;
+        n["command_timeout_ms"]=c.command_timeout_ms;n["id"]=c.id;n["cpuidx"]=c.cpuidx;n["cycle"]=c.cycle;
         n["link"]=c.link;n["mode"]=c.mode;n["dcmmode"]=c.dcmmode;
         n["duration"]=c.duration;n["verbose"]=c.verbose;n["state"]=c.state;
         n["ctloff"]=c.ctloff;n["eni"]=c.eni;n["log"]=c.log;n["license"]=c.license;

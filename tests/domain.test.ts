@@ -1,5 +1,6 @@
+import { createLegacyProject as createProject } from './fixtures/legacy-project';
 import { expect, it } from 'vitest';
-import { createProject, makeFile } from '../src/core/project/create';
+import { makeFile } from '../src/core/project/create';
 import { buildBusCatalog } from '../src/core/bus/catalog';
 import { readRobot, controlChain, editJoint } from '../src/core/documents/urdf';
 import { xmlDocument } from '../src/core/documents/xml';

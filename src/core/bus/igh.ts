@@ -1,7 +1,8 @@
-import { m as msg, MessageError, errorMessage, type MessageInput } from '../project/messages';
+import { m as msg, MessageError, messageFields, errorMessage, type MessageInput } from '../project/messages';
 import { isMap, isScalar, isSeq } from 'yaml';
 import { yamlDocument } from '../documents/yaml';
 import { textOf, type BusCatalog, type ProjectFile } from '../project/types';
+import { readIghEni } from './igh-eni';
 import { ighRules } from '../project/profiles';
 
 export const SDO_TYPES = ['int8', 'uint8', 'int16', 'uint16', 'int32', 'uint32', 'int64', 'uint64'];
@@ -19,9 +20,9 @@ export function exactInteger(text: string, type: string): bigint {
   return value;
 }
 
-// Rules follow rocos-igh 3c92f2a pdo_config.cpp. Inspect scalar tokens as well
+// Rules follow rocos-igh 9001c87, including its legacy inline format. Inspect tokens as well
 // as values: the native loader rejects quoted integers, explicit tags and +1.
-export function buildIghCatalog(file: ProjectFile): BusCatalog {
+export function buildIghCatalog(file: ProjectFile, eni?: ProjectFile): BusCatalog {
   const result: BusCatalog = { slaves: [], signals: [], diagnostics: [] };
   const report = (field: string, message: MessageInput, code = 'igh.schema', severity: 'error' | 'warning' = 'error') => {
     result.diagnostics.push({ code, severity, fileId: file.id, field, ...msg('{field}：{detail}',{field,detail:typeof message==='string'?message:message.text||message.message}) });
@@ -54,22 +55,51 @@ export function buildIghCatalog(file: ProjectFile): BusCatalog {
     if (!value || new TextEncoder().encode(value).length > max || value.includes('\0')) report(label(path), msg("名称必须非空且不超过 {v0} 字节", {v0:String(max)}), 'igh.name');
     return value;
   };
-  if (!keys([], ['version', 'master', 'slaves'])) return result;
-  if (integer(['version'], 'uint64') !== 1n) report('version', msg("仅支持 1"), 'igh.version');
-  result.masterId = 0; result.cycleUs = 1000;
-  let dc = 'off';
-  if (node(['master']) !== undefined && keys(['master'], ['master_id', 'period_us', 'cpu', 'dc', 'preop_timeout_ms', 'op_timeout_ms', 'pdo_config_attempts'])) {
-    result.masterId = Number(integer(['master', 'master_id'], 'uint32', 0n, 0n));
-    const period = integer(['master', 'period_us'], 'uint32', BigInt(ighRules.minCycleUs), 1000n); result.cycleUs = Number(period);
-    for (const field of ['preop_timeout_ms', 'op_timeout_ms', 'pdo_config_attempts']) integer(['master', field], 'uint32', 1n, 1n);
-    const cpu = node(['master', 'cpu']);
-    if (cpu !== undefined && !(isScalar(cpu) && cpu.value === null)) integer(['master', 'cpu'], 'uint32');
-    const clock = node(['master', 'dc']);
+  const flatFields = ['id', 'cycle', 'cpuidx', 'dc', 'preop_timeout_ms', 'op_timeout_ms', 'pdo_config_attempts'];
+  if (!keys([], ['version', 'master', 'slaves', 'eni', ...flatFields])) return result;
+  const fromEni = node(['eni']) !== undefined;
+  if (fromEni && node(['slaves']) !== undefined) report('slaves', 'eni 与 slaves 不能同时出现');
+  const legacy = node(['master']) !== undefined;
+  if (legacy && flatFields.some(key => node([key]) !== undefined)) report('master', 'master 块不能与顶层启动参数混用');
+  let imported: ReturnType<typeof readIghEni> | undefined;
+  if (fromEni) {
+    const path = node(['eni']);
+    if (!isScalar(path) || path.value === null || !String(path.source ?? path.value) || new TextEncoder().encode(String(path.source ?? path.value)).length > 4096) report('eni', 'ENI 路径必须为非空字符串，最多 4096 字节');
+    if (!eni) report('eni', msg('请导入 ENI 文件'), 'eni.missing');
+    else try { imported = readIghEni(eni.bytes); }
+    catch (error) { result.diagnostics.push({code:'igh.eni', severity:'error', fileId:eni.id, ...messageFields(errorMessage(error))}); }
+  }
+  if ((!fromEni || node(['version']) !== undefined) && integer(['version'], 'uint64') !== 1n) report('version', msg("仅支持 1"), 'igh.version');
+  result.masterId = 0; result.cycleUs = imported?.master.period_us ?? 1000;
+  let dc = imported?.master.dc ?? 'off';
+  const prefix = legacy ? ['master'] : [];
+  if (!legacy || keys(['master'], ['master_id', 'period_us', 'cpu', 'dc', 'preop_timeout_ms', 'op_timeout_ms', 'pdo_config_attempts'])) {
+    result.masterId = Number(integer([...prefix, legacy ? 'master_id' : 'id'], 'uint32', 0n, 0n));
+    const periodPath = [...prefix, legacy ? 'period_us' : 'cycle'];
+    const period = integer(periodPath, 'uint32', BigInt(ighRules.minCycleUs), BigInt(result.cycleUs)); result.cycleUs = Number(period);
+    for (const field of ['preop_timeout_ms', 'op_timeout_ms', 'pdo_config_attempts']) integer([...prefix, field], 'uint32', 1n, 1n);
+    const cpuPath = [...prefix, legacy ? 'cpu' : 'cpuidx'], cpu = node(cpuPath);
+    if (cpu !== undefined && !(isScalar(cpu) && cpu.value === null)) integer(cpuPath, 'uint32');
+    const clock = node([...prefix, 'dc']);
     if (clock !== undefined) {
       dc = isScalar(clock) ? String(clock.value) : '';
-      if (!['on', 'off'].includes(dc)) report('master.dc', msg("必须为字符串 on 或 off"), 'igh.dc');
+      if (!['on', 'off'].includes(dc)) report(label([...prefix, 'dc']), msg("必须为字符串 on 或 off"), 'igh.dc');
     }
-    if (dc === 'on' && period !== undefined && period > BigInt(ighRules.maxDcCycleUs)) report('master.period_us', msg("开启 DC 时不能超过 {v0} μs", {v0:String(ighRules.maxDcCycleUs)}), 'igh.cycle');
+    if (dc === 'on' && period !== undefined && period > BigInt(ighRules.maxDcCycleUs)) report(label(periodPath), msg("开启 DC 时不能超过 {v0} μs", {v0:String(ighRules.maxDcCycleUs)}), 'igh.cycle');
+  }
+  if (fromEni) {
+    if (imported && eni) {
+      result.slaves = imported.slaves.map(({id, name, address, vendor, product}) => ({id, name, address, vendor:String(vendor), product:String(product)}));
+      if (dc === 'on' && imported.slaves.some(s => s.clock && s.clock.cycle !== result.cycleUs! * 1000)) report(legacy ? 'master.period_us' : 'cycle', '启用 DC 时通信周期必须与 ENI CycleTime0 一致', 'igh.cycle');
+      for (const slave of imported.slaves) for (const [key, direction] of [['rx_pdos','output'],['tx_pdos','input']] as const) {
+        slave[key].forEach((pdo, p) => pdo.entries.forEach((entry, n) => {
+          result.signals.push({uid:`${eni.id}:${slave.id}:${direction}:${p}:${n}`, slaveId:slave.id, direction,
+            sourceName:entry.name, runtimeName:entry.name, index:entry.index, subIndex:entry.sub_index,
+            bitLength:entry.bit_length, storageBytes:entry.bit_length / 8, resolution:'resolved', source:{fileId:eni.id,field:`Config.Slave.${slave.xmlIndex}.ProcessData.${key==='rx_pdos'?'RxPdo':'TxPdo'}.${pdo.xmlIndex}.Entry.${n}`}});
+        }));
+      }
+    }
+    return result;
   }
   const slaves = node(['slaves']);
   if (!isSeq(slaves) || !slaves.items.length || slaves.items.length > ighRules.maxSlaves) {

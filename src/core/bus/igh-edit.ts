@@ -4,7 +4,7 @@ import { preserveEcmScalars } from './ecm';
 import { normalizeHardwareIntegers } from '../hardware/schema';
 import { assertEditableFile } from '../modules/project';
 import { isMap, isScalar, isSeq, type Document, type YAMLSeq } from 'yaml';
-import { yamlDocument } from '../documents/yaml';
+import { readYaml, yamlDocument } from '../documents/yaml';
 import { fileById, textOf, utf8, type Project } from '../project/types';
 import { ighRules, targetStatus } from '../project/profiles';
 import { deviceTemplate, recordTemplate, type DevicePreset } from '../project/templates';
@@ -20,6 +20,7 @@ export function editProjectYaml(p: Project, id: string, edit: (doc: Document) =>
 }
 export function masterFileId(p: Project): string {
   if (p.entrypoints.master.kind !== 'igh' || !p.entrypoints.master.fileId) throw new MessageError(msg("当前不是 IgH 主站"));
+  if(readYaml(textOf(fileById(p,p.entrypoints.master.fileId)!))?.eni!==undefined)throw new MessageError(msg('ENI 总线配置只读，请修改并重新导入 ENI'));
   return p.entrypoints.master.fileId;
 }
 export function setInteger(doc: Document, path: Path, value: bigint, hex = false) {

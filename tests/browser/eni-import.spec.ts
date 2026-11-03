@@ -17,9 +17,12 @@ test('existing IGH requires confirmation before either master changes; actions a
  const revision=await page.locator('.shell').getAttribute('data-project-revision');
  await chooseEni(page);const dialog=page.getByRole('dialog',{name:'覆盖已有 IGH 配置？',exact:true});await expect(dialog).toBeVisible();
  await dialog.getByRole('button',{name:/取\s*消/}).click();await expect(page.locator('.shell')).toHaveAttribute('data-project-revision',revision!);
- await expect(page.getByRole('tab',{name:'过程映像 (77)',exact:true})).toBeVisible();
+ await expect(page.getByRole('tab',{name:'过程映像 (105)',exact:true})).toBeVisible();
  await chooseEni(page);await dialog.getByRole('button',{name:'覆盖并导入',exact:true}).click();
  await expect(page.getByRole('tab',{name:'过程映像 (105)',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'新增从站',exact:true})).toHaveCount(0);
+ await expect(page.getByRole('tab',{name:'PDO / SDO 编辑',exact:true})).toHaveCount(0);
+ await expect(page.getByRole('textbox',{name:'ENI 相对路径',exact:true})).toHaveValue('../ecm/eni7.xml');
  const heading=await page.getByRole('heading',{name:'主站配置',exact:true}).boundingBox(),importButton=await page.getByRole('button',{name:'导入 ENI',exact:true}).boundingBox();
  expect(importButton!.x).toBeGreaterThan(heading!.x+heading!.width);expect(Math.abs(importButton!.y-heading!.y)).toBeLessThan(60);
  const toolbar=await page.locator('.master-primary-actions').boundingBox(),disable=await page.getByRole('button',{name:'停用当前主站',exact:true}).boundingBox();
@@ -27,6 +30,7 @@ test('existing IGH requires confirmation before either master changes; actions a
  await expect(page.locator('.master-actions')).toHaveCount(0);
  const exportButton=page.getByRole('button',{name:'导出 ROCOS-IGH 主站文件',exact:true});
  await expect(page.locator('.master-primary-actions').getByRole('button',{name:'导出 ROCOS-IGH 主站文件',exact:true})).toBeVisible();
+ const downloading=page.waitForEvent('download');await exportButton.click();expect((await downloading).suggestedFilename()).toBe('igh-config.zip');
  expect((await exportButton.boundingBox())!.y).toBe(importButton!.y);
  expect(disable!.y).toBe(importButton!.y);
  await page.screenshot({path:'test-results/master-eni-actions.png'});

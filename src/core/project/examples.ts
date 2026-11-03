@@ -16,7 +16,7 @@ export function createExample(kind: MasterKind) {
     [p.entrypoints.binding,data.binding], [p.entrypoints.app,data.app],
   ] as const) fileById(p,id)!.bytes=utf8.encode(stringify(value));
   fileById(p,p.entrypoints.urdf)!.bytes=utf8.encode(data.urdf);
-  if(kind==='ecm') {
+  {
     const eni=makeFile('master/eni.xml','eni',data.eni);
     p.files.push(eni);p.entrypoints.master.eniFileId=eni.id;
   }

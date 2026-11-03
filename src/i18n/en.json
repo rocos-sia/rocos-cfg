@@ -311,7 +311,7 @@
   "先定义总线，再关联机器人硬件。": "Define the bus first, then connect the robot hardware.",
   "导入配置 / ENI": "Import configuration / ENI",
   "请先应用源码草稿": "Apply the source draft first",
-  "请先修复主站配置错误": "Resolve the master configuration errors first",
+  "请先修复主站配置错误": "Fix the master configuration errors first.",
   "已生成主站文件下载": "Master download generated.",
   "导出 ROCOS-IGH 主站文件": "Export ROCOS-IGH master file",
   "启动参数": "Startup parameters",
@@ -1426,5 +1426,14 @@
   "ENI 不符合 ECM 过程数据规则": "ENI does not meet ECM process data rules",
   "调整硬件面板宽度": "Resize hardware panels",
   "配置预览 · 拖动 Link 调节关节，拖动空白处旋转视角": "Preview · Drag a link to pose its joint; drag empty space to orbit",
-  "校验和导出": "Validate and export"
+  "校验和导出": "Validate and export",
+  "ENI 总线配置只读，请修改并重新导入 ENI": "ENI bus configuration is read-only; edit and reimport the ENI.",
+  "IGH 和 ECM 将直接引用同一份原始 ENI，并更新公共 ID 和周期；现有 IGH 内联从站配置及其源码草稿将被替换。已有硬件映射保留，导入后请重新核对。": "IGH and ECM will reference the same original ENI and update the shared ID and cycle. Existing inline IGH topology and its draft will be replaced. Hardware mappings are retained; review them after importing.",
+  "请先在工程总览更新主站目标规则": "Update the master target profile in the project overview first.",
+  "命令超时": "Command timeout",
+  "旧版 PDO 模板（可选）": "Legacy PDO template (optional)",
+  "总线拓扑由 ENI 提供，创建工程后导入 ENI。产品 PDO 模板用于兼容旧版 IgH 内联配置。": "Bus topology comes from ENI. Import an ENI after creating the project. Product PDO templates support legacy inline IgH configurations.",
+  "省略时沿用 ENI 的 DC 设置": "When omitted, use the DC settings from ENI.",
+  "ROCOS-IGH 与 ROCOS-ECM 均引用 ENI 配置总线，分别保留原生启动参数。": "ROCOS-IGH and ROCOS-ECM both reference ENI for bus configuration and retain their native startup options.",
+  "从站固定地址须为非零且唯一的 16 位整数": "Slave station addresses must be unique nonzero 16-bit integers."
 }

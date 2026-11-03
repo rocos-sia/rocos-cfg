@@ -1,3 +1,4 @@
+import { collectReferences } from './references';
 import { m as msg, MessageError, errorMessage, messageFields, type MessageTemplate } from './messages';
 import { buildBusCatalog } from '../bus/catalog';
 import { controlChainFromRobot, readRobot, type RobotJoint, type RobotModel } from '../documents/urdf';
@@ -12,13 +13,14 @@ export interface ProjectAnalysis {
 // Do not copy meshes, attachments, archive metadata, or unsaved source buffers
 // merely to derive bus/model views. Views represent committed document bytes.
 export function analysisInput(p:Project):Project {
-  const ids=new Set([p.entrypoints.master.fileId,p.entrypoints.master.eniFileId,p.entrypoints.urdf,p.entrypoints.app,p.targets.master.profile?.fileId,p.targets.app.profile?.fileId]);
+  const references=collectReferences({...p,files:p.files.filter(file=>file.id===p.entrypoints.master.fileId||file.role==='eni')}).filter(ref=>ref.sourceFileId===p.entrypoints.master.fileId&&ref.field==='eni');
+  const ids=new Set([...references.map(ref=>ref.targetFileId),p.entrypoints.master.fileId,p.entrypoints.master.eniFileId,p.entrypoints.urdf,p.entrypoints.app,p.targets.master.profile?.fileId,p.targets.app.profile?.fileId]);
   return {id:p.id,revision:p.revision,snapshotId:p.snapshotId,name:p.name,description:'',createdAt:p.createdAt,modifiedAt:p.modifiedAt,
     entrypoints:p.entrypoints,targets:p.targets,files:p.files.filter(file=>ids.has(file.id)),
-    packageMap:{},references:[],editor:{buffers:{},confirmations:{},configuration:p.editor.configuration}};
+    packageMap:{},references,editor:{buffers:{},confirmations:{},configuration:p.editor.configuration}};
 }
 export function sameAnalysisInput(a:Project,b:Project):boolean {
-  if(JSON.stringify(a.editor.configuration)!==JSON.stringify(b.editor.configuration)||a.id!==b.id||JSON.stringify(a.entrypoints)!==JSON.stringify(b.entrypoints)||JSON.stringify(a.targets)!==JSON.stringify(b.targets)||a.files.length!==b.files.length)return false;
+  if(JSON.stringify(a.references)!==JSON.stringify(b.references)||JSON.stringify(a.editor.configuration)!==JSON.stringify(b.editor.configuration)||a.id!==b.id||JSON.stringify(a.entrypoints)!==JSON.stringify(b.entrypoints)||JSON.stringify(a.targets)!==JSON.stringify(b.targets)||a.files.length!==b.files.length)return false;
   return a.files.every((file,index)=>{
     const other=b.files[index];
     return file.id===other.id&&file.path===other.path&&file.role===other.role&&file.owner===other.owner&&file.encoding===other.encoding&&

@@ -1,3 +1,4 @@
+import { collectReferences } from '../project/references';
 import { configuration } from '../project/configuration';
 import { m as msg, messageFields, MessageError, errorMessage, type MessageInput } from '../project/messages';
 import { buildIghCatalog } from './igh';
@@ -19,19 +20,22 @@ export function buildBusCatalog(p: Project): BusCatalog {
   try {
     const config = readYaml(textOf(source));
     if (!config || typeof config !== 'object') throw new MessageError(msg("主站配置必须为映射"));
+    if(profile.definition?.id==='rocos.igh' && profile.definition.version===1 && config.eni!==undefined){report('master.profile',msg('请先在工程总览更新主站目标规则'));return result;}
+    if(profile.definition?.id==='rocos.ecm' && profile.definition.version===2 && config.command_timeout_ms!==undefined){report('master.profile',msg('请先在工程总览更新主站目标规则'));return result;}
     if (p.entrypoints.master.kind === 'igh') {
-      Object.assign(result, buildIghCatalog(source));
+      Object.assign(result, buildIghCatalog(source, fileById(p, collectReferences(p).find(r => r.sourceFileId === source.id && r.field === 'eni')?.targetFileId)));
     } else {
       const startup=ecmDocument(source);
       result.masterId=startup.data.id;result.cycleUs=startup.data.cycle;
       for(const issue of startup.diagnostics)report('ecm.startup',issue,'error',source.id,issue.field);
-      const eni = fileById(p, p.entrypoints.master.eniFileId);
+      const eni = fileById(p, collectReferences(p).find(r=>r.sourceFileId===source.id&&r.field==='eni')?.targetFileId);
       if (!eni) { report('eni.missing', msg("请导入 ENI 文件")); return result; }
       origin=eni.id;
       const root = xmlDocument(textOf(eni)).documentElement;
       if (root.localName !== 'EtherCATConfig' || root.getAttribute('Version') !== ecmRules.eniVersion) throw new MessageError(msg("当前仅支持 EtherCATConfig Version {v0}；原文件保留", {v0:String(ecmRules.eniVersion)}));
       const cfg = child(root, 'Config'); if (!cfg) throw new MessageError(msg("ENI 缺少 Config"));
       const slaves = children(cfg, 'Slave');
+      const addresses=new Set<number>();
       const ranges: { id: number; name: string; input: [number,number]; output: [number,number] }[] = [];
       slaves.forEach((s, i) => {
         const field=`Config.Slave.${i}`;
@@ -39,7 +43,10 @@ export function buildBusCatalog(p: Project): BusCatalog {
         const address = xmlNumber(content(info,'PhysAddr')); const name = content(info,'Name');
         if(!name||name.includes('\0')||new TextEncoder().encode(name).length>rules.slaveNameBytes)report('ecm.slave-name',msg("从站名称必须非空且不超过 {v0} 字节：{v1}", {v0:String(rules.slaveNameBytes), v1:String(name)}),'error',eni.id,field+'.Info.Name');
         result.slaves.push({ id: i, name, address, vendor: content(info,'VendorId'), product: content(info,'ProductCode') });
-        if (address !== ecmRules.firstSlaveAddress + i) report('ecm.address', msg("当前 ECM 要求从站 {v0} 固定地址为 {v1}，ENI 为 {v2}", {v0:String(i), v1:String(ecmRules.firstSlaveAddress+i), v2:String(address)}),'error',eni.id,field+'.Info.PhysAddr');
+        if(profile.definition?.version===2){
+          if(address!==1001+i)report('ecm.address',msg("当前 ECM 要求从站 {v0} 固定地址为 {v1}，ENI 为 {v2}",{v0:String(i),v1:String(1001+i),v2:String(address)}),'error',eni.id,field+'.Info.PhysAddr');
+        }else if(!Number.isInteger(address)||address<1||address>65535||addresses.has(address))report('ecm.address',msg('从站固定地址须为非零且唯一的 16 位整数'),'error',eni.id,field+'.Info.PhysAddr');
+        addresses.add(address);
         const rangeFor = (tag: string): [number,number] => { const n = pd && child(pd,tag); return [xmlNumber(content(n,'BitStart')),xmlNumber(content(n,'BitLength'))]; };
         ranges.push({ id: i, name, input: rangeFor('Recv'), output: rangeFor('Send') });
       });

@@ -17,7 +17,7 @@ function file(name: string, content: string, path?: string) {
 describe('imports selected by configuration type', () => {
   it('rejects the wrong format and resolves ambiguous YAML only in the requested module', async () => {
     const project = createProject('typed', 'igh'), original = structuredClone(project);
-    await expect(prepareImport(project, [file('config.yaml', 'eni: network.xml')], undefined, 'igh')).rejects.toThrow('未找到所选类型');
+    expect((await prepareImport(project, [file('config.yaml', 'eni: network.xml')], undefined, 'igh')).files[0].role).toBe('igh');
     const plan = await prepareImport(project, [file('config.yaml', 'version: 1\nslaves: []\nrobot: {}')], undefined, 'igh');
     expect([...importCandidates(plan).keys()]).toEqual(['master']);
     expect(plan.files[0].role).toBe('igh');

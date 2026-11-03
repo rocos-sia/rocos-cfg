@@ -26,7 +26,7 @@ export function validateProject(p: Project, registry: ModuleRegistry = modules):
   for(const notice of p.editor.notices || []) add('editor.review',notice,notice.fileId,undefined,'warning');
   for(const id of Object.keys(p.editor.buffers).filter(id => active.has(id))) add('editor.pending',msg("存在未应用的源码草稿"),id);
   for(const ref of references.filter(r => active.has(r.sourceFileId))) if(ref.state!=='internal') add('reference.'+ref.state,msg("{v0}：{v1} {v2}", {v0:String(ref.field), v1:String(ref.original), v2:(ref.state==='external' ? msg("由目标环境提供").text : msg("未找到").text)}),ref.sourceFileId,ref.field,ref.state==='external'?'warning':'error');
-  for (const [sourceId, field, targetId] of [...(config.enabled.app?[[p.entrypoints.app,'robot.urdf',p.entrypoints.urdf], [p.entrypoints.app,'robot.hardware_config',p.entrypoints.hardware], [p.entrypoints.app,'robot.joint_binding',p.entrypoints.binding]]:[]), ...(config.enabled.bus?masterKinds(p).filter(k=>k==='ecm').map(k=>{const m=masterProject(p,k).entrypoints.master;return [m.fileId,'eni',m.eniFileId];}):[])] as (string|null)[][]) {
+  for (const [sourceId, field, targetId] of [...(config.enabled.app?[[p.entrypoints.app,'robot.urdf',p.entrypoints.urdf], [p.entrypoints.app,'robot.hardware_config',p.entrypoints.hardware], [p.entrypoints.app,'robot.joint_binding',p.entrypoints.binding]]:[]), ...(config.enabled.bus?masterKinds(p).filter(k=>k==='ecm'||references.some(r=>r.sourceFileId===masterProject(p,k).entrypoints.master.fileId&&r.field==='eni')).map(k=>{const m=masterProject(p,k).entrypoints.master;return [m.fileId,'eni',m.eniFileId];}):[])] as (string|null)[][]) {
     const ref=references.find(r=>r.sourceFileId===sourceId&&r.field===field);
     if(!ref||ref.state!=='internal'||ref.targetFileId!==targetId) add('reference.entrypoint',msg("{v0} 必须引用当前工程入口配置", {v0:String(field)}),sourceId||undefined,field||undefined);
   }
@@ -39,7 +39,7 @@ export function validateProject(p: Project, registry: ModuleRegistry = modules):
   if(config.enabled.app&&targetStatus(p,'app').supported && bus.slaves.length && !bus.diagnostics.some(d=>d.severity==='error')) {
     const first=bus.slaves[0],master=applicationProject(p).entrypoints.master;
     const absent=(['input','output'] as const).filter(direction=>!bus.signals.some(s=>s.slaveId===first.id&&s.direction===direction));
-    const fileId=(master.kind==='ecm'?master.eniFileId:master.fileId)||undefined;
+    const fileId=(master.eniFileId??master.fileId)||undefined;
     if(absent.length) add('app.bus-location',msg("当前 APP 要求首个从站同时具有输入和输出变量，否则无法可靠定位总线；请核对主站配置与目标 APP 版本"),fileId);
   }
   const urdf=fileById(p,p.entrypoints.urdf);

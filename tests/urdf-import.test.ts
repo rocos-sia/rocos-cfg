@@ -1,8 +1,9 @@
+import { createLegacyProject as createProject } from './fixtures/legacy-project';
 import { expect, it } from 'vitest';
 import { findUrdfMeshes, urdfMeshNames } from '../src/adapters/urdf-import';
 import { prepareImport } from '../src/adapters/files';
 import { applyImport } from '../src/core/project/import';
-import { createProject } from '../src/core/project/create';
+
 import { collectReferences } from '../src/core/project/references';
 import { fileById, textOf } from '../src/core/project/types';
 import { saveProject, openProject } from '../src/core/project/archive';
