@@ -1,3 +1,4 @@
+import { robotConfigFile } from './core/documents/app-config';
 import { configuration, configure, enableSimulation, applicationProject } from './core/project/configuration';
 import { ApplicationNavigation } from './components/ApplicationNavigation';
 import { ConfigurationPanel } from './components/ConfigurationPanel';
@@ -127,7 +128,7 @@ function Workspace({dark,toggle}:{dark:boolean;toggle:()=>void}) {
         {sourceFile?<Card className="space-top diagnostic-source" title={sourceFile.path} extra={<Button onClick={()=>setReveal(undefined)}>{t("返回配置页面")}</Button>}><SourceEditor file={sourceFile} diagnostic={destination}/></Card>:<>
         {route==='master'&&(configuration(p).enabled.bus?<Master p={p} analysis={analysis.data} dark={dark}/>:<Empty description={t("此模块尚未启用，请在设置中启用。")}> <Button onClick={()=>setSettingsOpen(true)}>{t("打开设置")}</Button></Empty>)}
         {['app','robot','hardware','binding','payload'].includes(route)&&(configuration(p).enabled.app?<>
-          <ApplicationNavigation actions={<ConfigurationImportMenu targets={['urdf','hardware','app.payload']}/>} activeKey={route==='app'?appTab:route} onChange={key=>{setAppTab(key);navigate(key==='startup'?'app':key);}}>
+          <ApplicationNavigation actions={<ConfigurationImportMenu targets={robotConfigFile(p)?.role==='app.robot'?['urdf','hardware']:['urdf','hardware','app.payload']}/>} activeKey={route==='app'?appTab:route} onChange={key=>{setAppTab(key);navigate(key==='startup'?'app':key);}}>
           {(route==='app'?appTab:route)==='startup'&&<AppConfig p={p}/>}
           {(route==='app'?appTab:route)==='robot'&&<Robot key={state.workspaceEpoch} p={p} analysis={analysis.data} onImport={urdfImport.open} viewState={modelView.current.value} dark={dark}/>}
           {['hardware','binding'].includes(route==='app'?appTab:route)&&<Hardware p={p} analysis={appAnalysis.data} view={(route==='app'?appTab:route)==='binding'?'binding':'hardware'}/>}

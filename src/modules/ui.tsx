@@ -1,3 +1,4 @@
+import { robotConfigFile } from '../core/documents/app-config';
 import { m as msg, MessageError } from '../core/project/messages';
 import { t } from '../i18n';
 import type { ComponentType } from 'react';
@@ -24,6 +25,7 @@ export const moduleUI: ModuleUI[] = [{
   id: 'app.payload', version: 1, title: '末端负载', Editor: PayloadEditor,
   create: path => makeFile(path, 'app.payload', '# 末端负载：质量 kg，质心坐标 m\nmass: 0.0\ncom: [0, 0, 0]\n'),
   attach: (p, file) => {
+    if(robotConfigFile(p)?.role==='app.robot')throw new MessageError(msg('新版负载由 device.yaml 的工具与辨识记录管理，请导入完整工具配置。'));
     const app = fileById(p, p.entrypoints.app); if (!app) throw new MessageError(msg("请先配置 APP 文件"));
     if (p.editor.buffers[app.id]) throw new MessageError(msg("请先处理 APP 源码草稿"));
     app.bytes = utf8.encode(patchYaml(textOf(app), ['robot', 'payload'], relativePath(app.path, file.path))); app.encoding = 'utf-8';

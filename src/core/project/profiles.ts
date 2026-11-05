@@ -3,11 +3,12 @@ import legacyDefinitions from '../../../templates/profiles/targets.v1.json' with
 import namedEcm from '../../../templates/profiles/ecm.v2.json' with {type:'json'};
 import eniIgh from '../../../templates/profiles/igh.v2.json' with {type:'json'};
 import currentEcm from '../../../templates/profiles/ecm.v3.json' with {type:'json'};
-const definitions = {...legacyDefinitions, igh: eniIgh, ecm: currentEcm};
+import currentApp from '../../../templates/profiles/app.v2.json' with {type:'json'};
+const definitions = {...legacyDefinitions, igh: eniIgh, ecm: currentEcm, app:currentApp};
 import { fileById, textOf, uid, utf8, type Diagnostic, type MasterKind, type Project, type TargetProfile } from './types';
 
 export type ProfileKind=MasterKind|'app';
-export type ProfileDefinition=typeof definitions[ProfileKind] | typeof namedEcm | typeof legacyDefinitions.igh;
+export type ProfileDefinition=typeof definitions[ProfileKind] | typeof namedEcm | typeof legacyDefinitions.igh | typeof legacyDefinitions.app;
 export function canonicalData(value:unknown):string{
   if(Array.isArray(value))return '['+value.map(canonicalData).join(',')+']';
   if(value&&typeof value==='object')return '{'+Object.keys(value).sort().map(key=>JSON.stringify(key)+':'+canonicalData((value as Record<string,unknown>)[key])).join(',')+'}';
@@ -21,7 +22,7 @@ export const appRules=definitions.app.rules;
 export const baseTarget=(kind:ProfileKind):TargetProfile=>structuredClone(definitions[kind].target);
 export interface ProfileStatus { supported:boolean; legacy:boolean; message:string; text?:MessageTemplate; definition?:ProfileDefinition }
 export function targetStatus(p:Project,slot:'app'|'master'):ProfileStatus{
-  const kind=slot==='app'?'app':p.entrypoints.master.kind,target=p.targets[slot],definition=kind==='igh' && target?.version===legacyDefinitions.igh.target.version ? legacyDefinitions.igh : kind==='ecm' && target?.version===namedEcm.target.version ? namedEcm : definitions[kind];
+  const kind=slot==='app'?'app':p.entrypoints.master.kind,target=p.targets[slot],definition=kind==='app' && target?.version===legacyDefinitions.app.target.version ? legacyDefinitions.app : kind==='igh' && target?.version===legacyDefinitions.igh.target.version ? legacyDefinitions.igh : kind==='ecm' && target?.version===namedEcm.target.version ? namedEcm : definitions[kind];
   const fail=(message:MessageInput):ProfileStatus=>({supported:false,legacy:false,...messageFields(message)});
   if(!definition||!target||target.version!==definition.target.version||target.configVersion!==definition.target.configVersion||target.abi!==definition.target.abi)return fail(msg("{v0}目标规则不受支持；当前内置基线为 {v1}，不能按其他版本宣称验证通过", {v0:(slot==='app' ? "APP" : msg("主站").text), v1:String(definition?.target.version||'未知')}));
   const ref=target.profile;

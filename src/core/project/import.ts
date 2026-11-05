@@ -1,3 +1,5 @@
+import { robotConfigFile, robotField } from '../documents/app-config';
+import { resolvePath } from './paths';
 import { readYaml } from '../documents/yaml';
 import { configuration, configure, masterProject } from './configuration';
 import { m as msg, MessageError } from './messages';
@@ -17,7 +19,7 @@ export interface ImportPlan {
   projectId: string; revision: number; single: boolean; files: ProjectFile[]; matchUrdfMeshes?: boolean; target?: ImportTarget;
 }
 export type ImportSelection = Partial<Record<ImportSlot, string | 'keep'>>;
-export const importSlot = (role: FileRole): ImportSlot | undefined => role === 'igh' || role === 'ecm' ? 'master' :
+export const importSlot = (role: FileRole): ImportSlot | undefined => role === 'igh' || role === 'ecm' ? 'master' : role==='mujoco'?'simulation':
   ['eni', 'app', 'urdf', 'hardware', 'binding'].includes(role) ? role as ImportSlot : undefined;
 export function activeImportFile(p: Project, slot: ImportSlot) {
   if (slot === 'simulation') return configuration(p).simulationFileId;
@@ -29,8 +31,9 @@ export function activeImportFile(p: Project, slot: ImportSlot) {
 }
 function planSlot(plan: ImportPlan, file: ProjectFile): ImportSlot | undefined {
   if (plan.target === 'app.payload' && file.role === 'app.payload') return 'payload';
-  if (plan.target === 'mujoco' && file.role === 'mujoco') return 'simulation';
+  if ((plan.target === 'mujoco'||plan.target==='mjcf') && file.role === 'mujoco') return 'simulation';
   if (plan.target === 'mjcf' && file.role === 'mjcf') return xmlDocument(textOf(file)).documentElement.localName === 'mujoco' ? 'mjcf' : undefined;
+  if(plan.target==='mjcf'&&file.role==='hardware')return;
   return importSlot(file.role);
 }
 export function inspectImport(p: Project, entries: Map<string, Uint8Array>, single = false, registry: ModuleRegistry = modules, target?: ImportTarget): ImportPlan {
@@ -46,10 +49,9 @@ export function inspectImport(p: Project, entries: Map<string, Uint8Array>, sing
     } catch { role = 'attachment'; readable = false; }
     const file = { id: uid(), path, role, owner: role, bytes, encoding };
     const forcedMaster = readable && (target==='igh'||target==='ecm') && /\.ya?ml$/i.test(path) && (()=>{try{return !!readYaml(text).eni;}catch{return false;}})();
-    const candidates = forcedMaster ? [registry.get(target!)!].filter(Boolean) : readable ? registry.detect(file).filter(m => !target || m.role === target || (target==='igh'||target==='ecm')&&m.role==='eni' || (target === 'urdf' || target === 'mjcf') && m.role === 'resource' || target === 'mjcf' && m.role === 'hardware') : [];
+    const candidates = forcedMaster ? [registry.get(target!)!].filter(Boolean) : readable ? registry.detect(file).filter(m => !target || m.role === target || (target==='igh'||target==='ecm')&&m.role==='eni' || (target === 'urdf' || target === 'mjcf') && m.role === 'resource' || target === 'mjcf' && ['hardware','mujoco'].includes(m.role)) : [];
     if (candidates.length > 1) throw new MessageError(msg("文件用途不唯一：{v0}（{v1}）", {v0:String(path), v1:String(candidates.map(m => m.id).join('、'))}));
     if (candidates.length === 1) { file.role = candidates[0].role; file.owner = candidates[0].id; }
-    if (target === 'mjcf' && file.role === 'hardware') file.role = file.owner = 'simulation-hardware';
     files.push(file);
   }
   if (target && !files.some(f => f.role === target && (target !== 'mjcf' || xmlDocument(textOf(f)).documentElement.localName === 'mujoco'))) {
@@ -97,7 +99,7 @@ export function applyImport(p: Project, plan: ImportPlan, selection = defaultImp
   }
   checkPaths(next.files.map(f => f.path));
   let bindingChanged = false;
-  for (const [slot] of groups) {
+  for (const [slot] of [...groups].sort(([a],[b])=>Number(b==='simulation')-Number(a==='simulation'))) {
     const selected = selection[slot]; if (!selected || selected === 'keep') continue;
     const id = ids.get(selected)!;
     const file = next.files.find(f => f.id === id)!;
@@ -117,16 +119,23 @@ export function applyImport(p: Project, plan: ImportPlan, selection = defaultImp
     else if (slot === 'payload' || slot === 'mjcf') { /* Linked below through the owning configuration. */ }
     else next.entrypoints[slot] = id;
     if (plan.target && ['urdf', 'hardware', 'payload', 'mjcf'].includes(slot)) {
-      const source = fileById(next, slot === 'mjcf' ? configuration(next).simulationFileId : next.entrypoints.app);
+      if(slot==='payload'&&robotConfigFile(next)?.role==='app.robot')throw new MessageError(msg('新版负载由 device.yaml 的工具与辨识记录管理，请导入完整工具配置。'));
+      const source = slot==='mjcf'?fileById(next,configuration(next).simulationFileId):robotConfigFile(next);
       if (!source) throw new MessageError(msg('缺少用于关联导入文件的配置'));
       assertEditableFile(next, source);
       if (next.editor.buffers[source.id]) throw new MessageError(msg('请先处理关联配置的源码草稿'));
-      const field = slot === 'mjcf' ? ['model'] : ['robot', slot === 'hardware' ? 'hardware_config' : slot];
+      const field = slot === 'mjcf' ? ['model'] : robotField(next,slot === 'hardware' ? 'hardware_config' : slot);
       source.bytes = utf8.encode(patchYaml(textOf(source), field, relativePath(source.path, file.path)));
       source.encoding = 'utf-8';
       next.references = next.references.filter(r => !(r.sourceFileId === source.id && r.field === field.join('.')));
     }
     bindingChanged = true;
+  }
+  const app=fileById(next,next.entrypoints.app);
+  if(app&&Number(readYaml(textOf(app))?.schema_version)===1){
+    const robot=robotConfigFile(next);
+    if(robot){const data=readYaml(textOf(robot));for(const [slot,key] of [['urdf','urdf'],['hardware','hardware_config']] as const){const file=next.files.find(f=>f.path===resolvePath(robot.path,data[key]));if(file)next.entrypoints[slot]=file.id;}}
+    next.entrypoints.binding=null;
   }
   if (bindingChanged || [...replaced].some(id => { const f = p.files.find(f => f.id === id); return f && importSlot(f.role); })) next.editor.confirmations = {};
   next.references = next.references.filter(r => !replaced.has(r.sourceFileId));

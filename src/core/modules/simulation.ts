@@ -1,3 +1,4 @@
+import { mjcfReferences } from '../documents/mjcf';
 import { readYaml, yamlDocument, num } from '../documents/yaml';
 import { xmlDocument, elements } from '../documents/xml';
 import { textOf, utf8 } from '../project/types';
@@ -48,13 +49,6 @@ export const simulationModules:ConfigModule[]=[{
  id:'mjcf',version:1,role:'mjcf',syntax:'xml',capabilities,
  detect:f=>/\.xml$/i.test(f.path)&&['mujoco','mujocoinclude'].includes(xmlDocument(textOf(f)).documentElement.localName),parse:f=>xmlDocument(textOf(f)),
  validate:(doc,{file})=>['mujoco','mujocoinclude'].includes(doc.documentElement.localName)?[]:[{code:'simulation.mjcf',severity:'error',message:'MJCF 根节点必须为 mujoco 或 mujocoinclude',fileId:file.id}],
- references:doc=>{
-  const compiler=elements(doc,'compiler')[0];
-  return ['include','mesh','texture','hfield'].flatMap(tag=>elements(doc,tag).flatMap((el,i)=>{
-   const file=el.getAttribute('file');if(!file)return [];
-   const dir=tag==='mesh'?compiler?.getAttribute('meshdir'):tag==='texture'?compiler?.getAttribute('texturedir'):'';
-   return [{field:`${tag}[${i}].file`,original:dir?`${dir}/${file}`:file}];
-  }));
- },
+ references:(doc,{project,file})=>mjcfReferences(doc,project,file),
  export:(_,ctx)=>{if(ctx.rewrites.length)throw new Error('MJCF 资源须保持相对目录结构');return [{path:ctx.path,bytes:ctx.file.bytes,fileId:ctx.file.id}];}
 }];

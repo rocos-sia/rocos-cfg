@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { prepareImport } from '../src/adapters/files';
 import { applyImport, defaultImportSelection, importCandidates } from '../src/core/project/import';
+import { createLegacyProject } from './fixtures/legacy-project';
+import { robotConfigFile } from '../src/core/documents/app-config';
 import { createProject } from '../src/core/project/create';
 import { configuration, enableSimulation, masterProject, selectMaster } from '../src/core/project/configuration';
 import { fileById, textOf } from '../src/core/project/types';
@@ -40,7 +42,7 @@ describe('imports selected by configuration type', () => {
   });
 
   it('links payload and hardware imports to APP, retains drafts, and survives archive reopening', async () => {
-    const project = createProject('app', 'igh');
+    const project = createLegacyProject('app', 'igh');
     const plan = await prepareImport(project, [file('tool.yaml', 'mass: 2.5\ncom: [0, 0, 0.1]')], undefined, 'app.payload');
     const next = applyImport(project, plan);
     const payload = next.files.find(f => f.role === 'app.payload')!;
@@ -57,7 +59,7 @@ describe('imports selected by configuration type', () => {
   });
 
   it('keeps a payload named config.yaml separate from APP startup configuration', async () => {
-    const project = createProject('same name', 'igh'), appId = project.entrypoints.app;
+    const project = createLegacyProject('same name', 'igh'), appId = project.entrypoints.app;
     const plan = await prepareImport(project, [file('config.yaml', 'mass: 2')], undefined, 'app.payload');
     const next = applyImport(project, plan);
     expect(next.entrypoints.app).toBe(appId);
@@ -76,8 +78,8 @@ describe('imports selected by configuration type', () => {
     expect([...importCandidates(plan).keys()]).toEqual(['urdf']);
     const next = applyImport(project, plan), refs = collectReferences(next);
     expect(next.entrypoints.master).toEqual(project.entrypoints.master);
-    expect(fileById(next, next.entrypoints.urdf)?.path).toBe('models/arm.urdf');
-    expect(refs.find(r => r.field === 'robot.urdf')).toMatchObject({ state: 'internal', targetFileId: next.entrypoints.urdf });
+    expect(fileById(next, next.entrypoints.urdf)?.path).toBe('robots/robot/arm.urdf');
+    expect(refs.find(r => r.field === 'urdf')).toMatchObject({ state: 'internal', targetFileId: next.entrypoints.urdf });
     expect(refs.find(r => r.sourceFileId === next.entrypoints.urdf && r.field === 'mesh[0].filename')?.state).toBe('internal');
   });
 
@@ -92,10 +94,10 @@ describe('imports selected by configuration type', () => {
     expect(importCandidates(plan).get('mjcf')).toHaveLength(1);
     expect(defaultImportSelection(plan).mjcf).toBe(plan.files[0].id);
     const next = applyImport(project, plan);
-    expect(next.files.find(f => f.path === 'simulation/models/hardware.yaml')?.role).toBe('simulation-hardware');
-    expect(readYaml(textOf(fileById(next, configuration(next).simulationFileId)!)).model).toBe('models/scene.xml');
+    expect(next.files.find(f => f.path === 'robots/robot/mjcf/hardware.yaml')?.role).toBe('hardware');
+    expect(readYaml(textOf(fileById(next, configuration(next).simulationFileId)!)).model).toBe('scene.xml');
     expect(collectReferences(next).filter(r => ['include[0].file', 'mesh[0].file'].includes(r.field)).map(r => r.state)).toEqual(['internal', 'internal']);
-    const config = await prepareImport(next, [file('run.yaml', 'model: models/scene.xml\nhardware_config: models/hardware.yaml\nduration_sec: 12')], undefined, 'mujoco');
+    const config = await prepareImport(next, [file('run.yaml', 'model: scene.xml\nhardware_config: hardware.yaml\nduration_sec: 12')], undefined, 'mujoco');
     const restored = await openProject(await saveProject(applyImport(next, config)));
     expect(configuration(restored).simulationFileId).toBe(configuration(project).simulationFileId);
     expect(collectReferences(restored).find(r => r.sourceFileId === configuration(restored).simulationFileId && r.field === 'hardware_config')?.state).toBe('internal');
@@ -107,7 +109,7 @@ describe('imports selected by configuration type', () => {
     expect(() => applyImport(project, plan)).toThrow('请选择 urdf');
     const selection = { urdf: plan.files[0].id };
     expect(() => applyImport({ ...project, revision: project.revision + 1 }, plan, selection)).toThrow('工程已变化');
-    project.editor.buffers[project.entrypoints.app!] = { text: 'robot: {}', baseHash: 'original' };
+    project.editor.buffers[robotConfigFile(project)!.id] = { text: 'robot: {}', baseHash: 'original' };
     const before = structuredClone(project);
     expect(() => applyImport(project, plan, selection)).toThrow('关联配置的源码草稿');
     expect(project).toEqual(before);

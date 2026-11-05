@@ -1,0 +1,27 @@
+{
+  "format": "rocos-target-profile",
+  "id": "rocos.app",
+  "version": 2,
+  "target": {
+    "version": "2d2d945",
+    "configVersion": 1,
+    "abi": "unverified"
+  },
+  "rules": {
+    "maxAnalogChannelsPerDirection": 1,
+    "controlledJointTypes": [
+      "revolute",
+      "continuous",
+      "prismatic"
+    ],
+    "hardwareTypes": [
+      "driver",
+      "ft_sensor",
+      "io"
+    ]
+  },
+  "sources": [
+    "rocos-app@2d2d945: config/README.md, app_config.cpp, model.cpp and hardware.cpp"
+  ],
+  "scope": "schema_version: 1 组合配置、hardware joint_name 和 URDF mimic；静态校验，不代表 SDK、ABI 或实机验证"
+}

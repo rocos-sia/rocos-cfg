@@ -1,4 +1,5 @@
 import { configuration, masterKinds, masterProject } from './configuration';
+import { robotConfigFile } from '../documents/app-config';
 import { collectReferences } from './references';
 import { fileById, type Project } from './types';
 import { resourcePath } from './paths';
@@ -28,8 +29,11 @@ export function configurationStatus(project: Project) {
     }
   }
   if (config.enabled.app) {
-    for (const slot of ['app', 'urdf', 'hardware', 'binding'] as const) add(project.entrypoints[slot], `app:${slot}`);
-    reference(project.entrypoints.app, 'robot.payload', 'app:payload');
+    for (const slot of ['app', 'urdf', 'hardware'] as const) add(project.entrypoints[slot], `app:${slot}`);
+    if(project.entrypoints.binding)add(project.entrypoints.binding,'app:binding');
+    if(robotConfigFile(project)?.role==='app.robot'){
+      for(const field of ['robot_config','device_config','user_config'])if(references.some(r=>r.sourceFileId===project.entrypoints.app&&r.field===field))reference(project.entrypoints.app,field,'app:'+field);
+    }else reference(project.entrypoints.app, 'robot.payload', 'app:payload');
   }
   if (config.enabled.simulation) {
     add(config.simulationFileId, 'simulation:config');

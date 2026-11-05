@@ -36,7 +36,7 @@ export function Robot({ p, analysis, onImport, viewState, dark }: { p: Project; 
   if (!file) return <Button onClick={onImport}>{t("导入URDF")}</Button>;
   const robot=analysis.robot;
   if(!robot)return <><Alert message={analysis.robotError?diagnosticText({message:analysis.robotError,text:analysis.robotErrorText}):t("URDF 无法解析")} type="error" /><SourceEditor file={file} /></>;
-  let startup: any; try { startup = app && appDocument(app).data; } catch {}
+  let startup: any; try { startup = app && appDocument(app,p).data; } catch {}
   const structure = robotStructure(robot, [startup?.robot?.base_link, startup?.robot?.tip_link]);
   const tree = structure.nodes, target = structure.targets.get(selected);
   const selectedKind = target?.kind || 'joint', selectedName = target?.name || '';
@@ -115,7 +115,9 @@ export function Robot({ p, analysis, onImport, viewState, dark }: { p: Project; 
             {key === 'type' ? <Select id={`joint-${key}`} value={joint[key]} options={['fixed', 'revolute', 'continuous', 'prismatic', 'floating', 'planar'].map(value => ({ value, label: value }))} onChange={v => edit(key, v)} />
               : <Input id={`joint-${key}`} key={joint.name + key + joint[key]} defaultValue={joint[key]} onBlur={e => { if (e.target.value !== joint[key]) edit(key, e.target.value); }} />}
           </div>)}
-          {joint.mimic && <Alert type="info" message={t('Mimic：{joint}；当前 APP 不支持将 mimic 加入控制链。',{joint:joint.mimic})} />}
+          <div className="field"><ParameterLabel htmlFor="joint-mimic" role="urdf" path="mimic">Mimic source</ParameterLabel><Select id="joint-mimic" allowClear value={joint.mimic||undefined} options={robot.joints.filter(j=>j.name!==joint.name&&['revolute','continuous','prismatic'].includes(j.type)).map(j=>({label:j.name,value:j.name}))} onChange={value=>edit('mimic',value??'')}/></div>
+          {joint.mimic&&(['mimicMultiplier','mimicOffset'] as const).map(key=><div className="field" key={key}><ParameterLabel htmlFor={`joint-${key}`} role="urdf" path={key}>{key==='mimicMultiplier'?'Mimic multiplier':'Mimic offset'}</ParameterLabel><Input id={`joint-${key}`} key={joint.name+key+joint[key]} defaultValue={joint[key]} onBlur={e=>{if(e.target.value!==joint[key])edit(key,e.target.value);}}/></div>)}
+          {joint.mimic && <Alert type="info" message={t('Mimic：{joint}；位置按源关节联动，是否占驱动槽位由 hardware.yaml 决定。',{joint:joint.mimic})} />}
         </div> : link ? <><p>{t("父关节：")}{robot.joints.find(j => j.child === link)?.name || t("根节点")}</p><LinkProperties text={textOf(file)} name={link} /></> : <p className="muted">{t("选择 Link 或 Joint 编辑结构与属性。")}</p>}
       </Card>
     ]}</ModelWorkspace>

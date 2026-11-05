@@ -2,14 +2,23 @@ import { m as msg, MessageError, joinMessages, type DiagnosticMessage } from '..
 import { appRules } from '../project/profiles';
 import { geometryDiagnostics } from './urdf-geometry';
 import { child, children, xmlDocument, serializeXml } from './xml';
-export interface RobotJointParameters { name: string; type: string; parent: string; child: string; xyz: string; rpy: string; axis: string; lower: string; upper: string; velocity: string; effort: string; mimic: string }
+export interface RobotJointParameters { name: string; type: string; parent: string; child: string; xyz: string; rpy: string; axis: string; lower: string; upper: string; velocity: string; effort: string; mimic: string; mimicMultiplier?: string; mimicOffset?: string }
 export type RobotJoint = RobotJointParameters;
+export function mimicRelation(joint:RobotJoint,joints:RobotJoint[]) {
+  let source=joint,multiplier=1,offset=0;const seen=new Set<string>();
+  while(source.mimic){
+    if(seen.has(source.name))throw new MessageError(msg('mimic 目标和系数必须有效'));seen.add(source.name);
+    offset+=multiplier*Number(source.mimicOffset??0);multiplier*=Number(source.mimicMultiplier??1);
+    const next=joints.find(j=>j.name===source.mimic);if(!next)throw new MessageError(msg('mimic 源关节不存在'));source=next;
+  }
+  return {source,multiplier,offset};
+}
 export function readRobot(text: string) {
   const doc = xmlDocument(text); const root = doc.documentElement;
   if (root.localName !== 'robot') throw new MessageError(msg("URDF 根节点必须为 robot"));
   const links = children(root,'link').map(l => l.getAttribute('name') || '');
   const jointNodes=children(root,'joint');
-  const joints: RobotJoint[] = jointNodes.map(j => ({ name: j.getAttribute('name') || '', type: j.getAttribute('type') || '', parent: child(j,'parent')?.getAttribute('link') || '', child: child(j,'child')?.getAttribute('link') || '', xyz: child(j,'origin')?.getAttribute('xyz') || '0 0 0', rpy: child(j,'origin')?.getAttribute('rpy') || '0 0 0', axis: child(j,'axis')?.getAttribute('xyz') || '1 0 0', lower: child(j,'limit')?.getAttribute('lower') || '', upper: child(j,'limit')?.getAttribute('upper') || '', velocity: child(j,'limit')?.getAttribute('velocity') || '', effort: child(j,'limit')?.getAttribute('effort') || '', mimic: child(j,'mimic')?.getAttribute('joint') || '' }));
+  const joints: RobotJoint[] = jointNodes.map(j => ({ name: j.getAttribute('name') || '', type: j.getAttribute('type') || '', parent: child(j,'parent')?.getAttribute('link') || '', child: child(j,'child')?.getAttribute('link') || '', xyz: child(j,'origin')?.getAttribute('xyz') || '0 0 0', rpy: child(j,'origin')?.getAttribute('rpy') || '0 0 0', axis: child(j,'axis')?.getAttribute('xyz') || '1 0 0', lower: child(j,'limit')?.getAttribute('lower') || '', upper: child(j,'limit')?.getAttribute('upper') || '', velocity: child(j,'limit')?.getAttribute('velocity') || '', effort: child(j,'limit')?.getAttribute('effort') || '', mimic: child(j,'mimic')?.getAttribute('joint') || '', mimicMultiplier: child(j,'mimic')?.hasAttribute('multiplier')?child(j,'mimic')!.getAttribute('multiplier')!:'1', mimicOffset: child(j,'mimic')?.hasAttribute('offset')?child(j,'mimic')!.getAttribute('offset')!:'0' }));
   const issues: (DiagnosticMessage&{field?:string})[] = [];
   if(!root.getAttribute('name'))issues.push(msg("URDF robot 缺少 name"));
   if (new Set(links).size !== links.length || links.includes('')) issues.push(msg("Link 名称重复或为空"));
@@ -26,6 +35,7 @@ export function readRobot(text: string) {
       if (label === 'axis' && j.type !== 'fixed' && v.every(n=>n===0)) issues.push(msg("{v0} 轴向不能为零", {v0:String(j.name)}));
     }
     if (['revolute','prismatic'].includes(j.type)||j.type==='continuous'&&limit) for (const key of ['velocity','effort'] as const) if (!j[key].trim() || !Number.isFinite(Number(j[key])) || Number(j[key]) < 0) issues.push(msg("{v0} {v1} 必须为非负数", {v0:String(j.name), v1:String(key)}));
+    if (child(jointNodes[index],'mimic') && (!j.mimic || !j.mimicMultiplier?.trim() || !j.mimicOffset?.trim() || !Number.isFinite(Number(j.mimicMultiplier)) || !Number.isFinite(Number(j.mimicOffset)))) issues.push(msg('mimic 目标和系数必须有效'));
     if (j.mimic && (!joints.some(target => target.name === j.mimic) || j.mimic === j.name)) issues.push(msg("{v0} 的 mimic 目标无效", {v0:String(j.name)}));
     if (['revolute','prismatic'].includes(j.type) && (!j.lower || !j.upper || !Number.isFinite(Number(j.lower)) || !Number.isFinite(Number(j.upper)) || Number(j.lower)>Number(j.upper))) issues.push(msg("{v0} 位置限位无效", {v0:String(j.name)}));
     for(const issue of issues.slice(firstIssue))issue.field=`joint.${index}`;
@@ -41,16 +51,24 @@ export function readRobot(text: string) {
   return { doc, name: root.getAttribute('name') || '', links, joints, roots, errors:issues.map(issue=>issue.message), issues };
 }
 export type RobotModel = Omit<ReturnType<typeof readRobot>, 'doc'>;
-export function controlChainFromRobot(robot:RobotModel, base:string, tip:string) {
+export function controlChainFromRobot(robot:RobotModel, base:string, tip:string, drivenNames:string[]=[]) {
   if (robot.errors.length) throw new MessageError(joinMessages(robot.issues));
   const chain: RobotJoint[] = []; let current = tip;
   if (!robot.links.includes(base) || !robot.links.includes(tip)) throw new MessageError(msg("Base/Tip 不存在"));
   while(current !== base) { const joint = robot.joints.find(j=>j.child===current); if (!joint) throw new MessageError(msg("Base 到 Tip 之间没有有向链")); chain.unshift(joint); current = joint.parent; }
-  if (chain.some(j=>j.mimic || j.type!=='fixed'&&!appRules.controlledJointTypes.includes(j.type))) throw new MessageError(msg("当前 APP profile 未验证 mimic/floating/planar 控制链"));
+  const includePath=(name:string)=>{
+    const target=robot.joints.find(j=>j.name===name);if(!target)throw new MessageError(msg('mimic 源关节不存在'));
+    let link=target.child;const path:RobotJoint[]=[];
+    while(link!==base){const joint=robot.joints.find(j=>j.child===link);if(!joint)throw new MessageError(msg('mimic 源或驱动关节不在 Base 下'));path.unshift(joint);link=joint.parent;}
+    for(const j of path)if(!chain.some(c=>c.name===j.name))chain.push(j);
+  };
+  for(const joint of robot.joints)if(joint.mimic&&drivenNames.includes(joint.name))includePath(joint.name);
+  for(let i=0;i<chain.length;i++)if(chain[i].mimic)includePath(mimicRelation(chain[i],robot.joints).source.name);
+  if (chain.some(j=>j.type!=='fixed'&&!appRules.controlledJointTypes.includes(j.type))) throw new MessageError(msg('当前 APP 不支持 floating/planar 控制链'));
   return chain.filter(j=>j.type!=='fixed');
 }
-export function controlChain(text: string, base: string, tip: string) {
-  return controlChainFromRobot(readRobot(text),base,tip);
+export function controlChain(text: string, base: string, tip: string, drivenNames:string[]=[]) {
+  return controlChainFromRobot(readRobot(text),base,tip,drivenNames);
 }
 export function editJoint(text: string, name: string, field: keyof RobotJointParameters, value: string): string {
   const robot = readRobot(text), matches = children(robot.doc.documentElement,'joint').filter(j=>j.getAttribute('name')===name), node = matches[0];
@@ -58,7 +76,8 @@ export function editJoint(text: string, name: string, field: keyof RobotJointPar
   if (!name.trim() || matches.length !== 1) throw new MessageError(msg('Joint 名称不唯一，请在源码中修复'));
   if (field === 'name' || field === 'type') node.setAttribute(field,value);
   else {
-    const map: Record<string,[string,string]> = { parent:['parent','link'], child:['child','link'], xyz:['origin','xyz'],rpy:['origin','rpy'],axis:['axis','xyz'],lower:['limit','lower'],upper:['limit','upper'],velocity:['limit','velocity'],effort:['limit','effort'],mimic:['mimic','joint'] };
+    const map: Record<string,[string,string]> = { parent:['parent','link'], child:['child','link'], xyz:['origin','xyz'],rpy:['origin','rpy'],axis:['axis','xyz'],lower:['limit','lower'],upper:['limit','upper'],velocity:['limit','velocity'],effort:['limit','effort'],mimic:['mimic','joint'],mimicMultiplier:['mimic','multiplier'],mimicOffset:['mimic','offset'] };
+    if(field==='mimic'&&!value){const n=child(node,'mimic');if(n)node.removeChild(n);return serializeXml(robot.doc);}
     const [tag,attr] = map[field]; let n = child(node,tag); if (!n) { n = robot.doc.createElement(tag); node.appendChild(n); } n.setAttribute(attr,value);
   }
   return serializeXml(robot.doc);

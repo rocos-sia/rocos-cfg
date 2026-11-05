@@ -1,4 +1,6 @@
 import { stringify } from 'yaml';
+import { robotConfigFile, appDocument } from '../documents/app-config';
+import { relativePath } from './paths';
 import { yamlDocument } from '../documents/yaml';
 import { textOf, utf8 } from './types';
 import { makeFile } from './create';
@@ -50,10 +52,13 @@ export function selectMaster(p:Project,kind:MasterKind) {
 export function enableSimulation(p:Project) {
   const config=configure(p);config.enabled.simulation=true;
   if(config.simulationFileId)return;
-  const file=makeFile('simulation/config.yaml','mujoco',stringify({model:'models/scene.xml',hardware_config:'hardware_config.yaml',ecat_id:0,cycle_time_us:1000,duration_sec:-1,visualize:true}));
-  const hardware=makeFile('simulation/hardware_config.yaml','simulation-hardware','hardware: []\n');
-  if(p.files.some(f=>f.path===file.path||f.path===hardware.path))throw new Error('仿真配置路径已存在，请先整理工程文件');
-  p.files.push(file,hardware);config.simulationFileId=file.id;
+  const robot=robotConfigFile(p),urdf=p.files.find(f=>f.id===p.entrypoints.urdf),hardware=p.files.find(f=>f.id===p.entrypoints.hardware);
+  const base=(robot?.role==='app.robot'?robot:urdf)?.path.split('/').slice(0,-1).join('/')??'robots/robot';
+  const path=base+'/mjcf/mujoco.yaml';
+  const app=p.files.find(f=>f.id===p.entrypoints.app),ecatId=app?appDocument(app,p).data.robot?.ecat_id??0:0;
+  const file=makeFile(path,'mujoco',stringify({model:'scene.xml',hardware_config:hardware?relativePath(path,hardware.path):'../hardware.yaml',ecat_id:ecatId,cycle_time_us:1000,duration_sec:-1,visualize:true}));
+  if(p.files.some(f=>f.path===file.path))throw new Error('仿真配置路径已存在，请先整理工程文件');
+  p.files.push(file);config.simulationFileId=file.id;
 }
 
 // Common ID and cycle are copied explicitly; vendor startup options and ENI stay independent.
@@ -70,6 +75,15 @@ export function synchronizeBus(p:Project,id:number,cycle:number) {
  }
 }
 
+export function selectAppMaster(p:Project,kind:MasterKind) {
+  const robot=robotConfigFile(p),master=p.files.find(f=>f.id===masterProject(p,kind).entrypoints.master.fileId);
+  if(robot?.role==='app.robot'&&master){
+    if(p.editor.buffers[robot.id])throw new Error('请先处理机器人配置源码草稿');
+    const doc=yamlDocument(textOf(robot));doc.set('master_type',kind);doc.set('master_config',relativePath(robot.path,master.path));robot.bytes=utf8.encode(doc.toString());
+    p.references=p.references.filter(r=>r.sourceFileId!==robot.id||r.field!=='master_config');
+  }
+  configure(p).appMaster=kind;
+}
 export function applicationProject(p:Project):Project {return masterProject(p,configuration(p).appMaster??p.entrypoints.master.kind);}
 
 export function validConfiguration(value:unknown,files:Project['files'],active:Project['entrypoints']['master']):boolean {

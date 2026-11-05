@@ -1,7 +1,8 @@
+import { robotConfigFile } from '../documents/app-config';
 import { configuration } from '../project/configuration';
 import { m as msg, messageFields, type MessageInput, type DiagnosticMessage } from '../project/messages';
-import { fileById, type BusCatalog, type Diagnostic, type Project } from '../project/types';
-import type { RobotJoint } from '../documents/urdf';
+import { textOf, fileById, type BusCatalog, type Diagnostic, type Project } from '../project/types';
+import { mimicRelation, readRobot, type RobotJoint } from '../documents/urdf';
 import { appRules, targetStatus } from '../project/profiles';
 import { axes, bindingDocument, channels, finiteNumber as number, hardwareDocument, hardwareTypes, isRecord, signals, type HardwareType, type SignalSpec } from './schema';
 
@@ -100,15 +101,15 @@ export function validateHardware(p:Project,bus:BusCatalog,chain?:RobotJoint[]):D
     }
   }
   if(devices.filter(d=>d?.type==='ft_sensor').length>1)add('ft-first',msg("当前 APP 的 GetWrench 只读取列表中的第一个 FT 传感器"),'hardware','warning');
-  if(!binding)return result;
+  if(!binding&&robotConfigFile(p)?.role!=='app.robot')return result;
   let b:ReturnType<typeof bindingDocument>;
-  try{b=bindingDocument(binding);}catch{return result;}
-  const bindError=(code:string,message:MessageInput,field?:string,severity:Diagnostic['severity']='error')=>result.push({code:'binding.'+code,...messageFields(message),field,severity,fileId:binding.id});
+  try{b=binding?bindingDocument(binding):{doc:parsed.doc,data:{joint_bindings:[]},bindings:devices.filter(d=>d?.type==='driver').map(d=>({joint_name:d.joint_name,drive_id:d.id}))};}catch{return result;}
+  const bindError=(code:string,message:MessageInput,field?:string,severity:Diagnostic['severity']='error')=>result.push({code:'binding.'+code,...messageFields(message),field,severity,fileId:binding?.id??file.id});
   if(!isRecord(b.data)||!Array.isArray(b.data.joint_bindings))bindError('schema',msg("joint_bindings 必须为列表"),'joint_bindings');
   if(b.data?.binding_policy!==undefined&&b.data.binding_policy!=='explicit')bindError('policy',msg("当前 APP 仅支持 explicit 绑定策略"),'binding_policy');
   const names=new Set<string>(),used=new Set<number>();
   for(const [i,entry] of b.bindings.entries()){
-    const field=`joint_bindings.${i}`;
+    const field=binding?`joint_bindings.${i}`:`hardware.${devices.findIndex(d=>d?.type==='driver'&&d.id===entry?.drive_id)}`;
     if(!isRecord(entry)){bindError('schema',msg("绑定条目必须为映射"),field);continue;}
     const id=entry.drive_id;
     if(typeof entry.joint_name!=='string'||!entry.joint_name||names.has(entry.joint_name))bindError('name',msg("关节名称为空、无效或重复"),field+'.joint_name');names.add(entry.joint_name);
@@ -118,13 +119,27 @@ export function validateHardware(p:Project,bus:BusCatalog,chain?:RobotJoint[]):D
     if(j&&d){
       const unit=d.transform?.user_unit_name??'rad',expected=j.type==='prismatic'?'m':'rad';
       if(unit!==expected)bindError('unit',msg("{v0} 的 URDF 单位为 {v1}，Hardware 为 {v2}；APP 不会自动转换", {v0:String(j.name), v1:String(expected), v2:String(String(unit))}),field);
-      if(d.joint_name&&d.joint_name!==j.name)bindError('label',msg("Drive {v0} 的显示名称 {v1} 与绑定关节 {v2} 不同；实际按显式绑定工作", {v0:String(id), v1:String(String(d.joint_name)), v2:String(j.name)}),field,'warning');
+      if(binding&&d.joint_name&&d.joint_name!==j.name)bindError('label',msg("Drive {v0} 的显示名称 {v1} 与绑定关节 {v2} 不同；实际按显式绑定工作", {v0:String(id), v1:String(String(d.joint_name)), v2:String(j.name)}),field,'warning');
       for(const [a,k] of [['lower','lower'],['upper','upper'],['velocity','vel'],['effort','effort']] as const){
         const effective=j[a]!==''?Number(j[a]):undefined;
         if(effective!==undefined&&number(d.limit?.[k])!==effective)bindError('limit-difference',msg("{v0} 的标准 URDF {v1}={v2} 与 Hardware {v3}={v4} 不同；请核对模型约束与硬件配置", {v0:String(j.name), v1:String(a), v2:String(effective), v3:String(k), v4:String(String(d.limit?.[k]))}),field,'warning');
       }
     }
   }
-  if(chain)for(const j of chain)if(!names.has(j.name))bindError('missing',msg("{v0} 缺少显式绑定", {v0:String(j.name)}),'joint_bindings');
+  if(chain)for(const j of chain)if(!j.mimic&&!names.has(j.name))bindError('missing',msg("{v0} 缺少显式绑定", {v0:String(j.name)}),'joint_bindings');
+  if(chain){
+    const urdf=fileById(p,p.entrypoints.urdf),joints=urdf?readRobot(textOf(urdf)).joints:chain;
+    const ranges=new Map<string,[number,number]>();
+    const bounds=(j:RobotJoint):[number,number]=>{const d=devices.find(d=>d?.type==='driver'&&d.joint_name===j.name);return d?[number(d.limit?.lower),number(d.limit?.upper)]:j.type==='continuous'?[-Infinity,Infinity]:[Number(j.lower),Number(j.upper)];};
+    for(const joint of chain){
+      const {source,multiplier:scale,offset}=mimicRelation(joint,joints);
+      if(!Number.isFinite(scale)||!Number.isFinite(offset)){bindError('mimic-coefficients',msg('mimic 目标和系数必须有效'));continue;}
+      const [lo,hi]=bounds(joint),current=ranges.get(source.name)??bounds(source);
+      if(scale===0){if(offset<lo||offset>hi)bindError('mimic-limits',msg('mimic 联动限位无可行解'));continue;}
+      const a=(lo-offset)/scale,c=(hi-offset)/scale;
+      const range:[number,number]=[Math.max(current[0],Math.min(a,c)),Math.min(current[1],Math.max(a,c))];ranges.set(source.name,range);
+      if(range[0]>range[1])bindError('mimic-limits',msg('mimic 联动限位无可行解'));
+    }
+  }
   return result;
 }

@@ -8,7 +8,7 @@
 | --- | --- | --- |
 | `projects/talon.v2.json` | 打开示例 → Talon IgH / ECM | 用户提供的七轴 Talon 完整配置、只读 ENI 与 8 个 STL；资源清单、来源和整理说明见 [示例说明](../docs/EXAMPLES.md#talon-七轴完整配置示例) |
 | `projects/teaching.v3.json` | 打开示例 → IgH / EC-Master | 一套单轴、显式 PDO/ENI、Hardware/Binding 与 APP 的完整教学工程；默认待人工确认，详见 [示例说明](../docs/EXAMPLES.md) |
-| `projects/starter.v3.json` | 新建 IgH / EC-Master 工程 | 初始化主站、APP、硬件与绑定配置；ENI 必须另行导入 |
+| `projects/starter.v4.json` | 新建 IgH / EC-Master 工程 | 初始化主站、APP、硬件与绑定配置；ENI 必须另行导入 |
 | `robots/two-axis.v2.json` | 新建工程 → 双关节演示模型 | 名称前缀与连杆长度；生成两个旋转关节及盒体外观，设置 APP 控制链端点 |
 | `devices/igh-discovery.v1.json` | 主站配置 → 新增从站 | 从站名称及可手动配置的空 PDO 条目；不推断驱动器机械参数或绑定 |
 
@@ -35,7 +35,7 @@
 
 ## 目标规则快照
 
-`profiles/targets.v1.json` 保存 IgH `3c92f2a`、APP `7093bcd` 和历史 ECM v1 规则；当前 IgH 使用 `profiles/igh.v2.json`（`9001c87`），ECM 使用 `profiles/ecm.v3.json`（`e112a32`）。历史 IgH v1 和 ECM v2 快照仍可核对；新的 ENI 引用和 ECM 命令超时字段使用当前规则。规则包含部分容量、名称长度、PDO、ENI 与控制链限制。完整解析行为还由编译期 TypeScript 适配器实现；JSON 不是通用规则解释语言，也不能独立代表完整消费端验证。目标构建 ABI、EC-Master SDK 与设备配对仍标记为未验证。
+`profiles/targets.v1.json` 保存 IgH `3c92f2a`、APP `7093bcd` 和历史 ECM v1 规则；当前 APP 使用 `profiles/app.v2.json`（`2d2d945`，组合配置、hardware joint_name 与 URDF mimic），历史 APP v1 快照继续保留；当前 IgH 使用 `profiles/igh.v2.json`（`9001c87`），ECM 使用 `profiles/ecm.v3.json`（`e112a32`）。历史 IgH v1 和 ECM v2 快照仍可核对；新的 ENI 引用和 ECM 命令超时字段使用当前规则。规则包含部分容量、名称长度、PDO、ENI 与控制链限制。完整解析行为还由编译期 TypeScript 适配器实现；JSON 不是通用规则解释语言，也不能独立代表完整消费端验证。目标构建 ABI、EC-Master SDK 与设备配对仍标记为未验证。
 
 创建工程时，所选主站和 APP 规则分别保存到 `project-data/profiles/`，并由工程目标字段引用。打开时核对目标版本、配置版本、ABI 标记、规则 ID / 版本与完整 JSON 内容；忽略 JSON 空白和键顺序，不能忽略规则内容差异。快照校验不一致、丢失或没有对应适配器时，阻止自动生成相关配置和运行包导出，原配置仍可查看、编辑与存档。
 
@@ -49,7 +49,7 @@
 
 按 `rocos-ecm@e112a32` 的 `Main/Common/EcConfig.cpp` / `.h`，`link` 为区分大小写的名称：`I8254x`、`I8255x`、`IntelGbe`、`IntelGbeRec`、`RTL8169`，缺省为 `IntelGbe`。RTL8169 仅允许 `mode: 1`，且不允许 `dcmmode: 3`。数字形式不自动转换为驱动名称。
 
-新建工程与教学工程使用 starter / teaching v3，公共 ENI 引用参数为顶层 `eni / id / cycle / cpuidx`；ECM v3 另支持默认 1000 ms、范围 1–60000 ms 的 `command_timeout_ms`。双关节模型 v2 声明兼容 ECM 规则 v2，几何默认值不变。v1 定义保持原文，仍可核对历史模板快照。旧 ECM v1 工程可以原样打开、查看源码及保存；因目标规则已变更，需在工程总览显式改用当前规则并选择实际驱动名称，才重新启用结构化主站校验和运行包导出。此操作保留旧规则和配置文件，不隐式转换数字 `link` 或确认机械参数。
+新建工程使用 starter v4 并生成组合配置；旧版教学夹具保留 teaching v3，公共 ENI 引用参数为顶层 `eni / id / cycle / cpuidx`；ECM v3 另支持默认 1000 ms、范围 1–60000 ms 的 `command_timeout_ms`。双关节模型 v2 声明兼容 ECM 规则 v2，几何默认值不变。v1 定义保持原文，仍可核对历史模板快照。旧 ECM v1 工程可以原样打开、查看源码及保存；因目标规则已变更，需在工程总览显式改用当前规则并选择实际驱动名称，才重新启用结构化主站校验和运行包导出。此操作保留旧规则和配置文件，不隐式转换数字 `link` 或确认机械参数。
 
 IgH ENI 适配与 `rocos-igh@9001c87` 一致：按 AutoIncAddr 排序、严格非零身份、活动 SM2/SM3 PDO、字节对齐、单 SyncUnit、PREOP 标量 SDO 与 DC 激活/周期约束。ENI 导入不再序列化为 `slaves`，避免丢失身份和时序声明。ENI 的原始字节只读保留；旧内联 YAML 仅在明确导入 ENI 时转换启动参数，并清除硬件复核确认。
 

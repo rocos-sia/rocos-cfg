@@ -1,7 +1,9 @@
 import { m as msg, MessageError } from '../core/project/messages';
 import { fileAccess, browserDownload } from './file-access';
 import { unpackZip, LIMITS, type ArchiveLimits } from '../core/project/zip';
-import { type Project } from '../core/project/types';
+import { robotConfigFile } from '../core/documents/app-config';
+import { configuration } from '../core/project/configuration';
+import { fileById, type Project } from '../core/project/types';
 import { applyImport, inspectImport, type ImportPlan, type ImportTarget } from '../core/project/import';
 export async function download(bytes: Uint8Array, filename: string, type='application/octet-stream') {
   if(fileAccess().kind==='browser'){browserDownload(bytes,filename,type);return;}
@@ -22,7 +24,11 @@ export async function prepareImport(p: Project, input: File[], limits: ArchiveLi
   const single = input.length === 1 && !input[0].name.toLowerCase().endsWith('.zip') && !input[0].webkitRelativePath;
   const plan = inspectImport(p, all, single, undefined, target);
   if (target) {
-    const prefix = target === 'mjcf' ? 'simulation/models/' : target === 'urdf' ? 'models/' : target === 'ecm' || target === 'igh' ? 'master/' : target === 'mujoco' ? 'simulation/' : target === 'app.payload' ? 'app/payloads/' : 'app/';
+    const robot=robotConfigFile(p),urdf=fileById(p,p.entrypoints.urdf);
+    const base=(robot?.role==='app.robot'?robot:urdf)?.path.split('/').slice(0,-1).join('/')??'robots/robot';
+    const simulation=fileById(p,configuration(p).simulationFileId);
+    const simBase=simulation?.path.split('/').slice(0,-1).join('/')??base+'/mjcf';
+    const prefix = target === 'mjcf' ? (plan.files.some(f=>f.path.startsWith('mjcf/'))?base+'/':simBase+'/') : target === 'urdf' ? base+'/' : target === 'ecm' || target === 'igh' ? 'master/' : target === 'mujoco' ? simBase+'/' : target === 'app.payload' ? 'app/payloads/' : 'app/';
     plan.files.forEach(file => { file.path = prefix + file.path; });
     plan.matchUrdfMeshes = target === 'urdf';
   }

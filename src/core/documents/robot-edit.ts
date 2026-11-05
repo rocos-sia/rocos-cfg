@@ -3,7 +3,7 @@ import { editGeometry, type GeometryView } from './urdf-geometry';
 import { isMap, isSeq, type Document } from 'yaml';
 import { readRobot, controlChain, addJoint, editJoint, type RobotJointParameters } from './urdf';
 import { child, children, serializeXml, isLegacyHardware } from './xml';
-import { appDocument } from './app-config';
+import { appDocument, robotConfigFile, robotField } from './app-config';
 import { editProjectYaml } from '../bus/igh-edit';
 import { fileById, textOf, utf8, type Project } from '../project/types';
 
@@ -56,7 +56,7 @@ export function changeJointParameter(p: Project, name: string, field: keyof Robo
 }
 function chainLabel(p: Project) {
   try {
-    const a = appDocument(fileById(p, p.entrypoints.app)!).data;
+    const a = appDocument(fileById(p, p.entrypoints.app)!,p).data;
     const joints=controlChain(textOf(fileById(p, p.entrypoints.urdf)!), a.robot.base_link, a.robot.tip_link).map(j => j.name).join(' → ');
     return joints?msg('{joints}',{joints}):msg('无可动关节');
   } catch { return msg('尚未形成有效控制链'); }
@@ -84,7 +84,7 @@ export function planRobotChange(project: Project, action: RobotAction): RobotPla
     while (current !== action.base) {
       const joint = robot.joints.find(j => j.child === current); if (!joint) throw new MessageError(msg("Base 到 Tip 之间没有有向链")); current = joint.parent;
     }
-    editYaml(p, p.entrypoints.app, doc => { doc.setIn(['robot', 'base_link'], action.base); doc.setIn(['robot', 'tip_link'], action.tip); });
+    editYaml(p, robotConfigFile(p)?.id??null, doc => { doc.setIn(robotField(p,'base_link'), action.base); doc.setIn(robotField(p,'tip_link'), action.tip); });
     impacts.push(msg("Base / Tip：{v0} → {v1}；已有绑定保持原关节对应，不按序号重排。", {v0:String(action.base), v1:String(action.tip)}));
   } else if (action.kind === 'add') {
     if (!action.joint.trim() || !action.link.trim()) throw new MessageError(msg("名称不能为空"));
@@ -109,10 +109,10 @@ export function planRobotChange(project: Project, action: RobotAction): RobotPla
     for (const element of Array.from(root.getElementsByTagName('*')).filter(node => !isLegacyHardware(node))) for (const attr of Array.from(element.attributes)) {
       if (attr.value === action.name && !refs.has(attr)) warnings.push(msg("扩展/未识别引用 <{v0} {v1}=\"{v2}\"> 保持原文，请核对。", {v0:String(element.tagName), v1:String(attr.name), v2:String(action.name)}));
     }
-    if (action.node === 'link') editYaml(p, p.entrypoints.app, doc => {
-      for (const field of ['base_link', 'tip_link']) if (appDocument(fileById(p,p.entrypoints.app)!).data.robot[field] === action.name) { doc.setIn(['robot', field], value); impacts.push(msg("APP {v0}：{v1} → {v2}", {v0:String(field), v1:String(action.name), v2:String(value)})); }
+    if (action.node === 'link') editYaml(p, robotConfigFile(p)?.id??null, doc => {
+      for (const field of ['base_link', 'tip_link']) if (appDocument(fileById(p,p.entrypoints.app)!,p).data.robot[field] === action.name) { doc.setIn(robotField(p,field), value); impacts.push(msg("APP {v0}：{v1} → {v2}", {v0:String(field), v1:String(action.name), v2:String(value)})); }
     });
-    else for (const [id, key] of [[p.entrypoints.hardware, 'hardware'], [p.entrypoints.binding, 'joint_bindings']] as const) editYaml(p, id, doc => {
+    else for (const [id, key] of [[p.entrypoints.hardware, 'hardware'], [p.entrypoints.binding, 'joint_bindings']] as const) if(id)editYaml(p, id, doc => {
       const list = doc.getIn([key]); if (!isSeq(list)) throw new MessageError(msg("{v0} 必须为列表", {v0:String(key)}));
       list.items.forEach((item, i) => { if (isMap(item) && item.get('joint_name') === action.name) { doc.setIn([key, i, 'joint_name'], value); impacts.push(msg("{v0}[{v1}].joint_name：{v2} → {v3}", {v0:String(key), v1:String(i), v2:String(action.name), v3:String(value)})); } });
     });
@@ -145,14 +145,14 @@ export function planRobotChange(project: Project, action: RobotAction): RobotPla
       const mimic = child(j, 'mimic'); if (mimic && removeJoints.has(mimic.getAttribute('joint') || '')) { j.removeChild(mimic); impacts.push(msg("{v0} 的 mimic 目标已删除，解除关联。", {v0:String(j.getAttribute('name'))})); }
     }
     for (const element of Array.from(root.getElementsByTagName('*')).filter(node => !isLegacyHardware(node))) for (const attr of Array.from(element.attributes)) if (removeLinks.has(attr.value) || removeJoints.has(attr.value)) warnings.push(msg("保留的 <{v0}> 可能引用已删除节点 {v1}，请核对。", {v0:String(element.tagName), v1:String(attr.value)}));
-    editYaml(p, p.entrypoints.app, doc => {
-      for (const field of ['base_link', 'tip_link']) if (removeLinks.has(appDocument(fileById(p,p.entrypoints.app)!).data.robot[field])) { doc.setIn(['robot', field], incoming.parent); impacts.push(msg("APP {v0} 调整为 {v1}", {v0:String(field), v1:String(incoming.parent)})); }
+    editYaml(p, robotConfigFile(p)?.id??null, doc => {
+      for (const field of ['base_link', 'tip_link']) if (removeLinks.has(appDocument(fileById(p,p.entrypoints.app)!,p).data.robot[field])) { doc.setIn(robotField(p,field), incoming.parent); impacts.push(msg("APP {v0} 调整为 {v1}", {v0:String(field), v1:String(incoming.parent)})); }
     });
     editYaml(p, p.entrypoints.hardware, doc => {
       const devices = doc.getIn(['hardware']); if (!isSeq(devices)) throw new MessageError(msg("hardware 必须为列表"));
       devices.items.forEach((device, i) => { if (isMap(device) && removeJoints.has(String(device.get('joint_name')))) { doc.setIn(['hardware', i, 'joint_name'], ''); impacts.push(msg("保留 Hardware {v0}，清除已删除关节名称。", {v0:String(device.get('id'))})); } });
     });
-    editYaml(p, p.entrypoints.binding, doc => {
+    if(p.entrypoints.binding)editYaml(p, p.entrypoints.binding, doc => {
       const list = doc.getIn(['joint_bindings']); if (!isSeq(list)) throw new MessageError(msg("joint_bindings 必须为列表"));
       for (let i = list.items.length - 1; i >= 0; i--) { const item = list.items[i]; if (isMap(item) && removeJoints.has(String(item.get('joint_name')))) { impacts.push(msg("移除 {v0} 的 Drive {v1} 绑定。", {v0:String(item.get('joint_name')), v1:String(item.get('drive_id'))})); list.items.splice(i, 1); } }
     });

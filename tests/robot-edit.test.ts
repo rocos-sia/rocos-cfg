@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createProject } from '../src/core/project/create';
+import { createLegacyProject as createProject } from './fixtures/legacy-project';
 import { fileById, textOf, utf8 } from '../src/core/project/types';
 import { planRobotChange, topologyErrors, changeJointParameter, changeLinkGeometry } from '../src/core/documents/robot-edit';
 import { readRobot } from '../src/core/documents/urdf';

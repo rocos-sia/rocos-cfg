@@ -1,17 +1,19 @@
 import { m as msg, MessageError } from './messages';
 import { stringify } from 'yaml';
 import { masterProfile } from './import';
+import legacyProfiles from '../../../templates/profiles/targets.v1.json' with {type:'json'};
 import { attachProfile, baseTarget } from './profiles';
 import { recordTemplate, robotTemplate, starterData, starterTemplate, deviceTemplate, type DevicePreset } from './templates';
 import { xmlDocument, serializeXml } from '../documents/xml';
 import { uid, utf8, type Project, type FileRole, type MasterKind } from './types';
+import { createAppPackage } from '../documents/app-package';
 import { selectMaster } from './configuration';
 export function makeFile(path: string, role: FileRole, text: string) {
   return { id: uid(), path, role, owner: role, bytes: utf8.encode(text), encoding: 'utf-8' };
 }
 export interface ProjectOptions { pdoTemplate?: DevicePreset; robotTemplate?:'robot.two-axis'; parameters?:{prefix?:string;linkLength?:number} }
-export function createProject(name: string, kind: MasterKind, options:ProjectOptions={}): Project {
-  const now = new Date().toISOString(),data=starterData();
+export function createProject(name: string, kind: MasterKind, options:ProjectOptions={}, legacy=false): Project {
+  const now = new Date().toISOString(),data=starterData(legacy);
   if(options.pdoTemplate && options.pdoTemplate!=='blank' && kind!=='igh')throw new MessageError(msg('PDO 模板仅适用于 ROCOS-IGH；ROCOS-ECM 请导入 ENI。'));
   const preset=options.pdoTemplate&&options.pdoTemplate!=='blank'?deviceTemplate(options.pdoTemplate):undefined;
   const master = makeFile(`master/${kind}.yaml`, kind, stringify(preset?{version:1,master:{master_id:0,period_us:1000,cpu:null,dc:'off',preop_timeout_ms:10000,op_timeout_ms:60000,pdo_config_attempts:5},slaves:[{id:0,name:preset.defaults.name,...preset.data,dc_ref:true}]}:data[kind]));
@@ -19,9 +21,9 @@ export function createProject(name: string, kind: MasterKind, options:ProjectOpt
   const hardware = makeFile('app/hardware_config.yaml', 'hardware', stringify(data.hardware));
   const binding = makeFile('app/joint_binding.yaml', 'binding', stringify(data.binding));
   const app = makeFile('app/config.yaml', 'app', stringify(data.app));
-  const project:Project={ id: uid(), name, description: '', createdAt: now, modifiedAt: now, revision: 0, snapshotId: uid(), targets: { app: baseTarget('app'), master: masterProfile(kind) }, entrypoints: { master: { kind, fileId: master.id, eniFileId: null }, urdf: robot.id, hardware: hardware.id, binding: binding.id, app: app.id }, files: [master, robot, hardware, binding, app], references: [], packageMap: {}, editor: { buffers: {}, confirmations: {} } };
+  const project:Project={ id: uid(), name, description: '', createdAt: now, modifiedAt: now, revision: 0, snapshotId: uid(), targets: { app: legacy?structuredClone(legacyProfiles.app.target):baseTarget('app'), master: masterProfile(kind) }, entrypoints: { master: { kind, fileId: master.id, eniFileId: null }, urdf: robot.id, hardware: hardware.id, binding: binding.id, app: app.id }, files: [master, robot, hardware, binding, app], references: [], packageMap: {}, editor: { buffers: {}, confirmations: {} } };
   attachProfile(project,'master');attachProfile(project,'app');
-  recordTemplate(project,starterTemplate(),{},[master.id,robot.id,hardware.id,binding.id,app.id]);
+  recordTemplate(project,starterTemplate(legacy),{},[master.id,robot.id,hardware.id,binding.id,app.id]);
   if(preset)recordTemplate(project,preset,{name:preset.defaults.name,dc_ref:1},[master.id]);
   if(options.robotTemplate){
     const template=robotTemplate(),prefix=options.parameters?.prefix??template.defaults.prefix,length=options.parameters?.linkLength??template.defaults.linkLength;
@@ -42,6 +44,7 @@ export function createProject(name: string, kind: MasterKind, options:ProjectOpt
     recordTemplate(project,template,{prefix,linkLength:length},[robot.id,app.id]);
     project.editor.notices=[{fileId:robot.id,message:template.notice}];
   }
+  if(!legacy)createAppPackage(project);
   return project;
 }
 

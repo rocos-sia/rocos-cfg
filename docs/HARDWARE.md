@@ -1,6 +1,8 @@
 # Hardware 与 Joint Binding 配置
 
-当前实现依据 `rocos-app` 提交 `7093bcd` 的 `src/hardware.cpp`、`src/joint_binding.cpp`、`src/robot.cpp` 和 `src/position_controller.cpp`。配置器区分原生解析器接受的文件与可以完整交给默认位置控制器使用的配置：原生解析器允许缺省信号并提供机械参数默认值，但这些默认值不能证明实际机械结构已配置正确。
+当前新工程依据 `rocos-app@2d2d945` 的组合配置、硬件 `joint_name` 和 URDF mimic 规则：绑定直接保存在 `robots/<name>/hardware.yaml`，不生成 `joint_binding.yaml`。URDF mimic 支持多级源、倍率和偏移；无驱动 mimic 不要求绑定，有驱动 mimic 保留驱动槽位。配置器检查源存在性、循环、有限系数和联动限位。仿真启动配置位于同一机器人目录的 `mjcf/mujoco.yaml`，默认引用 `../hardware.yaml`，mesh 与 URDF 共用。
+
+以下旧格式兼容与原生解析测试依据 `rocos-app` 提交 `7093bcd` 的 `src/hardware.cpp`、`src/joint_binding.cpp`、`src/robot.cpp` 和 `src/position_controller.cpp`。配置器区分原生解析器接受的文件与可以完整交给默认位置控制器使用的配置：原生解析器允许缺省信号并提供机械参数默认值，但这些默认值不能证明实际机械结构已配置正确。
 
 ## 配置流程
 
@@ -12,7 +14,7 @@
 
 绑定表支持非连续 Driver ID，并将模型顺序与总线顺序分开。当前 APP 使用 Hardware ID 直接查找同 ID 的运行时 Slave。修改已有绑定保留 YAML 注释和扩展字段。
 
-工程入口缺少绑定文件时，硬件页按当前 APP 的回退规则显示建议：控制关节数量必须等于 Driver 数量，按模型控制链顺序对应 **Hardware YAML 中 Driver 的出现顺序**，不按 ID 排序或名称猜测。用户预览后可生成显式绑定文件，并同步 APP 引用；不覆盖同路径已有文件。缺少显式绑定的工程仍不能导出被标记为有效的运行包。
+旧格式工程入口缺少绑定文件时，硬件页按当前 APP 的回退规则显示建议：控制关节数量必须等于 Driver 数量，按模型控制链顺序对应 **Hardware YAML 中 Driver 的出现顺序**，不按 ID 排序或名称猜测。用户预览后可生成显式绑定文件，并同步 APP 引用；不覆盖同路径已有文件。缺少显式绑定的工程仍不能导出被标记为有效的运行包。
 
 ## 信号与机械参数
 
@@ -30,7 +32,7 @@ IO 数字通道配置范围为 0–32。虽然当前 APP 解析器接受多个�
 
 校验要求明确填写有限限位、非零机械换算、int32 零点，并检查位置、速度和力矩限值换算后的整数范围。`torque_source` 仅提供 `load_torque` 和 `secondary_position`；对应输入缺少时提示负载力矩读取会返回 0。未知原生忽略字段保留并报告，不假称其生效。
 
-硬件参数和 EtherCAT 数据关联以 `hardware_config.yaml` 为准，关节绑定以 `joint_binding.yaml` 为准。URDF 残留的 `<hardware>` 作为不透明扩展保留，不解析其限位、主站/从站、PDO 或换算字段，不参与绑定、校验、资源依赖扫描和草稿生成，也不自动迁移或覆盖 YAML 配置。标准 URDF `<limit>` 仍供模型编辑、预览和差异核对使用；continuous 关节没有标准 limit 时保持空值，不从旧扩展或 APP 默认值补齐。读取与工程往返保留原文件；编辑标准字段时保留旧扩展内容。
+新版硬件参数、EtherCAT 数据和关节关联都以 `hardware.yaml` 为准；旧格式仍使用 `hardware_config.yaml` 和 `joint_binding.yaml`。URDF 残留的 `<hardware>` 作为不透明扩展保留，不解析其限位、主站/从站、PDO 或换算字段，不参与绑定、校验、资源依赖扫描和草稿生成，也不自动迁移或覆盖 YAML 配置。标准 URDF `<limit>` 仍供模型编辑、预览和差异核对使用；continuous 关节没有标准 limit 时保持空值，不从旧扩展或 APP 默认值补齐。读取与工程往返保留原文件；编辑标准字段时保留旧扩展内容。
 
 测试锁定的旧版 `rocos-app@7093bcd` Model 仍读取 `<hardware><limit>`；原生测试记录这一旧消费端差异，不将它作为配置器的解析规则，也不据此宣称新版 APP 的限位优先级已经验证。
 
@@ -56,7 +58,7 @@ APP Model 的独立测试：
 ROCOS_APP_SOURCE=/path/to/rocos-app npm test -- tests/consumer/model.test.ts
 ```
 
-额外需要 urdfdom、TinyXML/TinyXML2、NLopt、Boost date_time/system 开发库。测试编译原始 Model、Logger、仓库内 KDL parser 和 TRAC-IK，构造本地运动学模型，不构造 Robot/Hardware、不运行主站。日志只写入临时测试目录。覆盖实际 Talon 七关节链、XML 顺序与控制链顺序、固定段、分支、旧消费端扩展限位/默认值与配置器忽略策略的差异，以及无效模型。mimic 不会由当前 Model 作为耦合自由度处理，floating/planar 会被 KDL 当作固定段；配置器因此仍拒绝将这些类型用于控制链。
+额外需要 urdfdom、TinyXML/TinyXML2、NLopt、Boost date_time/system 开发库。测试编译原始 Model、Logger、仓库内 KDL parser 和 TRAC-IK，构造本地运动学模型，不构造 Robot/Hardware、不运行主站。日志只写入临时测试目录。覆盖实际 Talon 七关节链、XML 顺序与控制链顺序、固定段、分支、旧消费端扩展限位/默认值与配置器忽略策略的差异，以及无效模型。该旧 Model 不将 mimic 作为耦合自由度处理，floating/planar 会被 KDL 当作固定段；这些测试只描述历史消费者，不代表新版 Pinocchio 的 mimic 行为。配置器继续拒绝 floating/planar 控制链。
 
 尚未覆盖所有原生异常/类型组合；ECM SDK、共享内存 ABI 和实机行为另行验证。
 

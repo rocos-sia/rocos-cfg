@@ -1436,5 +1436,22 @@
   "总线拓扑由 ENI 提供，创建工程后导入 ENI。产品 PDO 模板用于兼容旧版 IgH 内联配置。": "Bus topology comes from ENI. Import an ENI after creating the project. Product PDO templates support legacy inline IgH configurations.",
   "省略时沿用 ENI 的 DC 设置": "When omitted, use the DC settings from ENI.",
   "ROCOS-IGH 与 ROCOS-ECM 均引用 ENI 配置总线，分别保留原生启动参数。": "ROCOS-IGH and ROCOS-ECM both reference ENI for bus configuration and retain their native startup options.",
-  "从站固定地址须为非零且唯一的 16 位整数": "Slave station addresses must be unique nonzero 16-bit integers."
+  "从站固定地址须为非零且唯一的 16 位整数": "Slave station addresses must be unique nonzero 16-bit integers.",
+  "绑定关节名称": "Bound joint name",
+  "绑定保存在 hardware.yaml 的 joint_name；无驱动 mimic 可留空。": "Bindings are stored in hardware.yaml joint_name; undriven mimic joints can remain unbound.",
+  "Mimic：{joint}；位置按源关节联动，是否占驱动槽位由 hardware.yaml 决定。": "Mimic: {joint}; position follows the source joint. hardware.yaml determines whether it occupies a drive slot.",
+  "机器人配置": "Robot configuration",
+  "默认与 APP 共用 hardware.yaml；修改会同时影响 APP 和仿真。": "Shares hardware.yaml with APP by default; edits affect both APP and simulation.",
+  "mimic 联动限位无可行解": "Mimic joint limits have no feasible intersection",
+  "mimic 源关节不存在": "Mimic source joint does not exist",
+  "mimic 源或驱动关节不在 Base 下": "Mimic source or driven joint is outside the selected base",
+  "当前 APP 不支持 floating/planar 控制链": "APP does not support floating or planar control chains",
+  "mimic 目标和系数必须有效": "Mimic source and coefficients must be valid",
+  "请选择有效的驱动器": "Select a valid drive",
+  "通过 hardware.yaml 的 joint_name 关联关节和驱动器；旧工程仍保留独立绑定文件。": "Associates joints with drives using hardware.yaml joint_name; legacy projects retain their binding files.",
+  "驱动器关联的 URDF 关节名称；mimic 有映射时占驱动槽位，无映射时无需绑定。": "URDF joint bound to this drive; a mapped mimic joint occupies a drive slot, while an undriven mimic needs no binding.",
+  "设备与负载配置": "Device and payload configuration",
+  "新版负载由 device.yaml 的工具与辨识记录管理；无工具时保持 null。": "Payloads are managed by tool and identification records in device.yaml; keep null when no tool is installed.",
+  "新版负载由 device.yaml 的工具与辨识记录管理，请导入完整工具配置。": "Payloads are managed by tool and identification records in device.yaml. Import the complete tool configuration.",
+  "请先处理机器人配置源码草稿": "Apply or discard the robot configuration draft first"
 }

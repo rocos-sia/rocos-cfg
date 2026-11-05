@@ -1,11 +1,12 @@
 import { configuration, masterKinds, masterProject, applicationProject } from './project/configuration';
 import { m as msg, messageFields, errorMessage, type MessageInput } from './project/messages';
+import { hardwareDocument } from './hardware/schema';
 import { validateHardware } from './hardware/validation';
 import { modules } from './modules';
 import type { ModuleRegistry } from './modules/registry';
 import { validateModules } from './modules/project';
 import { buildBusCatalog } from './bus/catalog';
-import { appDocument } from './documents/app-config';
+import { appDocument, robotConfigFile, robotField } from './documents/app-config';
 import { controlChain } from './documents/urdf';
 import { activeFileIds, collectReferences } from './project/references';
 import { fileById, textOf, type Project, type Diagnostic } from './project/types';
@@ -20,19 +21,20 @@ export function validateProject(p: Project, registry: ModuleRegistry = modules):
   const add = (code: string, message: MessageInput, fileId?: string, field?: string, severity: Diagnostic['severity']='error') => diagnostics.push({code,...messageFields(message),fileId,field,severity});
   if(!Object.values(config.enabled).some(Boolean))add('configuration.empty','请至少启用一个配置模块');
   const references = collectReferences(p, registry), active = activeFileIds(p, references, registry);
-  const expected = config.enabled.app?[{id:p.entrypoints.app,role:'app'}, {id:p.entrypoints.urdf,role:'urdf'}, {id:p.entrypoints.hardware,role:'hardware'}, {id:p.entrypoints.binding,role:'binding'}]:[];
+  const legacyApp=robotConfigFile(p)?.role!=='app.robot';
+  const expected = config.enabled.app?[{id:p.entrypoints.app,role:'app'}, {id:p.entrypoints.urdf,role:'urdf'}, {id:p.entrypoints.hardware,role:'hardware'}, ...(p.entrypoints.binding||legacyApp?[{id:p.entrypoints.binding,role:'binding'}]:[])]:[];
   for (const {id,role} of expected) if (!fileById(p,id) || fileById(p,id)?.role !== role) add('entrypoint.missing',msg("缺少有效的 {v0} 入口", {v0:String(role)}),id||undefined);
   diagnostics.push(...validateModules(p, active, registry));
   for(const notice of p.editor.notices || []) add('editor.review',notice,notice.fileId,undefined,'warning');
   for(const id of Object.keys(p.editor.buffers).filter(id => active.has(id))) add('editor.pending',msg("存在未应用的源码草稿"),id);
   for(const ref of references.filter(r => active.has(r.sourceFileId))) if(ref.state!=='internal') add('reference.'+ref.state,msg("{v0}：{v1} {v2}", {v0:String(ref.field), v1:String(ref.original), v2:(ref.state==='external' ? msg("由目标环境提供").text : msg("未找到").text)}),ref.sourceFileId,ref.field,ref.state==='external'?'warning':'error');
-  for (const [sourceId, field, targetId] of [...(config.enabled.app?[[p.entrypoints.app,'robot.urdf',p.entrypoints.urdf], [p.entrypoints.app,'robot.hardware_config',p.entrypoints.hardware], [p.entrypoints.app,'robot.joint_binding',p.entrypoints.binding]]:[]), ...(config.enabled.bus?masterKinds(p).filter(k=>k==='ecm'||references.some(r=>r.sourceFileId===masterProject(p,k).entrypoints.master.fileId&&r.field==='eni')).map(k=>{const m=masterProject(p,k).entrypoints.master;return [m.fileId,'eni',m.eniFileId];}):[])] as (string|null)[][]) {
+  for (const [sourceId, field, targetId] of [...(config.enabled.app?[[robotConfigFile(p)?.id??null,robotField(p,'urdf').join('.'),p.entrypoints.urdf], [robotConfigFile(p)?.id??null,robotField(p,'hardware_config').join('.'),p.entrypoints.hardware], ...(p.entrypoints.binding||legacyApp?[[p.entrypoints.app,'robot.joint_binding',p.entrypoints.binding]]:[])]:[]), ...(config.enabled.bus?masterKinds(p).filter(k=>k==='ecm'||references.some(r=>r.sourceFileId===masterProject(p,k).entrypoints.master.fileId&&r.field==='eni')).map(k=>{const m=masterProject(p,k).entrypoints.master;return [m.fileId,'eni',m.eniFileId];}):[])] as (string|null)[][]) {
     const ref=references.find(r=>r.sourceFileId===sourceId&&r.field===field);
     if(!ref||ref.state!=='internal'||ref.targetFileId!==targetId) add('reference.entrypoint',msg("{v0} 必须引用当前工程入口配置", {v0:String(field)}),sourceId||undefined,field||undefined);
   }
   let app:Record<string,any>|undefined;
   const appFile=fileById(p,p.entrypoints.app);
-  try{if(config.enabled.app&&appFile)app=appDocument(appFile).data;}catch{ /* Module validation reports malformed startup files. */ }
+  try{if(config.enabled.app&&appFile)app=appDocument(appFile,p).data;}catch{ /* Module validation reports malformed startup files. */ }
   if(config.enabled.bus&&app&&fileById(p,p.entrypoints.master.fileId)&&app.robot.ecat_id!==bus.masterId)add('app.master-id',msg("APP ecat_id 与主站 ID 不一致"),p.entrypoints.app!,'robot.ecat_id');
   // APP 7093bcd Hardware::scanForEcatBus recognizes a bus only when slave 0
   // has manually configured variables in both directions.
@@ -44,7 +46,7 @@ export function validateProject(p: Project, registry: ModuleRegistry = modules):
   }
   const urdf=fileById(p,p.entrypoints.urdf);
   if(config.enabled.app && urdf && app) try {
-    const chain=controlChain(textOf(urdf),app.robot?.base_link,app.robot?.tip_link);
+    const chain=controlChain(textOf(urdf),app.robot?.base_link,app.robot?.tip_link,fileById(p,p.entrypoints.hardware)?hardwareDocument(fileById(p,p.entrypoints.hardware)!).devices.filter(d=>d?.type==='driver').map(d=>d.joint_name):[]);
     if(!chain.length) add('binding.empty',msg("控制链没有可动关节"),urdf.id);
     diagnostics.push(...validateHardware(p,bus,chain));
   } catch(e) { add('binding.chain',errorMessage(e,true),urdf.id); diagnostics.push(...validateHardware(p,bus)); }

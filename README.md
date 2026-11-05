@@ -199,8 +199,9 @@ APP 配置页的“附加配置模块”支持创建并关联末端负载文件�
 工程可按需启用「01 总线配置」「02 应用配置」「03 仿真配置」，最后在「04 校验和导出」统一检查。新建工程和工程总览均可选择模块；停用只停止该模块参与运行校验与导出，已有文件和草稿仍随 `.rcproj` 保存。
 
 - 总线页可同时保留 IGH、ECM，并分别编辑各自启动参数。公共主站 ID / 周期可显式同步；PDO 使用同一目录模型和过程映像视图，ECM 的 PDO 来源为只读 ENI，不生成或改写 ENI。
-- APP 分为启动参数、URDF、Hardware、Binding、Payload。PDO 来源独立选择；「复用主站 PDO 映射」仅补全唯一兼容的空映射。未启用总线时可手填硬件 ID 与 PDO 名称。
-- 仿真页对应 ROCOS-MUJOCO 的 `config.yaml` 和 `hardware_config.yaml`，支持复制主站 ID / 周期、复制 APP 硬件映射、导入 MJCF 及资源目录。MuJoCo 3.4.0 WASM 随应用本地打包；模型在统一校验/运行导出前由 WASM 编译，并检查驱动关节是否为有效 hinge/slide。预览显示静态几何与网格，暂不显示纹理和高度场，也不执行共享内存控制程序。
+- 新建 APP 工程采用 rocos-app `2d2d945` 的 `schema_version: 1` 组合配置：`app/config.yaml` 选择机器人、设备和用户配置；模型与 `hardware.yaml` 放在 `robots/<name>/`。绑定页直接维护驱动器的 `joint_name`，不再生成 `joint_binding.yaml`；旧工程仍按原格式打开和保存。导出时为 APP 生成机器人目录下的 `master.yaml`（IgH v2 或 ECM 命名参数），独立主站配置保留原格式与 ENI。PDO 来源独立选择；「复用主站 PDO 映射」仅补全唯一兼容的空映射。未启用总线时可手填硬件 ID 与 PDO 名称。
+- URDF 支持 `mimic` 源、`multiplier`、`offset` 和多级引用；无驱动 mimic 不要求绑定，有驱动 mimic 保留硬件槽位。检查缺失源、循环引用、非有限系数和联动限位是否可满足。工具/负载通过 `device.yaml` 的选择器和辨识记录管理；无工具保持 `null`，不生成虚构的辨识结果。
+- 仿真启动配置默认位于 `robots/<name>/mjcf/mujoco.yaml`，模型入口为同目录的 `scene.xml`，`hardware_config: ../hardware.yaml` 与 APP 共用同一文件；修改会同时影响两端。支持复用主站 ID / 周期、导入 MJCF 及资源目录，识别 include 继承的 `compiler.meshdir / texturedir / assetdir`，可直接引用 URDF 共用的 mesh 目录。MJCF 保持相对目录结构导出，不自动转换 URDF 或生成联动物理约束。MuJoCo 3.4.0 WASM 随应用本地打包；模型在统一校验/运行导出前由 WASM 编译，并检查驱动关节是否为有效 hinge/slide。预览显示静态几何与网格，暂不显示纹理和高度场，也不执行共享内存控制程序。
 - 目录导出包含所有启用模块及其递归文件依赖，保留目录关系。桌面版与支持 File System Access API 的浏览器可写入新目录；其余浏览器可下载相同目录结构的 ZIP。模块之间明确引用的依赖仍会被纳入导出。
 
 旧工程默认启用总线与 APP；模块状态和双主站选择保存在工程编辑状态内。项目级 `ui-ux-pro-max` 技能位于 `.agents/skills/ui-ux-pro-max`。

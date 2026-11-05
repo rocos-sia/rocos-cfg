@@ -1,0 +1,37 @@
+import { test, expect } from '@playwright/test';
+import { createProject } from '../../src/core/project/create';
+import { configure, enableSimulation } from '../../src/core/project/configuration';
+import { planHardware } from '../../src/core/hardware/edit';
+import { changeJointParameter } from '../../src/core/documents/robot-edit';
+import { saveProject } from '../../src/core/project/archive';
+
+test('current package edits direct hardware bindings and mimic coefficients',async({page},info)=>{
+ let project=createProject('Current schema','igh',{robotTemplate:'robot.two-axis',parameters:{prefix:'arm',linkLength:0.3}});
+ configure(project).enabled.bus=false;
+ project=planHardware(project,{kind:'add',type:'driver',id:0,joint:'arm_joint_1'}).project;
+ changeJointParameter(project,'arm_joint_2','mimic','arm_joint_1');
+ changeJointParameter(project,'arm_joint_2','mimicMultiplier','-1');
+ enableSimulation(project);
+ const faults:string[]=[];page.on('pageerror',error=>faults.push(error.message));
+ await page.goto('/');
+ await page.locator('input[type=file]').first().setInputFiles({name:'current.rcproj',mimeType:'application/zip',buffer:Buffer.from(await saveProject(project))});
+ await page.getByRole('menuitem',{name:'应用配置',exact:true}).click();
+ await expect(page.getByText('机器人配置',{exact:true})).toBeVisible();
+ await expect(page.getByRole('textbox',{name:'robot_config',exact:true})).toHaveValue('../robots/arm/robot.yaml');
+ await page.getByRole('tab',{name:'硬件',exact:true}).click();
+ await expect(page.getByRole('textbox',{name:'绑定关节名称',exact:true})).toHaveValue('arm_joint_1');
+ await page.getByRole('tab',{name:'绑定',exact:true}).click();
+ await expect(page.getByText('绑定保存在 hardware.yaml 的 joint_name；无驱动 mimic 可留空。',{exact:true})).toBeVisible();
+ await expect(page.getByRole('combobox',{name:'arm_joint_2 驱动器绑定',exact:true})).toBeEnabled();
+ await expect(page.getByRole('tab',{name:'Binding 源文件',exact:true})).toHaveCount(0);
+ await page.getByRole('tab',{name:'模型',exact:true}).click();
+ await page.getByText('arm_joint_2 [revolute · mimic]',{exact:true}).first().click();
+ await expect(page.locator('#joint-mimicMultiplier')).toHaveValue('-1');
+ await page.locator('#joint-mimicOffset').fill('0.1');await page.locator('#joint-mimicOffset').blur();
+ await expect(page.locator('#joint-mimicOffset')).toHaveValue('0.1');
+ await page.getByRole('menuitem',{name:'仿真配置',exact:true}).click();
+ await expect(page.getByRole('textbox',{name:'硬件相对路径',exact:true})).toHaveValue('../hardware.yaml');
+ await expect(page.getByText('默认与 APP 共用 hardware.yaml；修改会同时影响 APP 和仿真。',{exact:true})).toBeVisible();
+ await page.screenshot({path:info.outputPath('shared-hardware.png'),fullPage:true});
+ expect(faults).toEqual([]);
+});

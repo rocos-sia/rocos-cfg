@@ -54,9 +54,9 @@ describe('optional configuration modules',()=>{
  });
  it('exports simulation-only dependencies and blocks missing model resources',()=>{
   const p=createProject('Simulation','igh');configure(p).enabled={bus:false,app:false,simulation:false};enableSimulation(p);
-  p.files.push(makeFile('simulation/models/scene.xml','mjcf','<mujoco><worldbody><geom type="sphere" size=".1"/></worldbody></mujoco>'));
+  p.files.push(makeFile('robots/robot/mjcf/scene.xml','mjcf','<mujoco><worldbody><geom type="sphere" size=".1"/></worldbody></mujoco>'));
   expect(validateProject(p).filter(d=>d.severity==='error')).toEqual([]);
-  expect(planRuntime(p).files.map(f=>f.path).sort()).toEqual(['ROCOS-DEPLOYMENT.txt','simulation/config.yaml','simulation/hardware_config.yaml','simulation/models/scene.xml']);
+  expect(planRuntime(p).files.map(f=>f.path).sort()).toEqual(['ROCOS-DEPLOYMENT.txt','robots/robot/hardware.yaml','robots/robot/mjcf/mujoco.yaml','robots/robot/mjcf/scene.xml']);
   fileById(p,p.files.find(f=>f.role==='mjcf')!.id)!.bytes=utf8.encode('<mujoco><asset><mesh file="missing.stl"/></asset></mujoco>');
   expect(validateProject(p).some(d=>d.code==='reference.missing')).toBe(true);
  });

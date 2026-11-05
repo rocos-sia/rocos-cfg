@@ -2,6 +2,7 @@ import { ParameterLabel } from './ParameterHelp';
 import { useLocalizedMessage } from './useLocalizedMessage';
 import { m as msg, MessageError } from '../core/project/messages';
 import { errorText, diagnosticText, t } from '../i18n';
+import { robotConfigFile } from '../core/documents/app-config';
 import { useState } from 'react';
 import { Alert, Button, Card, Input, Modal, Select, Space, Table, Tag } from 'antd';
 import type { Project } from '../core/project/types';
@@ -21,6 +22,11 @@ export function Modules({ p }: { p: Project }) {
   const ui = adapter && moduleUI.find(u => u.id === adapter.id && u.version === adapter.version), Editor = ui?.Editor;
   let issues: string[] = [];
   if (adapter && file) try { issues = adapter.validate(adapter.parse(file), { project: p, file }).map(d => diagnosticText(d)); } catch (e) { issues = [errorText(e,true)]; }
+  if(robotConfigFile(p)?.role==='app.robot'){
+    const deviceId=collectReferences(p).find(r=>r.sourceFileId===p.entrypoints.app&&r.field==='device_config')?.targetFileId;
+    const device=p.files.find(f=>f.id===deviceId);
+    return <Card title={t('设备与负载配置')}><p>{t('新版负载由 device.yaml 的工具与辨识记录管理；无工具时保持 null。')}</p>{device&&<SourceEditor file={device}/>}</Card>;
+  }
   return <>
     <Card title={t("附加配置模块")} className="space-top" extra={<Button onClick={() => setCreating(true)}>{t("新建附加配置")}</Button>}>
       <p>{t("附加配置按文件实例保存。未知可选模块原样保留；参与运行依赖时须安装支持该模块的应用版本后再导出。")}</p>

@@ -1,8 +1,9 @@
+import { hardwareDocument } from '../hardware/schema';
 import { collectReferences } from './references';
 import { m as msg, MessageError, errorMessage, messageFields, type MessageTemplate } from './messages';
 import { buildBusCatalog } from '../bus/catalog';
 import { controlChainFromRobot, readRobot, type RobotJoint, type RobotModel } from '../documents/urdf';
-import { appDocument } from '../documents/app-config';
+import { appDocument, robotConfigFile } from '../documents/app-config';
 import { fileById, textOf, type BusCatalog, type Project } from './types';
 
 export interface ProjectAnalysis {
@@ -14,7 +15,7 @@ export interface ProjectAnalysis {
 // merely to derive bus/model views. Views represent committed document bytes.
 export function analysisInput(p:Project):Project {
   const references=collectReferences({...p,files:p.files.filter(file=>file.id===p.entrypoints.master.fileId||file.role==='eni')}).filter(ref=>ref.sourceFileId===p.entrypoints.master.fileId&&ref.field==='eni');
-  const ids=new Set([...references.map(ref=>ref.targetFileId),p.entrypoints.master.fileId,p.entrypoints.master.eniFileId,p.entrypoints.urdf,p.entrypoints.app,p.targets.master.profile?.fileId,p.targets.app.profile?.fileId]);
+  const ids=new Set([...references.map(ref=>ref.targetFileId),p.entrypoints.master.fileId,p.entrypoints.master.eniFileId,p.entrypoints.urdf,p.entrypoints.hardware,p.entrypoints.app,robotConfigFile(p)?.id,p.targets.master.profile?.fileId,p.targets.app.profile?.fileId]);
   return {id:p.id,revision:p.revision,snapshotId:p.snapshotId,name:p.name,description:'',createdAt:p.createdAt,modifiedAt:p.modifiedAt,
     entrypoints:p.entrypoints,targets:p.targets,files:p.files.filter(file=>ids.has(file.id)),
     packageMap:{},references,editor:{buffers:{},confirmations:{},configuration:p.editor.configuration}};
@@ -36,8 +37,8 @@ export function analyzeProject(p:Project,workspaceEpoch:number):ProjectAnalysis 
   try{
     if(!urdf||!app)throw new MessageError(msg("请先配置 APP 与 URDF"));
     if(!result.robot)throw new MessageError(result.robotError?{message:result.robotError,text:result.robotErrorText}:msg('URDF 无法解析'));
-    const startup=appDocument(app).data?.robot;
-    result.chain=controlChainFromRobot(result.robot,startup?.base_link,startup?.tip_link);
+    const startup=appDocument(app,p).data?.robot;
+    result.chain=controlChainFromRobot(result.robot,startup?.base_link,startup?.tip_link,fileById(p,p.entrypoints.hardware)?hardwareDocument(fileById(p,p.entrypoints.hardware)!).devices.filter(d=>d?.type==='driver').map(d=>d.joint_name):[]);
   }catch(error){const fields=messageFields(errorMessage(error));result.chainError=fields.message;if(fields.text)result.chainErrorText=fields.text;}
   return result;
 }

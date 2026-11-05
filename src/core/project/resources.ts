@@ -3,7 +3,7 @@ import { fileModule, readonlyFile } from '../modules/project';
 import { collectReferences } from './references';
 import { safePath, checkPaths } from './paths';
 import { fileById, type FileReference, type Project } from './types';
-const criticalRoles: Record<string, 'urdf' | 'hardware' | 'binding' | 'eni'> = { 'robot.urdf': 'urdf', 'robot.hardware_config': 'hardware', 'robot.joint_binding': 'binding', eni: 'eni' };
+const criticalRoles: Record<string, string> = { 'robot.urdf': 'urdf', 'robot.hardware_config': 'hardware', 'robot.joint_binding': 'binding', eni: 'eni', robot_config:'app.robot', device_config:'app.device' };
 export function mapReference(p: Project, ref: FileReference, target: { fileId: string } | { directory: string } | { external: true } | null) {
   const current = collectReferences(p).find(r => r.sourceFileId === ref.sourceFileId && r.field === ref.field && r.original === ref.original);
   if (!current) throw new MessageError(msg("资源引用已变化，请重新选择"));
@@ -16,9 +16,9 @@ export function mapReference(p: Project, ref: FileReference, target: { fileId: s
   } else if (target && 'fileId' in target) {
     if (current.kind === 'directory') throw new MessageError(msg("此引用需要目录"));
     const file = fileById(p, target.fileId); if (!file) throw new MessageError(msg("目标文件不存在"));
-    const role = criticalRoles[ref.field]; if (role && file.role !== role) throw new MessageError(msg("此引用需要 {v0} 文件", {v0:String(role)}));
+    const role = criticalRoles[ref.field]??(source.role==='app.robot'&&['urdf','hardware_config'].includes(ref.field)?ref.field==='urdf'?'urdf':'hardware':undefined); if (role && file.role !== role) throw new MessageError(msg("此引用需要 {v0} 文件", {v0:String(role)}));
     if (role === 'eni') p.entrypoints.master.eniFileId = file.id;
-    else if (role) p.entrypoints[role] = file.id;
+    else if (role==='urdf'||role==='hardware'||role==='binding') p.entrypoints[role] = file.id;
     next.targetFileId = file.id; next.state = 'internal';
   } else if (target && 'directory' in target) {
     if (current.kind !== 'directory') throw new MessageError(msg("此引用需要文件"));

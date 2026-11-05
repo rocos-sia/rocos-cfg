@@ -1,4 +1,4 @@
-import { configuration, configure, masterKinds } from '../core/project/configuration';
+import { configuration, selectAppMaster, masterKinds } from '../core/project/configuration';
 import { ParameterLabel, ParameterHelp } from '../components/ParameterHelp';
 import { parameterHelp } from '../components/parameterHelp';
 import { DiagnosticField, useDiagnosticRequest } from '../components/DiagnosticNavigation';
@@ -10,7 +10,8 @@ import { Alert, Button, Card, Checkbox, Input, InputNumber, Modal, Select, Space
 import { type Project, type MasterKind, fileById } from '../core/project/types';
 import type { ProjectAnalysis } from '../core/project/analysis';
 import { axes, bindingDocument, channels, hardwareDocument, hardwareTypes, isRecord, signals, type HardwareType } from '../core/hardware/schema';
-import { fillHardwareMappings, bindJoint, legacyBindingSuggestion, planHardware, planLegacyBinding } from '../core/hardware/edit';
+import { robotConfigFile } from '../core/documents/app-config';
+import { fillHardwareMappings, bindJoint, legacyBindingSuggestion, planLegacyBinding, planHardware } from '../core/hardware/edit';
 import { validateHardware } from '../core/hardware/validation';
 import { useProject } from '../store';
 import { Fields, type FieldSpec } from '../components/Fields';
@@ -29,11 +30,12 @@ export function Hardware({p,analysis,view}:{p:Project;analysis?:ProjectAnalysis;
   if(!file)return <Alert type="warning" message={t("请先导入或创建 Hardware 文件，再配置设备。")}/>;
   let devices:Record<string,any>[]=[],binds:Record<string,any>[]=[],parseError='';
   try{const hw=hardwareDocument(file);if(!Array.isArray(hw.data?.hardware)||hw.devices.some(d=>!isRecord(d)))throw new MessageError(msg("hardware 必须为设备映射列表"));devices=hw.devices;}catch(e){parseError=errorText(e,true);}
-  try{if(binding)binds=bindingDocument(binding).bindings.filter(isRecord);}catch(e){parseError+=errorText(e,true);}
+  try{binds=binding?bindingDocument(binding).bindings.filter(isRecord):devices.filter(d=>d.type==='driver').map(d=>({joint_name:d.joint_name,drive_id:d.id}));}catch(e){parseError+=errorText(e,true);}
+  const native=robotConfigFile(p)?.role==='app.robot';
+  let legacy:ReturnType<typeof legacyBindingSuggestion>=[],legacyError='';
+  if(!binding&&!native)try{legacy=legacyBindingSuggestion(p);}catch(e){legacyError=errorText(e,true);}
   const manual=!configuration(p).enabled.bus;
   const bus=analysis.catalog,d=devices[selected],chain=analysis.chain,chainError=analysis.chainError?diagnosticText({message:analysis.chainError,text:analysis.chainErrorText}):'';
-  let legacy:ReturnType<typeof legacyBindingSuggestion>=[],legacyError='';
-  if(!binding)try{legacy=legacyBindingSuggestion(p);}catch(e){legacyError=errorText(e,true);}
   const diagnostics=validateHardware(p,bus,chainError?undefined:chain);
   const run=(fn:()=>void)=>{try{fn();}catch(e){message.error(()=>(errorText(e,true)));}};
   const stage=(action:Parameters<typeof planHardware>[1],selection=selected)=>run(()=>{const plan=planHardware(p,action);setPending({...plan,revision:p.revision,epoch:useProject.getState().workspaceEpoch,selected:selection});setAddType(undefined);});
@@ -51,7 +53,7 @@ export function Hardware({p,analysis,view}:{p:Project;analysis?:ProjectAnalysis;
         {d&&<>
           <DiagnosticField className="field" fileId={file.id} field={`hardware.${selected}.id`}><ParameterLabel htmlFor="hardware-slave" role="hardware" path="id">{t("Hardware / 从站 ID")}</ParameterLabel>{manual?<InputNumber id="hardware-slave" min={0} value={d.id} onChange={id=>{if(id!==null)stage({kind:'id',index:selected,id});}}/>:<Select id="hardware-slave" value={d.id} options={bus.slaves.filter(s=>s.id===d.id||!devices.some(v=>v.id===s.id)).map(s=>({value:s.id,label:`Slave ${s.id} · ${s.name}`}))} onChange={id=>stage({kind:'id',index:selected,id})}/>}</DiagnosticField>
           {d.type==='driver'&&<>
-            <Fields file={file} fields={[field('joint_name',t("关节显示名称"),'text'),field('torque_source',t("负载力矩来源"),'select',{options:['load_torque','secondary_position'],defaultValue:'load_torque'}),field('transform.user_unit_name',t("物理单位"),'text',{defaultValue:'rad'}),...['ratio','offset_pos_cnt','cnt_per_unit','torque_per_unit'].map(k=>field('transform.'+k,k)),...['lower','upper','vel','acc','jerk','effort'].map(k=>field('limit.'+k,k))]}/>
+            <Fields file={file} fields={[field('joint_name',binding?t("关节显示名称"):t("绑定关节名称"),'text'),field('torque_source',t("负载力矩来源"),'select',{options:['load_torque','secondary_position'],defaultValue:'load_torque'}),field('transform.user_unit_name',t("物理单位"),'text',{defaultValue:'rad'}),...['ratio','offset_pos_cnt','cnt_per_unit','torque_per_unit'].map(k=>field('transform.'+k,k)),...['lower','upper','vel','acc','jerk','effort'].map(k=>field('limit.'+k,k))]}/>
             <p>{t("位置 = (原始计数 − offset_pos_cnt) / cnt_per_unit / ratio；力矩 = 原始值 / torque_per_unit。")}</p>
             <Alert type="info" message={t("标准 URDF 与 Hardware 限位分别保留；请核对模型约束和硬件配置。")}/>
             <DiagnosticField fileId={file.id} field={`hardware.${selected}`}><Checkbox checked={!!p.editor.confirmations[`drive:${d.id}`]} onChange={e=>useProject.getState().change(n=>{n.editor.confirmations[`drive:${d.id}`]=e.target.checked;})}>{t("已人工核对换算、零点与限位")}</Checkbox></DiagnosticField>
@@ -63,19 +65,20 @@ export function Hardware({p,analysis,view}:{p:Project;analysis?:ProjectAnalysis;
       </Card>
     </HardwareWorkspace>}
     {view!=='hardware'&&<Card className="space-top" title={t("显式关节绑定")} extra={<Tag>{t("模型顺序与总线顺序独立")}</Tag>}>
-      {!binding&&<Alert type="warning" message={t("缺少显式绑定文件")} description={legacyError||t("APP 将按模型关节顺序对应 Hardware YAML 中 Driver 的顺序；下表仅为推导建议。")} action={<Button disabled={!legacy.length} onClick={()=>run(()=>setPending({...planLegacyBinding(p),revision:p.revision,epoch:useProject.getState().workspaceEpoch,selected}))}>{t("预览并生成显式绑定")}</Button>}/>}
+      {!binding&&!native&&<Alert type="warning" message={t("缺少显式绑定文件")} description={legacyError||t("APP 将按模型关节顺序对应 Hardware YAML 中 Driver 的顺序；下表仅为推导建议。")} action={<Button disabled={!legacy.length} onClick={()=>run(()=>setPending({...planLegacyBinding(p),revision:p.revision,epoch:useProject.getState().workspaceEpoch,selected}))}>{t("预览并生成显式绑定")}</Button>}/>}
+      {!binding&&native&&<Alert type="info" message={t('绑定保存在 hardware.yaml 的 joint_name；无驱动 mimic 可留空。')}/>}
       {chainError&&<Alert type="error" message={chainError}/>}
-      <Table scroll={{x:600}} pagination={false} rowKey="name" dataSource={chain} columns={[{title:t("链序号"),render:(_,__,i)=>i+1},{title:'URDF Joint',dataIndex:'name'},{title:'Hardware Drive ID / Slave',render:(_,j)=><div className="parameter-input"><Select aria-label={t('{joint} 驱动器绑定',{joint:j.name})} disabled={!binding} allowClear placeholder={t("选择驱动器")} style={{minWidth:210}} value={(binding?binds:legacy).find(b=>b.joint_name===j.name)?.drive_id} options={devices.filter(d=>d.type==='driver').map(d=>({value:d.id,label:`Drive ${d.id} → Slave ${d.id}`,disabled:binds.some(b=>b.drive_id===d.id&&b.joint_name!==j.name)}))} onChange={id=>run(()=>useProject.getState().change(n=>bindJoint(n,j.name,id)))}/><ParameterHelp name={t('{joint} 驱动器绑定',{joint:j.name})} help={parameterHelp("hardware","binding")} /></div>}]} />
-      {diagnostics.filter(d=>binding&&d.fileId===binding.id).map((x,i)=><p key={i}><Tag color={x.severity==='error'?'red':'orange'}>{x.severity==='error'?t("错误"):t("待核对")}</Tag>{diagnosticText(x)}</p>)}
+      <Table scroll={{x:600}} pagination={false} rowKey="name" dataSource={chain} columns={[{title:t("链序号"),render:(_,__,i)=>i+1},{title:'URDF Joint',dataIndex:'name'},{title:'Hardware Drive ID / Slave',render:(_,j)=><div className="parameter-input"><Select aria-label={t('{joint} 驱动器绑定',{joint:j.name})} allowClear placeholder={t("选择驱动器")} style={{minWidth:210}} disabled={!binding&&!native} value={(binding||native?binds:legacy).find(b=>b.joint_name===j.name)?.drive_id} options={devices.filter(d=>d.type==='driver').map(d=>({value:d.id,label:`Drive ${d.id} → Slave ${d.id}`,disabled:binds.some(b=>b.drive_id===d.id&&b.joint_name!==j.name)}))} onChange={id=>run(()=>useProject.getState().change(n=>bindJoint(n,j.name,id)))}/><ParameterHelp name={t('{joint} 驱动器绑定',{joint:j.name})} help={parameterHelp("hardware","binding")} /></div>}]} />
+      {diagnostics.filter(d=>d.fileId===(binding?.id??file.id)&&d.code.startsWith('binding.')).map((x,i)=><p key={i}><Tag color={x.severity==='error'?'red':'orange'}>{x.severity==='error'?t("错误"):t("待核对")}</Tag>{diagnosticText(x)}</p>)}
     </Card>}
-    <Card className="space-top"><Tabs items={[{key:'hw',label:t("Hardware 源文件"),children:<SourceEditor file={file}/>},{key:'binding',label:t("Binding 源文件"),children:binding?<SourceEditor file={binding}/>:<p>{t("尚未生成显式绑定文件。")}</p>}]} /></Card>
-    <Modal title={t("复用主站 PDO 映射")} open={mappingOpen} onCancel={()=>setMappingOpen(false)} okText={t("应用映射")} onOk={()=>run(()=>{let count=0;useProject.getState().change(n=>{configure(n).appMaster=mappingMaster;count=fillHardwareMappings(n);});setMappingOpen(false);message.success(()=>t("已补全 {count} 项 PDO 映射；已有映射保持不变",{count}));})}>
+    <Card className="space-top"><Tabs items={[{key:'hw',label:t("Hardware 源文件"),children:<SourceEditor file={file}/>},...(binding?[{key:'binding',label:t("Binding 源文件"),children:<SourceEditor file={binding}/>}]:[])]} /></Card>
+    <Modal title={t("复用主站 PDO 映射")} open={mappingOpen} onCancel={()=>setMappingOpen(false)} okText={t("应用映射")} onOk={()=>run(()=>{let count=0;useProject.getState().change(n=>{selectAppMaster(n,mappingMaster);count=fillHardwareMappings(n);});setMappingOpen(false);message.success(()=>t("已补全 {count} 项 PDO 映射；已有映射保持不变",{count}));})}>
       <p>{t("选择要复用的主站，仅补全空白映射。")}</p><label htmlFor="mapping-master">{t("PDO 来源主站")}</label>
       <Select id="mapping-master" style={{width:'100%',marginTop:8}} value={mappingMaster} onChange={setMappingMaster} options={masterKinds(p).map(kind=>({value:kind,label:kind.toUpperCase()}))}/>
     </Modal>
     <Modal title={t('新增 {type}',{type:addType||''})} open={!!addType} onCancel={()=>setAddType(undefined)} okText={t("预览配置草稿")} okButtonProps={{disabled:slave===undefined}} onOk={()=>{if(addType&&slave!==undefined)stage({kind:'add',type:addType,id:slave,joint},devices.length);}}>
       <div className="field"><ParameterLabel htmlFor="new-hardware-slave" role="hardware" path="id">{t("目标从站")}</ParameterLabel>{manual?<InputNumber id="new-hardware-slave" min={0} value={slave} onChange={v=>setSlave(v??undefined)}/>:<Select id="new-hardware-slave" value={slave} options={freeSlaves.map(s=>({value:s.id,label:`Slave ${s.id} · ${s.name}`}))} onChange={setSlave}/> }</div>
-      {addType==='driver'&&<div className="field"><ParameterLabel htmlFor="new-hardware-joint" role="hardware" path="binding">{t("控制关节（可稍后绑定）")}</ParameterLabel><Select id="new-hardware-joint" disabled={!binding} allowClear value={joint} options={chain.filter(j=>!binds.some(b=>b.joint_name===j.name)).map(j=>({value:j.name,label:j.name}))} onChange={setJoint}/><p>{t("选择关节可带入 URDF 限位。只生成唯一匹配的 PDO 候选，不猜测机械比例或零点。")}</p></div>}
+      {addType==='driver'&&<div className="field"><ParameterLabel htmlFor="new-hardware-joint" role="hardware" path="binding">{t("控制关节（可稍后绑定）")}</ParameterLabel><Select id="new-hardware-joint" disabled={!binding&&!native} allowClear value={joint} options={chain.filter(j=>!binds.some(b=>b.joint_name===j.name)).map(j=>({value:j.name,label:j.name}))} onChange={setJoint}/><p>{t("选择关节可带入 URDF 限位。只生成唯一匹配的 PDO 候选，不猜测机械比例或零点。")}</p></div>}
     </Modal>
     <Modal title={t("确认硬件变更")} open={!!pending} onCancel={()=>setPending(undefined)} okText={t("应用变更")} onOk={()=>run(()=>{if(!pending)return;const current=useProject.getState().project;if(useProject.getState().workspaceEpoch!==pending.epoch||current?.id!==pending.project.id||current.revision!==pending.revision)throw new MessageError(msg("工程已变化，请重新预览"));useProject.getState().change(n=>Object.assign(n,pending.project));setSelected(pending.selected);setPending(undefined);})}>
       <ul>{pending?.impactMessages.map((x,i)=><li key={i}>{diagnosticText(x)}</li>)}</ul><p>{t("本次修改会清除机械参数确认；整次操作支持撤销。")}</p>

@@ -7,7 +7,7 @@ import { isMap } from 'yaml';
 import { buildBusCatalog } from '../bus/catalog';
 import { editProjectYaml, sequence } from '../bus/igh-edit';
 import { controlChain } from '../documents/urdf';
-import { appDocument } from '../documents/app-config';
+import { appDocument, robotConfigFile } from '../documents/app-config';
 import { fileById, textOf, type Project } from '../project/types';
 import { bindingDocument, hardwareDocument, isRecord, signals, type HardwareType } from './schema';
 import { signalTypeProblem } from './validation';
@@ -15,11 +15,20 @@ import { signalTypeProblem } from './validation';
 export function hardwareChain(p:Project) {
   const app=fileById(p,p.entrypoints.app),urdf=fileById(p,p.entrypoints.urdf);
   if(!app||!urdf)throw new MessageError(msg("请先配置 APP 与 URDF"));
-  const robot=appDocument(app).data?.robot;
-  return controlChain(textOf(urdf),robot?.base_link,robot?.tip_link);
+  const robot=appDocument(app,p).data?.robot;
+  const hw=fileById(p,p.entrypoints.hardware);
+  return controlChain(textOf(urdf),robot?.base_link,robot?.tip_link,hw?hardwareDocument(hw).devices.filter(d=>d?.type==='driver').map(d=>d.joint_name):[]);
 }
 export function bindJoint(p:Project,name:string,id:number|undefined) {
-  const file=fileById(p,p.entrypoints.binding);if(!file)throw new MessageError(msg("缺少绑定文件"));
+  const file=fileById(p,p.entrypoints.binding);
+  if(!file){
+    if(robotConfigFile(p)?.role!=='app.robot')throw new MessageError(msg('缺少绑定文件'));
+    const hw=fileById(p,p.entrypoints.hardware);if(!hw)throw new MessageError(msg('缺少 Hardware 文件'));
+    const {devices}=hardwareDocument(hw);
+    if(id!==undefined&&!devices.some(d=>d?.type==='driver'&&d.id===id))throw new MessageError(msg('请选择有效的驱动器'));
+    editProjectYaml(p,hw.id,doc=>{devices.forEach((d,i)=>{if(d?.type==='driver'&&(d.joint_name===name||d.id===id))doc.setIn(['hardware',i,'joint_name'],d.id===id?name:'');});});
+    return;
+  }
   const {bindings}=bindingDocument(file);
   if(bindings.some(b=>!isRecord(b)))throw new MessageError(msg("请先修复无效绑定条目"));
   const matches=bindings.map((b,i)=>b.joint_name===name?i:-1).filter(i=>i>=0);
@@ -45,7 +54,7 @@ export function planHardware(p:Project,action:{kind:'add';type:HardwareType;id:n
   if(action.kind==='add') {
     const joint=action.joint?hardwareChain(next).find(j=>j.name===action.joint):undefined;
     if(action.joint&&!joint)throw new MessageError(msg("关节已不在控制链"));
-    if(joint){const bf=fileById(next,next.entrypoints.binding);if(bf&&bindingDocument(bf).bindings.some(b=>b?.joint_name===joint.name))throw new MessageError(msg("该关节已有绑定"));}
+    if(joint){const bf=fileById(next,next.entrypoints.binding);if(bf?bindingDocument(bf).bindings.some(b=>b?.joint_name===joint.name):devices.some(d=>d.type==='driver'&&d.joint_name===joint.name))throw new MessageError(msg("该关节已有绑定"));}
     const d:Record<string,any>={id:action.id,type:action.type,inputs:{}};
     if(action.type!=='ft_sensor')d.outputs={};
     if(action.type==='driver') {
@@ -84,7 +93,7 @@ export function invalidateHardwareConfirmation(before:Project,after:Project) {
   const key=(p:Project)=>JSON.stringify({master:p.entrypoints.master,hardware:p.entrypoints.hardware,binding:p.entrypoints.binding,urdf:p.entrypoints.urdf,targets:p.targets});
   const relevant=(p:Project)=>[p.entrypoints.hardware,p.entrypoints.binding,p.entrypoints.urdf,p.entrypoints.master.fileId,p.entrypoints.master.eniFileId];
   const bytesChanged=(id:string|null)=>{const a=fileById(before,id),b=fileById(after,id);return !a||!b?a!==b:a.encoding!==b.encoding||a.bytes.length!==b.bytes.length||a.bytes.some((v,i)=>v!==b.bytes[i]);};
-  const robot=(p:Project)=>{try{const f=fileById(p,p.entrypoints.app),r=f&&appDocument(f).data?.robot;return ['ecat_id','base_link','tip_link','urdf','hardware_config','joint_binding'].map(k=>String(r?.[k])).join('\u0000');}catch{return 'invalid';}};
+  const robot=(p:Project)=>{try{const f=fileById(p,p.entrypoints.app),r=f&&appDocument(f,p).data?.robot;return ['ecat_id','base_link','tip_link','urdf','hardware_config','joint_binding','master_type','master_config'].map(k=>String(r?.[k])).join('\u0000');}catch{return 'invalid';}};
   if(key(before)!==key(after)||relevant(before).some(bytesChanged)||before.entrypoints.app!==after.entrypoints.app||robot(before)!==robot(after))
     for(const k of Object.keys(after.editor.confirmations))if(k.startsWith('drive:'))delete after.editor.confirmations[k];
 }

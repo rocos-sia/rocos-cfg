@@ -1,3 +1,4 @@
+import { createAppPackage } from '../documents/app-package';
 import { createProject } from './create';
 import { selectMaster } from './configuration';
 import { recordTemplate, talonTemplate } from './templates';
@@ -16,7 +17,7 @@ export async function createTalonExample(kind: MasterKind, entries: Map<string, 
     return {id: uid(), path: spec.path, role: spec.role, owner: spec.role, bytes: new Uint8Array(bytes),
       ...(/\.STL$/i.test(spec.path) ? {} : {encoding: 'utf-8'})};
   }));
-  const p = createProject('Talon', kind);
+  const p = createProject('Talon', kind,{},true);
   // Starter documents were replaced, so retain only the target rule snapshots.
   p.files = [...p.files.filter(file => file.role === 'profile'), ...files];
   p.editor = {buffers: {}, confirmations: {}};
@@ -48,5 +49,6 @@ export async function loadTalonExample(kind: MasterKind = 'igh') {
   if (project.entrypoints.master.kind === 'ecm') project.entrypoints.master.eniFileId = project.files.find(file => file.path === 'ecm/eni7.xml')!.id;
   selectMaster(project, kind);
   project.references = collectReferences(project);
+  createAppPackage(project);
   return project;
 }

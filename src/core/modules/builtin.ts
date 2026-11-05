@@ -1,4 +1,5 @@
 import { m as msg, MessageError } from '../project/messages';
+import { appPackageModules } from './app-package';
 import type { ConfigModule, ModuleExportContext, ModuleReference } from './contracts';
 import { textOf, utf8 } from '../project/types';
 import { readYaml, yamlDocument } from '../documents/yaml';
@@ -10,7 +11,7 @@ const capabilities = { readonly: false, generate: false, advancedEdit: true, des
 const copy = (_: unknown, ctx: ModuleExportContext) => [{ path: ctx.path, bytes: ctx.file.bytes, fileId: ctx.file.id }];
 const refs = (fields: [string, unknown, ('file' | 'directory')?][]): ModuleReference[] => fields.filter(([,v]) => typeof v === 'string' && v).map(([field, original, kind]) => ({ field, original: original as string, kind }));
 const yaml = (id: string, detect: (v: any) => boolean): ConfigModule => ({ id, version: 1, role: id, syntax: 'yaml', capabilities,
-  detect: file => /\.ya?ml$/i.test(file.path) && detect(readYaml(textOf(file))), parse: file => readYaml(textOf(file)),
+  detect: file => /\.ya?ml$/i.test(file.path) && !(id==='app'&&/(?:^|\/)user\.ya?ml$/i.test(file.path)) && detect(readYaml(textOf(file))), parse: file => readYaml(textOf(file)),
   validate: () => [], references: () => [], export: (value, ctx) => {
     if (!ctx.rewrites.length) return copy(value, ctx);
     const doc = yamlDocument(textOf(ctx.file));
@@ -26,13 +27,15 @@ const has = (v: any, key: string) => v && typeof v === 'object' && !Array.isArra
 const urdfResources = (doc: Document, tag: string) => elements(doc, tag).filter(node => !isLegacyHardware(node));
 export const nativeModules: ConfigModule[] = [
   { ...yaml('igh', v => has(v, 'slaves') && has(v, 'version')),
-    detect: f => /\.ya?ml$/i.test(f.path) && (()=>{const v=readYaml(textOf(f));return has(v,'slaves')&&has(v,'version')||has(v,'eni')&&ighHint(f,v);})(),
+    detect: f => /\.ya?ml$/i.test(f.path) && (()=>{const v=readYaml(textOf(f));return has(v,'slaves')&&has(v,'version')&&!(Number(v.version)===2&&v.master?.id!==undefined)||has(v,'eni')&&ighHint(f,v);})(),
     references: v => refs([['eni', v?.eni]]) },
   { ...yaml('ecm', v => has(v, 'eni')), detect: f => /\.ya?ml$/i.test(f.path) && (()=>{const v=readYaml(textOf(f));return has(v,'eni')&&!ighHint(f,v);})(), parse:file=>ecmDocument(file).data, references: v => refs([['eni', v?.eni]]) },
+  ...appPackageModules,
   yaml('hardware', v => has(v, 'hardware')), yaml('binding', v => has(v, 'joint_bindings')),
-  { ...yaml('app', v => has(v, 'robot') || has(v, 'http_port')), parse:file=>appDocument(file).data,
-    validate:(_,ctx)=>appDocument(ctx.file).diagnostics.map(d=>({...d,code:'app.startup',severity:'error',fileId:ctx.file.id})), references: v => refs([
-    ...['hardware_config', 'urdf', 'joint_binding', 'payload'].map(k => [`robot.${k}`, v?.robot?.[k]] as [string, unknown]),
+  { ...yaml('app', v => has(v, 'robot') || has(v, 'http_port') || has(v, 'robot_config') || has(v, 'device_config')), parse:file=>appDocument(file).data,
+    validate:(_,ctx)=>appDocument(ctx.file,ctx.project).diagnostics.map(d=>({...d,code:'app.startup',severity:'error',fileId:ctx.file.id})), references: v => refs([
+    ...(Number(v?.schema_version)===1?['robot_config','device_config','user_config'].map(k=>[k,v?.[k]] as [string,unknown]):[]),
+    ...['hardware_config', 'urdf', 'joint_binding', 'payload'].filter(()=>Number(v?.schema_version)!==1).map(k => [`robot.${k}`, v?.robot?.[k]] as [string, unknown]),
     ['scripts', v?.scripts, 'directory'], ['web_root', v?.web_root, 'directory'],
   ]) },
   { id: 'eni', version: 1, role: 'eni', syntax: 'xml', capabilities: { ...capabilities, readonly: true, advancedEdit: false },
